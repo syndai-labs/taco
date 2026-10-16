@@ -85,7 +85,6 @@ fn closed_vocabularies_and_four_sources() {
         selector::EXTERNAL_INPUT.display_name,
         Some("syndai-iphone-02 Microphone")
     );
-    assert!(selector::EXTERNAL_INPUT.device_uid.is_none());
     assert!(!selector::EXTERNAL_INPUT.qualified_in_m0);
 
     assert_eq!(taco::ledger::TOP_LEVEL.len(), 5);
@@ -127,9 +126,8 @@ fn session_stays_local_and_commits_are_immutable() {
         ]
     );
     assert!(
-        read("docs/evidence/m0/pin-measurement.md").contains(
-            "dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699"
-        ),
+        read("docs/evidence/m0/pin-measurement.md")
+            .contains("dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699"),
         "freeze digests must match the measured evidence file"
     );
     assert_eq!(

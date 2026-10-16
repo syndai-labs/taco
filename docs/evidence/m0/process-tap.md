@@ -193,4 +193,6 @@ AC1 needs an allow and a deny from `taco run` for microphone, system, and an app
 
 ## External input reserved for M2
 
-`system_profiler SPAudioDataType` on this Mac listed `MacBook Pro Microphone` as the default input and `syndai-iphone-02 Microphone` as another input (transport Unknown, not default). The second name is reserved for M2. `qualified_in_m0` stays false. Tip `d42010a` left `EXTERNAL_INPUT.display_name` unset. This decision-sync branch sets it to `syndai-iphone-02 Microphone`. No device UID was listed, so `device_uid` stays unset. This is not an M0 qualification.
+`system_profiler SPAudioDataType` on this Mac listed `MacBook Pro Microphone` as the default input and `syndai-iphone-02 Microphone` as another input (transport Unknown, not default). The JSON record had no device uid. The display name is stored on `EXTERNAL_INPUT`. `qualified_in_m0` stays false. This is not an M0 qualification.
+
+At 00:27 KST the Don't Allow / Allow dialog was not on screen. No `taco` process was running. No completed Terminal-launched `taco run` output was present. No Allow or Don't Allow click was observed.

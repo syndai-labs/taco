@@ -65,19 +65,17 @@ pub fn on_unresolved_app() -> SelectionFailurePolicy {
     SelectionFailurePolicy::StopDoNotBroaden
 }
 
-/// M2 external-input reservation. The display name is the non-default input
-/// observed on the tap host. No UID was listed. `qualified_in_m0` stays false:
-/// the name is not an M0 qualification and does not close M0-AC1.
+/// Named external input reserved for M2. M0 does not qualify a device.
+/// `system_profiler SPAudioDataType` on 2026-10-17 named this non-default
+/// input and did not emit a device uid, so no uid is stored.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ExternalInputReservation {
     pub display_name: Option<&'static str>,
-    pub device_uid: Option<&'static str>,
     pub qualified_in_m0: bool,
 }
 
 pub const EXTERNAL_INPUT: ExternalInputReservation = ExternalInputReservation {
     display_name: Some("syndai-iphone-02 Microphone"),
-    device_uid: None,
     qualified_in_m0: false,
 };
 
