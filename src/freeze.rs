@@ -95,6 +95,11 @@ pub struct Corner {
 /// Does not set `Corner::qualified`. C2 may still have `os_build: None`.
 pub const C1_NAMED: bool = true;
 
+/// This Project has no second acceptance machine.
+/// Stays set until a different Apple Silicon Mac is measured: chip name,
+/// memory in bytes, and macOS product version and build. Not a measurement.
+pub const C2_BLOCKED: bool = true;
+
 pub const CORNERS: [Corner; 2] = [
     Corner {
         id: "C1",
@@ -104,7 +109,7 @@ pub const CORNERS: [Corner; 2] = [
     },
     Corner {
         id: "C2",
-        machine: "open",
+        machine: "blocked: no second acceptance machine",
         os_build: None,
         qualified: false,
     },

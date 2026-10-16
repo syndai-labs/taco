@@ -95,10 +95,10 @@ tests failing before the contract types satisfy them. Do not rename the IDs.
 ## Corners named so far
 
 C1: Apple M1 Pro, 34359738368 bytes (32 GiB), macOS 27.0.1 (26A434). Named, not qualified.
-C2: open. Missing a second Apple Silicon chip, its memory in bytes, and its macOS product version and build.
+C2: open and blocked. No second acceptance machine in this Project. Missing a second Apple Silicon chip, its memory in bytes, and its macOS product version and build.
 Minimum OS floor: Partial, macOS 27.0.1 (26A434). macOS 14.2 was not measured.
 Alternate TCC launch parent: launchd user agent, named, not exercised.
-M0-AC4 stays unchecked. C2 is unnamed, and quantization, sampling, corpus inventory, and reviewed numeric targets are still open.
+M0-AC4 stays unchecked. The AC4 corners freeze stays Partial: dual-machine acceptance cannot close. Quantization, sampling, corpus inventory, and reviewed numeric targets are still open.
 Records: [qualification-corners.md](../evidence/m0/qualification-corners.md), [os-floor.md](../evidence/m0/os-floor.md).
 
 ## Evidence and handoff

@@ -3,7 +3,7 @@
 C1 is named from measurements already in
 [macos-spike-results.md](macos-spike-results.md) and
 [native-impl.md](native-impl.md). No second machine was measured.
-C2 is open. Neither corner is qualified. M0-AC4 stays unchecked.
+C2 is open and blocked. Neither corner is qualified. M0-AC4 stays unchecked.
 
 `C1_NAMED` in `src/freeze.rs` is the freeze marker for that name.
 `Corner::qualified` stays false on both corners.
@@ -29,21 +29,26 @@ the name. It does not claim that proposal was measured.
 
 ## C2
 
-Open. Evidence has one Mac. Still missing:
+Open and blocked. `C2_BLOCKED` is true. This Project has no second acceptance
+machine. `os_build` stays unset. No chip, memory, or OS build is recorded.
 
-- a second Apple Silicon chip name
-- that machine's memory in bytes
-- that machine's macOS product version and build
+When a different Apple Silicon Mac appears, C2 needs, from that machine:
 
-"Latest macOS" is not a name. This host is not C2. Build 26A434 is not C2's build.
+- chip name
+- memory in bytes
+- macOS product version and build
+
+"Latest macOS" is not a name. This host is not C2. Build 26A434 is not C2's
+build. C1's chip and memory are not C2's.
 
 ## Decision
 
-Chosen: name C1 as the only measured host and leave C2 open.
+Chosen: name C1 as the only measured host and leave C2 open and blocked.
 Rejected: keep "proposed starting point" as the C1 name; treat this host as
 proof of a 16 GiB macOS 14.2 floor; assign build 26A434 to C2 without a second
-machine.
-Consequence: M0-AC4 stays open. The support claim, M1, and M5 stay blocked.
+machine; invent a second machine.
+Consequence: the AC4 corners freeze stays Partial. Dual-machine acceptance
+cannot close. M0-AC4 stays unchecked. The support claim, M1, and M5 stay blocked.
 The 6 GiB memory ceiling is unchanged. The 8 GiB revision reserved for an
 unmeasured 16 GiB machine is not available from this 32 GiB corner.
 
