@@ -1,6 +1,6 @@
 # Minimum OS floor and alternate launch host (2026-10-16)
 
-Cited from `cursor/m0-ac4-os-host-b19b` tip `8ebd0fc` (PR #19). `OS_FLOOR`, `OS_FLOOR_PARTIAL`, `ALTERNATE_TERMINAL_HOST`, and `ALTERNATE_HOST_EXERCISED` on that commit are not replayed in this branch's `freeze.rs`. C2 stays open. No acceptance box is checked.
+Cited from `cursor/m0-ac4-os-host-b19b` tip `8ebd0fc` (PR #19). `OS_FLOOR`, `OS_FLOOR_PARTIAL`, `ALTERNATE_TERMINAL_HOST`, and `ALTERNATE_HOST_EXERCISED` on that commit are not replayed in this branch's `freeze.rs`. C2 stays open. No acceptance box is checked. PR #32 tip `0972b2d` measured the same host and left `proves_c1` false. It does not name C2. PR #30 tip `e2ec751` is an ad-hoc `taco run` on that host, not a second machine.
 
 M0-AC1 and M0-AC4 stay unchecked. C2 stays open. No microphone button was pressed. No Metal load was run. This note does not re-run capture.
 

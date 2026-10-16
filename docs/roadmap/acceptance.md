@@ -59,7 +59,11 @@ minimum OS floor to Partial: macOS 27.0.1 (26A434) on Apple Silicon. macOS 14.2
 was not measured and is not a confirmed floor. That revision is not a support
 promise. C2 stays open. The alternate TCC launch parent is a launchd user
 agent, named and not exercised. Cursor.app is not an acceptance host.
-M0-AC1 and M0-AC4 stay open.
+M0-AC1 and M0-AC4 stay open. PR #32 tip `0972b2d`
+([engines-residency.md](../evidence/m0/engines-residency.md)) is that same M1
+Pro host. `proves_c1` stays false. It is not C2. PR #30 tip `e2ec751`
+([taco-run-prove.md](../evidence/m0/taco-run-prove.md)) is an ad-hoc signed
+`taco run` on that host, not a second machine.
 
 | Dimension | Proposed starting point | Required evidence |
 | --- | --- | --- |
