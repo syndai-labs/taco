@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.20)
 # Engines are not vendored and nothing is downloaded. No probe executable.
 # Same Mach-O rules as the metal-link probe: static libs, Metal shaders embedded,
 # no shared engine library, no helper executable.
+# A shared libonnxruntime dylib or sidecar is not a ship path. ORT, if linked,
+# stays static archives. Dynamic dependencies stay system frameworks (ADR 0004).
 project(taco_engines LANGUAGES C CXX OBJC OBJCXX)
 
 if(NOT LLAMA_SRC OR NOT WHISPER_SRC)

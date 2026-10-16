@@ -581,6 +581,227 @@ fn inference_adapters_refuse_in_process() {
     assert!(src_text().contains("fn initialize"));
 }
 
+#[test]
+fn ort_link_stays_static_and_native_tests_fail_closed() {
+    let cmake = read("native/CMakeLists.txt");
+    assert!(
+        cmake.contains("not a ship path"),
+        "product cmake must refuse a shared libonnxruntime ship path"
+    );
+    assert!(cmake.contains("system framework"));
+    assert!(cmake.contains("static"));
+    for path in build_files(&root().join("native")) {
+        let text = fs::read_to_string(&path)
+            .unwrap_or_else(|err| panic!("read {}: {err}", path.display()));
+        for (number, line) in text.lines().enumerate() {
+            assert!(
+                !shared_ort_ship_line(line),
+                "{}:{} advertises a shared ORT ship path: {line}",
+                path.display(),
+                number + 1
+            );
+        }
+    }
+    let mut documented = false;
+    for path in markdown_files(&root().join("docs")) {
+        let text = fs::read_to_string(&path)
+            .unwrap_or_else(|err| panic!("read {}: {err}", path.display()));
+        if !text.to_ascii_lowercase().contains("onnxruntime") {
+            continue;
+        }
+        documented = true;
+        let rel = path.display();
+        assert!(
+            text.contains("static") && text.contains("system framework"),
+            "{rel} documents ORT without static / system-framework language"
+        );
+        assert!(text.contains("ADR 0004"), "{rel}");
+        assert!(!text.contains("- [x]") && !text.contains("- [X]"), "{rel}");
+        for (number, line) in text.lines().enumerate() {
+            assert!(
+                !shared_ort_ship_prose(line),
+                "{rel}:{} advertises a shared ORT ship path: {line}",
+                number + 1
+            );
+        }
+    }
+    assert!(documented, "ORT integration evidence is missing");
+
+    let note = read("docs/evidence/m0/ort-macho-guards.md");
+    assert!(note.contains("a8b2ebc"));
+    assert!(note.contains("agent contract"));
+    assert!(note.contains("was not linked"));
+    assert!(note.contains("T-M0-LINK-THREE-MODELS"));
+    assert!(note.contains("T-M0-CANCEL-LIFECYCLE"));
+    assert!(note.contains("not a pass"));
+    assert!(note.contains("stay open"));
+
+    for test in [
+        "tests/t_m0_link_three_models.rs",
+        "tests/t_m0_cancel_lifecycle.rs",
+    ] {
+        let text = read(test);
+        assert!(
+            text.lines().any(|line| {
+                let code = line.split("//").next().unwrap_or(line);
+                code.contains("panic!")
+            }),
+            "{test} must panic until a real native run exists"
+        );
+        assert!(text.contains("not macOS Apple Silicon"), "{test}");
+        assert!(
+            !text.contains("#[cfg"),
+            "{test} must not cfg-gate the failure"
+        );
+        assert!(!text.contains("return"), "{test} must not skip the panic");
+        assert!(
+            !text.contains("link_three=1"),
+            "{test} must not treat probe stdout as a pass"
+        );
+    }
+    for id in ["T-M0-LINK-THREE-MODELS", "T-M0-CANCEL-LIFECYCLE"] {
+        let script = read(&format!("scripts/qual/{id}"));
+        assert!(script.contains("verdict=not_run"), "{id}");
+        assert!(script.contains("exit 2"), "{id}");
+        assert!(!script.contains("verdict=pass"), "{id}");
+    }
+
+    assert!(shared_ort_ship_line(
+        r#"target_link_libraries(taco PRIVATE "/usr/local/lib/libonnxruntime.dylib")"#
+    ));
+    assert!(shared_ort_ship_line(
+        "set(onnxruntime_BUILD_SHARED_LIB ON CACHE BOOL \"\" FORCE)"
+    ));
+    assert!(shared_ort_ship_line(
+        "add_library(onnxruntime SHARED src/onnxruntime_session.cc)"
+    ));
+    assert!(!shared_ort_ship_line(
+        "set(onnxruntime_BUILD_SHARED_LIB OFF CACHE BOOL \"\" FORCE)"
+    ));
+    assert!(!shared_ort_ship_line(
+        "# Do not point this at libonnxruntime.dylib."
+    ));
+    assert!(!shared_ort_ship_line(
+        r#""${ORT_RELEASE}/libonnxruntime_session.a""#
+    ));
+    assert!(!shared_ort_ship_line(
+        "The official libonnxruntime.1.31.0.dylib was not linked."
+    ));
+    assert!(shared_ort_ship_prose(
+        "# Ship libonnxruntime.dylib beside the binary"
+    ));
+}
+
+/// Markdown keeps `#` headings. A heading that names the shared library is a ship path.
+fn shared_ort_ship_prose(line: &str) -> bool {
+    let code = line.split("//").next().unwrap_or(line);
+    shared_ort_ship_code(code)
+}
+
+/// A build or doc line that points the ship artifact at shared ONNX Runtime.
+///
+/// ponytail: one line at a time. A path split from its `target_link_libraries`
+/// still fails when that path line names `libonnxruntime` and `.dylib`.
+fn shared_ort_ship_line(line: &str) -> bool {
+    shared_ort_ship_code(strip_build_comment(line))
+}
+
+fn shared_ort_ship_code(code: &str) -> bool {
+    let lower = code.to_ascii_lowercase();
+    if !lower.contains("onnxruntime") || ort_refusal(&lower) {
+        return false;
+    }
+    if ort_shared_switch_on(&lower) {
+        return true;
+    }
+    if lower.contains(".dylib")
+        || lower.contains(".so")
+        || lower.contains("@rpath")
+        || lower.contains("link-lib=dylib")
+        || lower.contains("onnxruntime-osx")
+        || (lower.contains("add_library") && lower.contains("shared"))
+    {
+        return true;
+    }
+    let dynamic_lookup = lower.contains("find_library")
+        || lower.contains("-lonnxruntime")
+        || lower.contains("dylib=onnxruntime");
+    dynamic_lookup && !lower.contains(".a")
+}
+
+fn ort_refusal(lower: &str) -> bool {
+    [
+        "not a ship",
+        "was not",
+        "do not",
+        "must not",
+        "never ",
+        "forbid",
+    ]
+    .iter()
+    .any(|mark| lower.contains(mark))
+}
+
+fn ort_shared_switch_on(lower: &str) -> bool {
+    let Some(idx) = lower.find("build_shared") else {
+        return false;
+    };
+    let rest = &lower[idx + "build_shared".len()..];
+    let window: String = rest.chars().take(48).collect();
+    if window.contains("off") || window.contains("false") || window.contains("=0") {
+        return false;
+    }
+    window.contains("=on")
+        || window.contains(" on")
+        || window.contains("=true")
+        || window.contains(" true")
+        || window.contains("=1")
+}
+
+fn strip_build_comment(line: &str) -> &str {
+    let hash = line.find('#').unwrap_or(line.len());
+    let slashes = line.find("//").unwrap_or(line.len());
+    &line[..hash.min(slashes)]
+}
+
+fn build_files(dir: &Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    collect_files(dir, &mut out, true);
+    out
+}
+
+fn markdown_files(dir: &Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    collect_files(dir, &mut out, false);
+    out
+}
+
+fn collect_files(dir: &Path, out: &mut Vec<PathBuf>, build_only: bool) {
+    for entry in fs::read_dir(dir).unwrap().flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            collect_files(&path, out, build_only);
+            continue;
+        }
+        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        let ext = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
+        let keep = if build_only {
+            name == "CMakeLists.txt"
+                || ext == "cmake"
+                || ext == "rs"
+                || ext == "cpp"
+                || ext == "h"
+                || ext == "cc"
+                || ext == "mm"
+        } else {
+            ext == "md"
+        };
+        if keep {
+            out.push(path);
+        }
+    }
+}
+
 fn src_text() -> String {
     let mut out = String::new();
     append_rs(&root().join("src"), &mut out);
