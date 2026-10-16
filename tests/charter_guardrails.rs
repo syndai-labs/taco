@@ -506,6 +506,70 @@ fn package_source_and_milestone_boxes() {
     }
 }
 
+#[test]
+fn ac2_ac3_cannot_flip_while_stop_shas_stand() {
+    let vad_stands = stop_sha_stands("docs/evidence/m0/vad-metal-ep.md", "d194012");
+    let residency_stands = stop_sha_stands("docs/evidence/m0/engines-residency.md", "a0e1614");
+    if !vad_stands && !residency_stands {
+        return;
+    }
+    let mut checked = Vec::new();
+    checked_ac_boxes(&root().join("docs"), &mut checked);
+    assert!(
+        checked.is_empty(),
+        "M0-AC2 or M0-AC3 checked while Stop tip SHAs stand: {checked:?}"
+    );
+    let block = "Charter accept is blocked: M0-AC2 and M0-AC3 cannot be checked while the CPU VAD Stop at `d194012`";
+    let waiver = "A charter waiver records weight Partial on R2, R3, and R5.";
+    for path in [
+        "docs/roadmap/risks-and-decisions.md",
+        "docs/roadmap/m0-feasibility.md",
+        "docs/evidence/m0/ac2-ac3-open.md",
+    ] {
+        let text = read(path);
+        assert!(text.contains(block), "{path} drops the Stop consequence");
+        assert!(
+            text.contains("residency Stop at `a0e1614`"),
+            "{path} drops the residency Stop"
+        );
+        assert!(
+            text.contains(waiver),
+            "{path} drops the Partial waiver weight"
+        );
+    }
+}
+
+fn stop_sha_stands(path: &str, sha: &str) -> bool {
+    match fs::read_to_string(root().join(path)) {
+        Ok(text) if !text.is_empty() && !text.contains(sha) => false,
+        _ => true,
+    }
+}
+
+fn checked_ac_boxes(dir: &Path, out: &mut Vec<String>) {
+    for entry in fs::read_dir(dir).unwrap().flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            checked_ac_boxes(&path, out);
+            continue;
+        }
+        if path.extension().and_then(|ext| ext.to_str()) != Some("md") {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        for id in ["M0-AC2", "M0-AC3"] {
+            let flipped = text.lines().any(|line| {
+                line.contains(id) && (line.contains("- [x]") || line.contains("- [X]"))
+            });
+            if flipped {
+                out.push(format!("{} {id}", path.display()));
+            }
+        }
+    }
+}
+
 fn src_text() -> String {
     let mut out = String::new();
     for entry in fs::read_dir(root().join("src")).unwrap() {

@@ -10,3 +10,5 @@ Cited from `cursor/m0-ac23-honesty2-b19b` tip `7ae6d98` (PR #35). This branch do
 
 - [ ] **M0-AC2:** CPU VAD is open. Prove from `taco run` does not close this box.
 - [ ] **M0-AC3:** The residency Stop at `a0e1614` is not a bounded teardown.
+
+Charter accept is blocked: M0-AC2 and M0-AC3 cannot be checked while the CPU VAD Stop at `d194012` and the residency Stop at `a0e1614` stand. A charter waiver records weight Partial on R2, R3, and R5. Partial is not an accept. Checking either box requires [vad-metal-ep.md](vad-metal-ep.md) to drop `d194012` and [engines-residency.md](engines-residency.md) to drop `a0e1614`. R2 and R3 name the CPU VAD Stop. R5 names the residency Stop. Neither box above is a pass.
