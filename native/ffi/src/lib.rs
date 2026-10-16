@@ -40,6 +40,20 @@ pub struct Proof {
     pub gpu_device: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VmSample {
+    pub phys_footprint: u64,
+    pub resident_size: u64,
+    pub device: u64,
+    pub ledger_phys_footprint_peak: i64,
+    pub graphics_footprint: i64,
+    pub graphics_nofootprint: i64,
+    pub malloc_size_in_use: u64,
+    pub malloc_max_size_in_use: u64,
+    pub ok: i32,
+    pub graphics_ok: i32,
+}
+
 #[must_use]
 pub fn init_role(role: i32, path: &Path) -> i32 {
     let Some(path) = c_path(path) else {
@@ -80,6 +94,11 @@ pub fn entrypoints() -> usize {
         prove as *const (),
     ];
     slots.iter().fold(0usize, |acc, slot| acc ^ (*slot as usize))
+}
+
+#[must_use]
+pub fn vm_sample() -> VmSample {
+    sample_raw()
 }
 
 pub fn prove(vad: &Path, asr: &Path, mt: &Path, reserve_ms: i32) -> Result<Proof, i32> {
@@ -159,6 +178,53 @@ extern "C" {
         reserve_ms: i32,
         out: *mut RawProof,
     ) -> i32;
+    fn taco_engines_vm_sample(out: *mut RawVm);
+}
+
+#[cfg(taco_engines_static)]
+#[repr(C)]
+struct RawVm {
+    phys_footprint: u64,
+    resident_size: u64,
+    device: u64,
+    ledger_phys_footprint_peak: i64,
+    graphics_footprint: i64,
+    graphics_nofootprint: i64,
+    malloc_size_in_use: u64,
+    malloc_max_size_in_use: u64,
+    ok: i32,
+    graphics_ok: i32,
+}
+
+#[cfg(taco_engines_static)]
+fn sample_raw() -> VmSample {
+    let mut raw = RawVm {
+        phys_footprint: 0,
+        resident_size: 0,
+        device: 0,
+        ledger_phys_footprint_peak: 0,
+        graphics_footprint: 0,
+        graphics_nofootprint: 0,
+        malloc_size_in_use: 0,
+        malloc_max_size_in_use: 0,
+        ok: 0,
+        graphics_ok: 0,
+    };
+    // SAFETY: `raw` is a live POD. The C function writes it before returning
+    // and does not retain the pointer.
+    unsafe { taco_engines_vm_sample(&mut raw) };
+    VmSample {
+        phys_footprint: raw.phys_footprint,
+        resident_size: raw.resident_size,
+        device: raw.device,
+        ledger_phys_footprint_peak: raw.ledger_phys_footprint_peak,
+        graphics_footprint: raw.graphics_footprint,
+        graphics_nofootprint: raw.graphics_nofootprint,
+        malloc_size_in_use: raw.malloc_size_in_use,
+        malloc_max_size_in_use: raw.malloc_max_size_in_use,
+        ok: raw.ok,
+        graphics_ok: raw.graphics_ok,
+    }
 }
 
 #[cfg(taco_engines_static)]
@@ -285,4 +351,20 @@ fn prove_raw(
     _reserve_ms: i32,
 ) -> Result<Proof, i32> {
     Err(-1)
+}
+
+#[cfg(not(taco_engines_static))]
+fn sample_raw() -> VmSample {
+    VmSample {
+        phys_footprint: 0,
+        resident_size: 0,
+        device: 0,
+        ledger_phys_footprint_peak: 0,
+        graphics_footprint: 0,
+        graphics_nofootprint: 0,
+        malloc_size_in_use: 0,
+        malloc_max_size_in_use: 0,
+        ok: 0,
+        graphics_ok: 0,
+    }
 }

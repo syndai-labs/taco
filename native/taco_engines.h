@@ -49,6 +49,24 @@ int taco_engines_prove(
     int reserve_ms,
     taco_engines_proof * out);
 
+/* Instantaneous task_vm_info sample. phys_footprint is the catalog metric.
+   graphics_* is the kernel graphics ledger, not an MTLBuffer inventory.
+   ok is 1 when phys_footprint was read. graphics_ok is 1 when rev3 ledgers were read. */
+typedef struct taco_vm_sample {
+    uint64_t phys_footprint;
+    uint64_t resident_size;
+    uint64_t device;
+    int64_t ledger_phys_footprint_peak;
+    int64_t graphics_footprint;
+    int64_t graphics_nofootprint;
+    uint64_t malloc_size_in_use;
+    uint64_t malloc_max_size_in_use;
+    int32_t ok;
+    int32_t graphics_ok;
+} taco_vm_sample;
+
+void taco_engines_vm_sample(taco_vm_sample * out);
+
 #ifdef __cplusplus
 }
 #endif

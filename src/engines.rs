@@ -47,6 +47,23 @@ pub struct Proof {
     pub gpu_device: String,
 }
 
+/// One `task_vm_info` read. `phys_footprint` is the acceptance metric.
+/// `resident_size` and malloc sizes are diagnostic. `graphics_footprint` is
+/// the kernel graphics ledger, not `MTLDevice.currentAllocatedSize`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VmSample {
+    pub phys_footprint: u64,
+    pub resident_size: u64,
+    pub device: u64,
+    pub ledger_phys_footprint_peak: i64,
+    pub graphics_footprint: i64,
+    pub graphics_nofootprint: i64,
+    pub malloc_size_in_use: u64,
+    pub malloc_max_size_in_use: u64,
+    pub ok: i32,
+    pub graphics_ok: i32,
+}
+
 static MODEL_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
 
 /// Bind the directory that holds the three pinned filenames.
@@ -203,6 +220,42 @@ pub fn close(role: EngineRole) {
     #[cfg(feature = "native")]
     {
         taco_engines_ffi::close_role(role_code(role));
+    }
+}
+
+/// Read `task_vm_info.phys_footprint` for this process. `ok == 0` means unread.
+#[must_use]
+pub fn vm_sample() -> VmSample {
+    #[cfg(feature = "native")]
+    {
+        let sample = taco_engines_ffi::vm_sample();
+        return VmSample {
+            phys_footprint: sample.phys_footprint,
+            resident_size: sample.resident_size,
+            device: sample.device,
+            ledger_phys_footprint_peak: sample.ledger_phys_footprint_peak,
+            graphics_footprint: sample.graphics_footprint,
+            graphics_nofootprint: sample.graphics_nofootprint,
+            malloc_size_in_use: sample.malloc_size_in_use,
+            malloc_max_size_in_use: sample.malloc_max_size_in_use,
+            ok: sample.ok,
+            graphics_ok: sample.graphics_ok,
+        };
+    }
+    #[cfg(not(feature = "native"))]
+    {
+        VmSample {
+            phys_footprint: 0,
+            resident_size: 0,
+            device: 0,
+            ledger_phys_footprint_peak: 0,
+            graphics_footprint: 0,
+            graphics_nofootprint: 0,
+            malloc_size_in_use: 0,
+            malloc_max_size_in_use: 0,
+            ok: 0,
+            graphics_ok: 0,
+        }
     }
 }
 

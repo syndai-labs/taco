@@ -134,13 +134,13 @@ Link test, 2.18s, shaders already warm, `test result: ok`:
 | mt init | 233 | 2000, within |
 | mt decode | 7 | 2000, within |
 
-Each cargo test called `prove_native` once. No multi-cycle residency
-measurement was taken.
+Each cargo test called `prove_native` once. The 100-cycle
+`phys_footprint` run is in `engines-residency.md`. It is not an acceptance pass.
 
 ## What this does not accept
 
-- [ ] **M0-AC2:** ASR and MT ran in process on MTL0 with the pinned files, and Silero ran through static ORT. The VAD execution provider was CPU. The cargo tests are not `taco run`. Residency across repeated init and teardown was not measured. The process printed `ac2=0`.
-- [ ] **M0-AC3:** Init and decode cancels joined inside 2000 ms and `teardown=returned` on one pass each. The catalog's late-completion and replacement-worker checks, and the residency return to baseline, were not recorded here. The process printed `ac3=0`.
+- [ ] **M0-AC2:** ASR and MT ran in process on MTL0 with the pinned files, and Silero ran through static ORT. The VAD execution provider was CPU. The cargo tests are not `taco run`. Later residency samples are in `engines-residency.md` and miss the cycle tolerance. The process printed `ac2=0`.
+- [ ] **M0-AC3:** Init and decode cancels joined inside 2000 ms and `teardown=returned` on one pass each. The catalog's late-completion and replacement-worker checks were not recorded here. Residency did not return to the cycle-1 baseline. The process printed `ac3=0`.
 
 Default `cargo test` (no `native` feature) passed on this host after the
 entrypoint change. Linux still refuses the native feature: those tests panic

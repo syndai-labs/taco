@@ -53,3 +53,8 @@ required-features = ["native"]
 name = "t_m0_cancel_lifecycle"
 path = "tests/t_m0_cancel_lifecycle.rs"
 required-features = ["native"]
+
+[[test]]
+name = "t_m0_residency"
+path = "tests/t_m0_residency.rs"
+required-features = ["native"]
