@@ -49,38 +49,47 @@ pub fn fetch_models() -> Result<(), ErrorCode> {
     Err(ErrorCode::FetchRefusedUnpinned)
 }
 
+/// One subject. `spdx` and `notice` come only from a LICENSE file fetched for
+/// that subject. See `docs/evidence/m0/license-inventory.md`. An engine row is
+/// not a model row. `notice` is the copyright line, not the permission text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LicenseRecord {
     pub subject: &'static str,
     pub covers: &'static str,
     pub spdx: Option<&'static str>,
+    pub notice: Option<&'static str>,
 }
 
 pub const LICENSES: [LicenseRecord; 5] = [
     LicenseRecord {
         subject: "silero-vad-weights",
         covers: "model",
-        spdx: None,
+        spdx: Some("MIT"),
+        notice: Some("Copyright (c) 2020-present Silero Team"),
     },
     LicenseRecord {
         subject: "whisper-small-weights",
         covers: "model",
         spdx: None,
+        notice: None,
     },
     LicenseRecord {
         subject: "hy-mt2-1.8b-gguf",
         covers: "model",
-        spdx: None,
+        spdx: Some("Apache-2.0"),
+        notice: Some("Copyright (C) 2026 Tencent. All rights reserved."),
     },
     LicenseRecord {
         subject: "whisper.cpp",
         covers: "engine",
-        spdx: None,
+        spdx: Some("MIT"),
+        notice: Some("Copyright (c) 2023-2026 The ggml authors"),
     },
     LicenseRecord {
         subject: "llama.cpp",
         covers: "engine",
-        spdx: None,
+        spdx: Some("MIT"),
+        notice: Some("Copyright (c) 2023-2026 The ggml authors"),
     },
 ];
 
