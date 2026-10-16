@@ -16,12 +16,16 @@ signed Mac `taco run` with `TACO_ENGINES_PROVE=1`. Stdout printed
 `Signature=adhoc`, which is not a Developer ID signature. `ac2` and `ac3`
 stayed 0. Detail: [taco-run-prove.md](taco-run-prove.md).
 
-(c) Still blocks M0-AC2 and M0-AC3. #32 `0972b2d`
-(`cursor/m0-engines-residency-b19b`, `docs/evidence/m0/engines-residency.md`)
-ran 100 `session::prove_native` cycles in one process.
-`phys_footprint` after cycle 100 is 252346632 bytes above the cycle-1
-teardown. Tolerance is 33554432 bytes. The comparison fails.
+(c) Still blocks M0-AC2 and M0-AC3. #32 `a0e1614` records a Stop, not a fix.
+100 `session::prove_native` cycles in one process. `phys_footprint` after
+cycle 100 is 252346632 bytes above the cycle-1 teardown. Tolerance is
+33554432 bytes. `whisper_free` retains the bytes. A Metal command-buffer
+flush missed the band (6-cycle delta 98812072) and was reverted. Detail:
+`docs/evidence/m0/engines-residency.md` on `cursor/m0-engines-residency-b19b`.
 
 ## Consequence
 
-M0-AC2 and M0-AC3 stay unchecked. (a) and (c) are still open.
+M0-AC2 and M0-AC3 stay unchecked. (a) and (c) are still open. Repeated
+teardown is not a bounded-residency result. Do not treat #32 as meeting
+`T-M0-LINK-THREE-MODELS` or the acceptance.md 100-cycle rule, and do not
+start M1 on a claim that engine teardown returns to the cycle-1 baseline.

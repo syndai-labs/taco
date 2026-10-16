@@ -100,9 +100,9 @@ Detail: [ac2-ac3-open.md](../evidence/m0/ac2-ac3-open.md).
 | --- | --- |
 | (a) CPU VAD provider | Still open. Silero is the ORT CPU execution provider (`device=cpu`). M0-AC2 requires observed Metal GPU execution. A Metal EP worker may ship separately. |
 | (b) Prove path | Closed for prove reachable from `taco run`. #30 `e2ec751`: ad-hoc signed Mac `taco run` with `TACO_ENGINES_PROVE=1` printed `link_three=1 cancel_lifecycle=1 ac2=0 ac3=0` and exited 0 ([taco-run-prove.md](../evidence/m0/taco-run-prove.md)). Signature is ad-hoc, not Developer ID. |
-| (c) Catalog residency | Still blocks M0-AC2 and M0-AC3. #32 `0972b2d` measured 100 cycles. `phys_footprint` delta is 252346632 bytes against a 33554432-byte tolerance. |
+| (c) Catalog residency | Still blocks M0-AC2 and M0-AC3. #32 `a0e1614` is a Stop, not a fix. 100-cycle `phys_footprint` delta is 252346632 bytes against a 33554432-byte tolerance. `whisper_free` retains the bytes. A Metal command-buffer flush missed the band (6-cycle delta 98812072) and was reverted. |
 
-Consequence: M0-AC2 and M0-AC3 stay unchecked. (a) and (c) are still open.
+Consequence: M0-AC2 and M0-AC3 stay unchecked. (a) and (c) are still open. Repeated teardown is not a bounded-residency result. Do not treat #32 as meeting `T-M0-LINK-THREE-MODELS` or the acceptance.md 100-cycle rule, and do not start M1 on a claim that engine teardown returns to the cycle-1 baseline.
 
 ## Acceptance criteria
 

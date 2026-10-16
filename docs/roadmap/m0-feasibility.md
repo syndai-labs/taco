@@ -105,7 +105,9 @@ Do not conceal the failure by adding an inference server or dropping app capture
 
 M0-AC2 and M0-AC3 stay unchecked. Silero is still CPU EP (`device=cpu`).
 #30 `e2ec751` reached prove from ad-hoc signed `taco run`
-(`link_three=1 cancel_lifecycle=1 ac2=0 ac3=0`). #32 `0972b2d` measured
-residency; `phys_footprint` delta 252346632 exceeds tolerance 33554432.
-Record: [ac2-ac3-open.md](../evidence/m0/ac2-ac3-open.md) and
+(`link_three=1 cancel_lifecycle=1 ac2=0 ac3=0`). #32 `a0e1614` is a residency
+Stop, not a fix: `phys_footprint` delta 252346632 exceeds tolerance 33554432,
+and a reverted Metal flush still missed the band. Do not start M1 on a
+bounded-teardown claim. Record:
+[ac2-ac3-open.md](../evidence/m0/ac2-ac3-open.md) and
 [taco-run-prove.md](../evidence/m0/taco-run-prove.md).
