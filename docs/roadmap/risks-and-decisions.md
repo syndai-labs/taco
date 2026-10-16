@@ -106,7 +106,7 @@ catalog residency. Detail: [ac2-ac3-open.md](../evidence/m0/ac2-ac3-open.md).
 | Gap | Why M0-AC2 and M0-AC3 stay unchecked |
 | --- | --- |
 | (a) CPU VAD provider | Silero ran on the ORT CPU execution provider. M0-AC2 requires observed Metal GPU execution. A CPU-only VAD run does not pass. |
-| (b) Prove path | The recorded pass is still `cargo test` calling `session::prove_native`. `taco run` reaches that function only when `TACO_ENGINES_PROVE=1` ([taco-run-prove.md](../evidence/m0/taco-run-prove.md)). No signed Mac run of that gate is recorded. |
+| (b) Prove path | An ad-hoc signed Mac `taco run` with `TACO_ENGINES_PROVE=1` printed `link_three=1 cancel_lifecycle=1 ac2=0 ac3=0` and exited 0 ([taco-run-prove.md](../evidence/m0/taco-run-prove.md)). `ac2` and `ac3` stayed 0. Signature was ad-hoc, not Apple Development or Developer ID. |
 | (c) Catalog residency | `T-M0-LINK-THREE-MODELS` requires repeated init and teardown with resident native allocations back at the post-first-teardown baseline. Each test called `prove_native` once. That measurement was not taken. |
 
 Consequence: M0 cannot claim M0-AC2 or M0-AC3 until (a), (b), and (c) are closed, or the charter accepts them.
