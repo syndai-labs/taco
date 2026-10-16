@@ -543,7 +543,7 @@ fn microphone_spike_hold_follows_open_ok() {
 fn microphone_spike_open_timeout_bounds_cpal_wait() {
     let src = read("src/capture/microphone.rs");
     assert!(src.contains("TACO_CAPTURE_SPIKE_OPEN_MS"));
-    assert!(src.contains("unwrap_or(180_000)"));
+    assert!(src.contains("unwrap_or(300_000)"));
     assert!(src.contains("recv_timeout"));
     assert!(!src.contains("unsafe "), "open timeout stays in safe Rust");
     let timeout = src
@@ -568,7 +568,7 @@ fn microphone_spike_open_timeout_bounds_cpal_wait() {
 
     let note = read("docs/evidence/m0/mic-open-timeout.md");
     assert!(note.contains("TACO_CAPTURE_SPIKE_OPEN_MS"));
-    assert!(note.contains("180000") || note.contains("180_000"));
+    assert!(note.contains("300000") || note.contains("300_000"));
     assert!(note.contains("capture_not_available"));
     assert!(note.contains("TACO_CAPTURE_SPIKE_HOLD_MS"));
     assert!(note.contains("TACO_CAPTURE_SPIKE"));
