@@ -1,6 +1,6 @@
 # Engine residency
 
-Cited from `cursor/m0-engines-residency-b19b` tip `0972b2d` (PR #32). This branch does not replay the residency test. No acceptance box is checked.
+Cited from `cursor/m0-engines-residency-b19b` tip `0972b2d` (PR #32). This branch does not replay the residency test. No acceptance box is checked. PR #35 tip `7ae6d98` names the later tip `a0e1614` as a Stop, not a fix. `whisper_free` retains the bytes. A Metal command-buffer flush missed the band (6-cycle delta 98812072) and was reverted. The numbers below are from `0972b2d`.
 
 One hundred `session::prove_native` cycles in one process (pid 29510) on the same Apple M1 Pro, 34359738368 bytes, macOS 27.0.1 (26A434). The binary is `t_m0_residency`, not `taco run`. `proves_c1` stays false. This host is not C2.
 

@@ -63,7 +63,7 @@ M0-AC1 and M0-AC4 stay open. PR #32 tip `0972b2d`
 ([engines-residency.md](../evidence/m0/engines-residency.md)) is that same M1
 Pro host. `proves_c1` stays false. It is not C2. PR #30 tip `e2ec751`
 ([taco-run-prove.md](../evidence/m0/taco-run-prove.md)) is an ad-hoc signed
-`taco run` on that host, not a second machine.
+`taco run` on that host, not a second machine. PR #37 tip `d194012` and PR #38 tip `e7433c2` do not name C2.
 
 | Dimension | Proposed starting point | Required evidence |
 | --- | --- | --- |
