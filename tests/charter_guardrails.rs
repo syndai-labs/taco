@@ -186,8 +186,11 @@ fn session_stays_local_and_commits_are_immutable() {
     );
     let whisper_weights = lic("whisper-small-weights");
     assert_eq!(whisper_weights.covers, "model");
-    assert!(whisper_weights.spdx.is_none());
-    assert!(whisper_weights.notice.is_none());
+    assert_eq!(whisper_weights.spdx, Some("MIT"));
+    assert_eq!(
+        whisper_weights.notice,
+        Some("Copyright (c) 2022 OpenAI")
+    );
     let hy = lic("hy-mt2-1.8b-gguf");
     assert_eq!(hy.covers, "model");
     assert_eq!(hy.spdx, Some("Apache-2.0"));
@@ -207,6 +210,7 @@ fn session_stays_local_and_commits_are_immutable() {
     assert_eq!(llama.spdx, Some("MIT"));
     assert_eq!(llama.notice, whisper_cpp.notice);
     assert_ne!(silero.notice, whisper_cpp.notice);
+    assert_ne!(whisper_weights.notice, whisper_cpp.notice);
     assert_ne!(hy.notice, llama.notice);
 
     let mut ledger = Ledger::default();

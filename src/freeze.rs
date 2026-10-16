@@ -70,8 +70,8 @@ pub const LICENSES: [LicenseRecord; 5] = [
     LicenseRecord {
         subject: "whisper-small-weights",
         covers: "model",
-        spdx: None,
-        notice: None,
+        spdx: Some("MIT"),
+        notice: Some("Copyright (c) 2022 OpenAI"),
     },
     LicenseRecord {
         subject: "hy-mt2-1.8b-gguf",
