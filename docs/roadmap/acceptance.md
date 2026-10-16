@@ -81,7 +81,7 @@ this revision is not a support promise.
 | Models | Silero; multilingual Whisper small; Hy-MT2 1.8B GGUF from the main GGUF repository | Publisher revision, format, quantization, SHA-256, license, llama.cpp commit, Metal settings |
 | Language table | Closed. Proposed qualified pairs `en→zh` and `zh→en` | Manifest maps each user tag to the ASR id and the publisher’s full prompt language name |
 | Experimental pairs | None | An empty list is valid. Adding a pair is an M0 decision, not an implied model feature |
-| Terminal hosts | C1 presentation: Apple Terminal (`com.apple.Terminal`). Alternate TCC launch parent: launchd user agent exec of the signed `ai.syndai.taco` binary. Cursor.app (`com.todesktop.230313mzl4w4u92`) is not an acceptance host | The launchd path is named and not exercised. A second GUI terminal was not measured |
+| Terminal hosts | C1 presentation: Apple Terminal (`com.apple.Terminal`). Alternate TCC launch parent: launchd user agent exec of the signed `ai.syndai.taco` binary. Cursor.app (`com.todesktop.230313mzl4w4u92`) is not an acceptance host | The launchd user agent was loaded, ran debug `taco notices`, and was removed. That run is not a signed install and not a TCC allow or deny. A second GUI terminal was not measured |
 | Corpus | Licensed or consented development set and a disjoint held-out set | Fixture hashes, speakers, timings, exclusions, reviewer names |
 
 At least two directions, with two source languages, are required. Identical
@@ -316,7 +316,8 @@ direction, and the normal-load schedule. Each cell contains at least 200 timed
 natural utterances so its own latency quantiles are valid. Presentation cells
 that run use Apple Terminal. C2 has no machine, so those cells are not run.
 The named alternate is a launchd user agent, not a GUI terminal and not C2.
-It has not been exercised. Host-swap sessions stay not run.
+Load, run, and teardown were measured. That run is not a TCC allow or deny
+and not a host-swap session. Host-swap sessions stay not run.
 
 Direction assignment, with d1 and d2 the ordered qualified pairs. This rotation
 puts both directions on every source category and every corner. Do not collapse a

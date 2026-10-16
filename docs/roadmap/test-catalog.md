@@ -564,7 +564,8 @@ On each OS corner, run the assigned endurance host and the short host-swap
 sessions from the acceptance matrix. Keyboard-only operation works. Source,
 target, and failure remain distinguishable with color removed. The named
 alternate in the acceptance plan is a launchd user agent for TCC attribution.
-It is not a second GUI terminal, and this test has not run.
+Load, run, and teardown were measured. It is not a second GUI terminal, and
+this test has not run.
 
 ## M7 — release qualification
 

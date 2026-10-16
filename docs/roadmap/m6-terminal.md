@@ -73,5 +73,6 @@ check results, and final command/help examples. All four source categories and b
 UIs are now feature-complete, but the product remains unreleased until M7 qualification.
 
 The acceptance plan's named alternate is the launchd TCC launch parent in
-[os-floor.md](../evidence/m0/os-floor.md). It is not a second GUI terminal.
-`T-M6-HOSTS` has no measured second presentation host. M6-AC6 stays open.
+[os-floor.md](../evidence/m0/os-floor.md). Load, run, and teardown of that agent
+were measured. It is not a second GUI terminal. `T-M6-HOSTS` has no measured
+second presentation host. M6-AC6 stays open.
