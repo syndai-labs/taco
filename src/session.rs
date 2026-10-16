@@ -128,6 +128,8 @@ pub fn preflight(session: &mut Session, req: &RunRequest<'_>) -> Result<Prefligh
 /// `cargo test` never prompts TCC. Without that env, this returns
 /// `CaptureNotAvailable` and does not call the microphone or the process tap.
 /// `system`, `app:`, and `pid:` use the wired CoreAudio tap on that same gate.
+/// After a microphone open returns `Ok`, the stream is held for
+/// `TACO_CAPTURE_SPIKE_HOLD_MS` (u64 millis, default `1_800_000`).
 pub fn start_capture(session: &mut Session, preflight: &PreflightOk) -> Result<(), ErrorCode> {
     if std::env::var_os("TACO_CAPTURE_SPIKE").is_none() {
         session.capture_started = false;
@@ -167,11 +169,19 @@ fn open_microphone_spike() -> Result<(), ErrorCode> {
     let ring = Arc::new(CaptureRing::allocate(48_000, 1, 4)?);
     let mic = capture::open_default_microphone(Arc::clone(&ring))
         .map_err(|_| ErrorCode::CaptureNotAvailable)?;
-    // Keep the stream briefly so TCC can attribute the process, then drop for cleanup.
-    thread::sleep(Duration::from_millis(750));
+    // Hold only after open returns Ok. CPAL may still block inside open until TCC answers.
+    thread::sleep(Duration::from_millis(spike_hold_ms()));
     drop(mic);
     let _ = ring.lost();
     Ok(())
+}
+
+/// Milliseconds to keep the microphone stream after open returns `Ok`.
+fn spike_hold_ms() -> u64 {
+    std::env::var("TACO_CAPTURE_SPIKE_HOLD_MS")
+        .ok()
+        .and_then(|raw| raw.parse().ok())
+        .unwrap_or(1_800_000)
 }
 
 fn map_tap<T>(result: Result<T, i32>) -> Result<(), ErrorCode> {
