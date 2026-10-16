@@ -134,6 +134,8 @@ fn session_stays_local_and_commits_are_immutable() {
     assert_eq!(freeze::CORNERS[0].os_build, Some("macOS 27.0.1 (26A434)"));
     assert!(!freeze::CORNERS[0].qualified);
     assert_eq!(freeze::CORNERS[1].id, "C2");
+    assert!(freeze::C2_BLOCKED);
+    assert!(freeze::CORNERS[1].machine.contains("blocked"));
     assert!(freeze::CORNERS[1].os_build.is_none());
     assert!(!freeze::CORNERS[1].qualified);
 
@@ -555,6 +557,34 @@ fn c1_named_freeze_matches_measured_host() {
         record.to_lowercase().contains("open"),
         "C2 must stay explicit while it has no OS build"
     );
+    assert!(record.contains("blocked"));
+    assert!(record.contains("Dual-machine"));
+}
+
+#[test]
+fn c2_stays_blocked_without_a_second_machine() {
+    assert!(freeze::C2_BLOCKED);
+    let c2 = &freeze::CORNERS[1];
+    assert!(c2.os_build.is_none());
+    assert!(!c2.qualified);
+    for invented in ["Apple", "GiB", "macOS", "26A434", "34359738368"] {
+        assert!(
+            !c2.machine.contains(invented),
+            "{invented} must not be invented on C2: {}",
+            c2.machine
+        );
+    }
+    let record = read("docs/evidence/m0/qualification-corners.md");
+    for need in ["chip name", "memory in bytes", "macOS product version and build"] {
+        assert!(record.contains(need), "C2 need missing: {need}");
+    }
+    assert!(record.contains("Partial"));
+    assert!(record.contains("Dual-machine acceptance"));
+    let risks = read("docs/roadmap/risks-and-decisions.md");
+    assert!(risks.contains("C2_BLOCKED"));
+    assert!(risks.contains("Dual-machine"));
+    assert!(!risks.contains("- [x]"));
+    assert!(!risks.contains("- [X]"));
 }
 
 #[test]

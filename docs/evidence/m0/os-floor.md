@@ -1,6 +1,6 @@
 # Minimum OS floor and alternate launch host (2026-10-16)
 
-M0-AC1 and M0-AC4 stay unchecked. C2 stays open. No microphone button was pressed. No Metal load was run. This note does not re-run capture.
+M0-AC1 and M0-AC4 stay unchecked. C2 stays open and blocked (`C2_BLOCKED`). No microphone button was pressed. No Metal load was run. This note does not re-run capture.
 
 ## Base
 

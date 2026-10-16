@@ -49,18 +49,20 @@ It is not a model-selection flag. v0.1 fetches one bundle.
 C1 is the only host measured in
 [macos-spike-results.md](../evidence/m0/macos-spike-results.md) and
 [native-impl.md](../evidence/m0/native-impl.md). That name is not qualification.
-The unmeasured "M1 class, 16 GiB, macOS 14.2" proposal is not C1. C2 is open.
+The unmeasured "M1 class, 16 GiB, macOS 14.2" proposal is not C1. C2 is open
+and blocked: this Project has no second acceptance machine.
 Record: [qualification-corners.md](../evidence/m0/qualification-corners.md).
 
 | Corner | Named machine and OS build | Evidence before the support claim |
 | --- | --- | --- |
 | C1, reference | Apple M1 Pro, 34359738368 bytes (32 GiB), macOS 27.0.1 (26A434) | Named, not qualified. Still missing a tap/permission/packaging run and thermal notes on this build. Power source was not recorded |
-| C2, second | Open. Missing a second Apple Silicon chip, its memory in bytes, and its macOS product version and build | Exact chip, memory, and OS build. “Latest macOS” is not a name |
+| C2, second | Open, blocked. Missing a second Apple Silicon chip, its memory in bytes, and its macOS product version and build. None was measured | When a different machine appears: its chip, memory in bytes, and macOS product version and build. “Latest macOS” is not a name |
 
 These are two corners, not a full hardware-by-OS matrix. An M1 on the current
 OS, or a newer chip on 14.2, is unqualified until it has its own evidence.
 Results from C2 do not stand in for C1. The named C1 does not prove a 16 GiB
-machine or macOS 14.2.
+machine or macOS 14.2. The AC4 corners freeze stays Partial while C2 is
+blocked. Dual-machine acceptance cannot close.
 
 ## Minimum OS floor
 
