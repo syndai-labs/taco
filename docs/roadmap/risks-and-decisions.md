@@ -86,30 +86,23 @@ Host: Apple M1 Pro, 32 GiB (34359738368 bytes), macOS 27.0.1 (26A434),
 | R12 | Stop. Not run. | inference/quality owners | No serialized-vs-concurrent measurement. The installed Metal compiler was not a timing run. | A microbenchmark or a CPU timing presented as the joint gate. | Blocks M0 acceptance and M4's baseline. |
 | R14 | Corners, terminal hosts, and devices are not provisioned. | release/quality owners | This shell on macOS 27.0.1 is a measurement host, not a qualified corner. C2 OS build and the alternate terminal host are unnamed. No second terminal host was exercised. | An aggregate "works on this Mac" verdict. | Release cells stay not run. M1 and M5 stay blocked. |
 
-## M0-AC2 and M0-AC3 stay open (tip `7f98ab1`)
+## M0-AC2 and M0-AC3 stay open
 
 Date: 2026-10-16. Owner: native runtime. This does not resolve R2, R3, or R5.
 The 2026-10-16 stop rows above predate
-[taco-engines.md](../evidence/m0/taco-engines.md) on this tip. Their "did not
+[taco-engines.md](../evidence/m0/taco-engines.md). Their "did not
 execute" and "not run" claims for `T-M0-LINK-THREE-MODELS` and
 `T-M0-CANCEL-LIFECYCLE` are superseded by that note. The rows stay unresolved.
 No M0-AC checkbox is checked.
+Detail: [ac2-ac3-open.md](../evidence/m0/ac2-ac3-open.md).
 
-Proven on this tip, and not re-measured here: both tests ok via
-`session::prove_native`; printed `link_three=1 cancel_lifecycle=1 ac2=0 ac3=0`;
-Silero via static ORT CPU EP (`vad_ort=ok device=cpu`); Whisper VAD bad magic;
-ASR/MT on Metal MTL0; joins under 2s; `otool` system libraries only. Not
-`taco run`. Multi-cycle residency was not measured.
-`origin/cursor/m0-engines-residency-b19b` is absent. No pull request measures
-catalog residency. Detail: [ac2-ac3-open.md](../evidence/m0/ac2-ac3-open.md).
-
-| Gap | Why M0-AC2 and M0-AC3 stay unchecked |
+| Gap | Status |
 | --- | --- |
-| (a) CPU VAD provider | Silero ran on the ORT CPU execution provider. M0-AC2 requires observed Metal GPU execution. A CPU-only VAD run does not pass. |
-| (b) Prove path | An ad-hoc signed Mac `taco run` with `TACO_ENGINES_PROVE=1` printed `link_three=1 cancel_lifecycle=1 ac2=0 ac3=0` and exited 0 ([taco-run-prove.md](../evidence/m0/taco-run-prove.md)). `ac2` and `ac3` stayed 0. Signature was ad-hoc, not Apple Development or Developer ID. |
-| (c) Catalog residency | `T-M0-LINK-THREE-MODELS` requires repeated init and teardown with resident native allocations back at the post-first-teardown baseline. Each test called `prove_native` once. That measurement was not taken. |
+| (a) CPU VAD provider | Still open. Silero is the ORT CPU execution provider (`device=cpu`). M0-AC2 requires observed Metal GPU execution. A Metal EP worker may ship separately. |
+| (b) Prove path | Closed for prove reachable from `taco run`. #30 `e2ec751`: ad-hoc signed Mac `taco run` with `TACO_ENGINES_PROVE=1` printed `link_three=1 cancel_lifecycle=1 ac2=0 ac3=0` and exited 0 ([taco-run-prove.md](../evidence/m0/taco-run-prove.md)). Signature is ad-hoc, not Developer ID. |
+| (c) Catalog residency | Still blocks M0-AC2 and M0-AC3. #32 `a0e1614` is a Stop, not a fix. 100-cycle `phys_footprint` delta is 252346632 bytes against a 33554432-byte tolerance. `whisper_free` retains the bytes. A Metal command-buffer flush missed the band (6-cycle delta 98812072) and was reverted. |
 
-Consequence: M0 cannot claim M0-AC2 or M0-AC3 until (a), (b), and (c) are closed, or the charter accepts them.
+Consequence: M0-AC2 and M0-AC3 stay unchecked. (a) and (c) are still open. Repeated teardown is not a bounded-residency result. Do not treat #32 as meeting `T-M0-LINK-THREE-MODELS` or the acceptance.md 100-cycle rule, and do not start M1 on a claim that engine teardown returns to the cycle-1 baseline.
 
 ## Acceptance criteria
 
