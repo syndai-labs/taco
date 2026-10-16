@@ -121,6 +121,43 @@ the ggml Metal device. `task_vm_info.device` was 0 on every sample.
 every teardown. It did not grow. That ledger is not a Metal buffer inventory.
 The catalog comparison above uses `phys_footprint` only.
 
+## Stop / partial
+
+Partial. The 100-cycle comparison stands: 252346632 bytes over the cycle-1
+teardown, against a tolerance of 33554432. A later teardown fix was tried and
+did not enter that band. M0-AC2 and M0-AC3 stay unchecked.
+
+Phase samples in one 8-cycle process, same prove path, before that attempt.
+`phys_footprint` bytes:
+
+| Cycle | after_vad_ort | after_whisper_free | after_mt_cancel_init | after_backend_free |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 64111336 | 174949408 | 75907984 | 82658216 |
+| 2 | 84181928 | 170820712 | 173982824 | 178685032 |
+
+Cycle 1 retains 110838072 bytes across `whisper_free`, then the aborted MT
+load drops the footprint. Cycle 2 retains 86638784 bytes across `whisper_free`
+and the aborted MT load does not give them back. `llama_backend_free` did not
+change the footprint on either cycle (`after_free_mt` equaled
+`after_backend_free`). `before_load` on cycle 1 was 45204200.
+`after_vad_whisper` was 45220584, so the failed whisper VAD load is not the
+retainer.
+
+On cycle 1, `virtual_size` went from 500829667328 after ORT to 501346025472
+after `whisper_free` (+516358144). By cycle 8 `after_backend_free` it was
+still 501400977408, with `region_count` 284. `internal` tracked
+`phys_footprint`. `compressed` was 0.
+
+The flush that was not kept: after `endResidency`, submit a 16-byte private
+blit and `waitUntilCompleted` on that device queue. Six teardowns in one
+process: after cycle 1, 82445200; after cycle 6, 181257272; delta 98812072.
+Still outside 33554432. The patch was reverted and is not in this tree.
+
+Consequence: repeated `prove_native` teardown is not a bounded-residency
+result. Do not treat this run as meeting `T-M0-LINK-THREE-MODELS` or the
+acceptance.md 100-cycle rule. Do not start M1 on a claim that engine teardown
+returns to the cycle-1 baseline.
+
 ## Still open
 
 - [ ] **M0-AC2:** Pins loaded in process on MTL0, and the cycle series above was recorded. Silero's execution provider was CPU (`ep=CPU`). The measured process is the residency test, not `taco run`. `phys_footprint` did not stay within 33554432 of the cycle-1 teardown. The engine printed `ac2=0`.

@@ -54,6 +54,28 @@ extern "C" void taco_engines_vm_sample(taco_vm_sample * out) {
     out->malloc_max_size_in_use = stats.max_size_in_use;
 }
 
+static void log_phase(const char * phase) {
+    task_vm_info_data_t info;
+    std::memset(&info, 0, sizeof info);
+    mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
+    const kern_return_t kr = task_info(mach_task_self(), TASK_VM_INFO, reinterpret_cast<task_info_t>(&info), &count);
+    if (kr != KERN_SUCCESS || count < TASK_VM_INFO_REV1_COUNT) {
+        std::printf("residency_phase phase=%s unread=1\n", phase);
+        std::fflush(stdout);
+        return;
+    }
+    std::printf(
+        "residency_phase phase=%s phys_footprint=%llu resident_size=%llu virtual_size=%llu region_count=%d internal=%llu compressed=%llu\n",
+        phase,
+        static_cast<unsigned long long>(info.phys_footprint),
+        static_cast<unsigned long long>(info.resident_size),
+        static_cast<unsigned long long>(info.virtual_size),
+        info.region_count,
+        static_cast<unsigned long long>(info.internal),
+        static_cast<unsigned long long>(info.compressed));
+    std::fflush(stdout);
+}
+
 namespace {
 
 constexpr int kReserveMs = 2000;
@@ -560,8 +582,11 @@ extern "C" int taco_engines_prove(
     }
 
     llama_log_set(log_cb, nullptr);
+    log_phase("before_load");
     const int vad_whisper = run_vad(vad_path);
+    log_phase("after_vad_whisper");
     const int vad_rc = taco_vad_ort(vad_path);
+    log_phase("after_vad_ort");
 
     llama_backend_init();
     const int gpu_offload = llama_supports_gpu_offload() ? 1 : 0;
@@ -583,6 +608,7 @@ extern "C" int taco_engines_prove(
         whisper_free(asr_ctx);
         asr_ctx = nullptr;
     }
+    log_phase("after_whisper_free");
     const char * whisper_decode_name = "not_run";
     if (whisper_decode_rc == -8) {
         whisper_decode_name = "aborted";
@@ -622,6 +648,7 @@ extern "C" int taco_engines_prove(
         kReserveMs,
         whisper_init_within);
     std::fflush(stdout);
+    log_phase("after_whisper_cancel_init");
 
     int init_join_ms = -1;
     int init_progress = -1;
@@ -641,6 +668,7 @@ extern "C" int taco_engines_prove(
         kReserveMs,
         init_within);
     std::fflush(stdout);
+    log_phase("after_mt_cancel_init");
 
     g_off_n.store(-1);
     g_off_d.store(-1);
@@ -717,7 +745,9 @@ extern "C" int taco_engines_prove(
     std::snprintf(out->gpu_device, sizeof out->gpu_device, "%s", device);
 
     free_mt(&session);
+    log_phase("after_free_mt");
     llama_backend_free();
+    log_phase("after_backend_free");
     out->teardown = 1;
     std::printf("teardown=returned\n");
     std::fflush(stdout);

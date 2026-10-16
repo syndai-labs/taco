@@ -86,6 +86,20 @@ Host: Apple M1 Pro, 32 GiB (34359738368 bytes), macOS 27.0.1 (26A434),
 | R12 | Stop. Not run. | inference/quality owners | No serialized-vs-concurrent measurement. The installed Metal compiler was not a timing run. | A microbenchmark or a CPU timing presented as the joint gate. | Blocks M0 acceptance and M4's baseline. |
 | R14 | Corners, terminal hosts, and devices are not provisioned. | release/quality owners | This shell on macOS 27.0.1 is a measurement host, not a qualified corner. C2 OS build and the alternate terminal host are unnamed. No second terminal host was exercised. | An aggregate "works on this Mac" verdict. | Release cells stay not run. M1 and M5 stay blocked. |
 
+## Residency partial (2026-10-17)
+
+Partial. Not a pass. M0-AC2 and M0-AC3 stay unchecked.
+
+One process ran 100 `prove_native` teardowns. `phys_footprint` after cycle 100
+was 334972056 bytes, 252346632 above the cycle-1 teardown (82625424). The
+catalog tolerance is 33554432. A command-buffer flush after Metal
+`endResidency` was measured for 6 cycles and reverted: cycle 6 was still
+98812072 bytes above cycle 1. The flush is not in the tree.
+
+| Decision | Owner | Evidence | Rejected alternative | Consequence |
+| --- | --- | --- | --- | --- |
+| Partial. Repeated in-process teardown does not return `phys_footprint` to the cycle-1 baseline. | runtime owner | `docs/evidence/m0/engines-residency.md`. Phase samples put the retained bytes after `whisper_free`, not after `llama_backend_free`. Default-zone `malloc_size_in_use` stayed near 36 MiB. `task_vm_info.device` stayed 0. The graphics ledger stayed 4390912 after the first teardown. | Call the 100-cycle run a pass, or keep a per-buffer GPU wait that missed the same band. | `T-M0-LINK-THREE-MODELS` cycle sentence and the acceptance.md 100-cycle rule are unmet. Do not start M1 on the claim that engine teardown is residually bounded. |
+
 ## Acceptance criteria
 
 - [ ] Every M0 decision has a concrete resolution before dependent milestone exit.
