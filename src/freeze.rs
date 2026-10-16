@@ -93,11 +93,55 @@ pub const LICENSES: [LicenseRecord; 5] = [
     },
 ];
 
-/// Notarized distribution artifact. `None`: no signed install exists.
-/// Filled `LICENSES` rows do not set this. Ad-hoc `codesign -s -` does not set this.
-/// 2026-10-17 measurement: no Developer ID Application identity.
+/// Notarized distribution artifact. `None` until a measurement replaces the
+/// Stop record. Filled `LICENSES` rows do not set this. Ad-hoc `codesign -s -`
+/// does not set this. PR #38 tip `e7433c2`: this Mac has no Developer ID.
 /// See `docs/evidence/m0/signed-install.md`.
 pub const SIGNED_INSTALL: Option<&str> = None;
+
+/// Failure phrases in the R11 Stop record. While they remain, `SIGNED_INSTALL` stays `None`.
+const SIGNED_INSTALL_STOP: &[&str] = &[
+    "Developer ID Application: no identity found",
+    "No Keychain password item found for profile: taco-notary",
+    "TeamIdentifier=not set",
+    "Signature=adhoc",
+    ": rejected",
+];
+
+/// Tool lines a later measurement must record, with none of `SIGNED_INSTALL_STOP`,
+/// before `SIGNED_INSTALL` may be `Some`. These strings are not in the Stop record.
+const SIGNED_INSTALL_MARKERS: &[&str] = &[
+    "Authority=Developer ID Application:",
+    "source=Notarized Developer ID",
+    "status: Accepted",
+];
+
+/// CDHashes the Stop recorded for linker-signed, ad-hoc, and the earlier spike.
+/// None of them is a notarized install id.
+const SIGNED_INSTALL_NOT_AN_ID: &[&str] = &[
+    "8cbdede4d623af994f2b1437bdf17a36111d883c",
+    "99ac345644abcf11aa40eafe0052789e8df31dc5",
+    "434ca964d84bac7307406cd6532044347fa2792b",
+    "82d87753911f3d623f726944bffdfe45c3c3a355",
+    "f5455d873156271820035ef4fe0ac7bbe2e8be07",
+];
+
+/// `None` matches a Stop record. `Some` matches only when that record has been
+/// replaced by the required markers and `id` is not one of the failed hashes.
+pub fn signed_install_matches(claim: Option<&str>, evidence: &str) -> bool {
+    let stopped = SIGNED_INSTALL_STOP.iter().all(|m| evidence.contains(m));
+    let measured = SIGNED_INSTALL_MARKERS.iter().all(|m| evidence.contains(m));
+    match claim {
+        None => stopped && !measured,
+        Some(id) => {
+            !stopped
+                && measured
+                && !id.is_empty()
+                && evidence.contains(id)
+                && !SIGNED_INSTALL_NOT_AN_ID.contains(&id)
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Corner {

@@ -1,6 +1,6 @@
 # Signed install attempt (2026-10-17)
 
-Host: Apple Silicon, macOS 27.0.1 (26A434), arm64. `rustc 1.99.0 (b940084d7 2026-09-28)`. Xcode 27.1 (27A9275). `notarytool 1.1.3 (42)`. Tree `607724e`. `cargo build --locked` produced `target/release/taco` and `target/debug/taco`. Copies used for signing lived under `/tmp/taco-m0-signed-install-copies`. The binaries were not executed. Nothing was copied to an install path. No M0-AC checkbox is checked. `freeze::SIGNED_INSTALL` stays `None`.
+Host: Apple Silicon, macOS 27.0.1 (26A434), arm64. `rustc 1.99.0 (b940084d7 2026-09-28)`. Xcode 27.1 (27A9275). `notarytool 1.1.3 (42)`. Tree `607724e`. Frozen by PR #38 tip `e7433c2`. `cargo build --locked` produced `target/release/taco` and `target/debug/taco`. Copies used for signing lived under `/tmp/taco-m0-signed-install-copies`. The binaries were not executed. Nothing was copied to an install path. No M0-AC checkbox is checked. `freeze::SIGNED_INSTALL` stays `None`.
 
 ## Identities
 

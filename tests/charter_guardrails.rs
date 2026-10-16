@@ -212,7 +212,6 @@ fn session_stays_local_and_commits_are_immutable() {
     assert_ne!(silero.notice, whisper_cpp.notice);
     assert_ne!(whisper_weights.notice, whisper_cpp.notice);
     assert_ne!(hy.notice, llama.notice);
-    assert!(freeze::SIGNED_INSTALL.is_none());
 
     let mut ledger = Ledger::default();
     ledger.commit_text(SegmentId(1), "Hello").unwrap();
@@ -512,6 +511,7 @@ fn package_source_and_milestone_boxes() {
         assert!(!text.contains("- [x]"), "{path} checks a box");
         assert!(!text.contains("- [X]"), "{path} checks a box");
     }
+    assert_no_checked_m0_ac(&root().join("docs"));
 
     for id in [
         "T-M0-REJECT-INPUTS",
@@ -546,6 +546,82 @@ fn package_source_and_milestone_boxes() {
             text.contains("not macOS Apple Silicon"),
             "{test} must keep the Linux block"
         );
+    }
+}
+
+#[test]
+fn signed_install_stays_none_until_the_stop_is_replaced() {
+    let evidence = read("docs/evidence/m0/signed-install.md");
+    assert!(
+        evidence.contains("e7433c2"),
+        "Stop record must cite PR #38 tip e7433c2"
+    );
+    assert!(evidence.contains("PR #38"));
+    assert!(
+        read("docs/roadmap/risks-and-decisions.md").contains("e7433c2"),
+        "R11 must cite PR #38 tip e7433c2"
+    );
+    assert!(freeze::SIGNED_INSTALL.is_none());
+    assert!(
+        freeze::signed_install_matches(freeze::SIGNED_INSTALL, &evidence),
+        "SIGNED_INSTALL must stay None while the Stop record stands"
+    );
+    for fake in [
+        Some(""),
+        Some("notarized"),
+        Some("Developer ID Application"),
+        Some("8cbdede4d623af994f2b1437bdf17a36111d883c"),
+        Some("99ac345644abcf11aa40eafe0052789e8df31dc5"),
+        Some("434ca964d84bac7307406cd6532044347fa2792b"),
+        Some("82d87753911f3d623f726944bffdfe45c3c3a355"),
+        Some("f5455d873156271820035ef4fe0ac7bbe2e8be07"),
+    ] {
+        assert!(
+            !freeze::signed_install_matches(fake, &evidence),
+            "fake SIGNED_INSTALL={fake:?} has no matching Stop-record markers"
+        );
+    }
+    let pasted = format!(
+        "{evidence}\nAuthority=Developer ID Application: Example (TEAM)\nsource=Notarized Developer ID\nstatus: Accepted\n"
+    );
+    assert!(!freeze::signed_install_matches(Some("Example"), &pasted));
+    let measured = "\
+Authority=Developer ID Application: Example (TEAM)
+source=Notarized Developer ID
+status: Accepted
+artifact=taco-notarized-1
+";
+    assert!(freeze::signed_install_matches(
+        Some("taco-notarized-1"),
+        measured
+    ));
+    assert!(!freeze::signed_install_matches(None, measured));
+    assert!(!freeze::signed_install_matches(
+        Some("434ca964d84bac7307406cd6532044347fa2792b"),
+        &format!("{measured}434ca964d84bac7307406cd6532044347fa2792b\n")
+    ));
+}
+
+fn assert_no_checked_m0_ac(dir: &Path) {
+    for entry in fs::read_dir(dir).unwrap().flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            assert_no_checked_m0_ac(&path);
+            continue;
+        }
+        if path.extension().and_then(|ext| ext.to_str()) != Some("md") {
+            continue;
+        }
+        let text = fs::read_to_string(&path).unwrap();
+        for (number, line) in text.lines().enumerate() {
+            if line.contains("M0-AC") && (line.contains("- [x]") || line.contains("- [X]")) {
+                panic!(
+                    "{}:{} checks an M0-AC box: {line}",
+                    path.display(),
+                    number + 1
+                );
+            }
+        }
     }
 }
 
