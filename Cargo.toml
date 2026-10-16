@@ -1,0 +1,53 @@
+[package]
+name = "taco"
+version = "0.1.0-m0"
+edition = "2021"
+description = "Local bilingual subtitles for macOS. Milestone 0 freezes contracts; it does not qualify a release."
+publish = false
+autotests = false
+
+[lib]
+name = "taco"
+path = "src/lib.rs"
+
+[[bin]]
+name = "taco"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "=4.5.21", features = ["derive"] }
+
+[features]
+default = []
+# Native tests load pinned models on Metal. They are not part of `cargo test`.
+native = []
+
+[[test]]
+name = "t_m0_reject_inputs"
+path = "tests/t_m0_reject_inputs.rs"
+
+[[test]]
+name = "t_m0_limit_vectors"
+path = "tests/t_m0_limit_vectors.rs"
+
+[[test]]
+name = "t_m0_one_macho"
+path = "tests/t_m0_one_macho.rs"
+
+[[test]]
+name = "t_m0_spike_sources"
+path = "tests/t_m0_spike_sources.rs"
+
+[[test]]
+name = "charter_guardrails"
+path = "tests/charter_guardrails.rs"
+
+[[test]]
+name = "t_m0_link_three_models"
+path = "tests/t_m0_link_three_models.rs"
+required-features = ["native"]
+
+[[test]]
+name = "t_m0_cancel_lifecycle"
+path = "tests/t_m0_cancel_lifecycle.rs"
+required-features = ["native"]

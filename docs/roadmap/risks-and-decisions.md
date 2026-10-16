@@ -60,6 +60,30 @@ proposed mitigation was implemented; inspect whether the experiment actually pas
 - The change that implements a milestone does not mark that milestone's checkboxes.
   A later review marks them when the linked evidence can be reproduced.
 
+## M0 stop records (2026-10-16)
+
+The contract freeze landed in the `taco` crate. The native spikes did not run.
+This host is Linux x86_64, so a Mach-O, Metal, CoreAudio, or process-tap pass
+would be fabricated. None of these rows accept M0. Milestone checkboxes stay
+open. Dependent milestones M1 and M5 stay blocked until the named evidence
+exists on Apple Silicon.
+
+| ID | Decision | Owner | Evidence on this host | Rejected alternative | Consequence |
+| --- | --- | --- | --- | --- | --- |
+| R1 | Stop. Not run. | macOS owner | No signed arm64 artifact and no TCC prompt. `T-M0-SPIKE-SOURCES` and `T-M0-ONE-MACHO` record `not_run`. | Treat an ELF binary or a unit-test Mach-O fixture as the distribution spike. | Blocks M0 acceptance, M1, and M5. |
+| R2 | Stop. Not run. Digests and the llama.cpp commit stay TBD. | native runtime owner | `PINS_MEASURED` is false. Families are Silero, multilingual Whisper small, and main-repo Hy-MT2 1.8B GGUF. `T-M0-LINK-THREE-MODELS` is native-only and fails closed. | Subprocess `whisper-cli` / `llama-completion`, `-ngl 0`, a helper dylib, or the 1.25-bit and 2-bit repos. | Blocks M0 acceptance, M1, and M5. |
+| R3 | Stop. Not run. | audio owner | No incremental Silero runtime was linked. Forced-split behavior is a contract (`max_duration`, zero owned overlap), not a model result. | Batch `whisper_full` VAD, a hand-written model, or a user-installed ONNX dylib. | Blocks M0 acceptance and M2's real VAD. M1 stays blocked with the rest of M0. |
+| R4 | Stop. Not run. No quantization, instruction winner, or sampling arm is selected. | inference owner | `EXPERIMENT.ran` is false and every selected field is empty. Baseline instruction remains the publisher English template; that is the ADR starting point, not a comparison result. Publisher temperature 0.7 is an arm, not the active sampler (`SELECTED_SAMPLING` is none). | Pick a quant or temperature without the development-corpus comparison. | Blocks M0 acceptance and M1's releasable bundle. |
+| R5 | Stop. Not run. | runtime owner | `T-M0-CANCEL-LIFECYCLE` fails closed under `--features native`. Shutdown arithmetic is frozen at 8 s drain + 2 s join. | `pthread_cancel`, a detached worker, or a wrapper timeout. | Blocks M0 acceptance, M1, and M5. |
+| R6 | Corners are named and unqualified. | release owner | C1 stays "M1 class, 16 GiB, macOS 14.2". C2 stays "a different Apple Silicon machine" with no OS build. Neither `qualified` flag is set. | Call this Linux VM a corner, or call "latest macOS" an OS build. | Blocks the support claim, M1, and M5. |
+| R7 | Closed table frozen: `en→zh` and `zh→en`. Experimental pairs empty. Quality is not qualified. | product/quality owner | `language::PAIRS` and the reject tests. No corpus has been scored. | Auto-detect, identical tags, or the publisher language inventory. | The table is binding. Adequacy gates stay blocked. M1 still waits on M0 acceptance. |
+| R8 | Proposed numbers are frozen in `fixtures/m0/limit-vectors.txt` and were not revised. Measurement was not run. | audio/runtime/quality owners | `T-M0-LIMIT-VECTORS` fails if the fixture drifts from acceptance.md. | Redefine `t_audio_end`, drop failures, or widen the slope past 1 MiB/min. | R8 stays open for a later measured revision. Quality gates stay blocked. |
+| R9 | Selector semantics frozen: a failed app selection does not become system capture. Helper attribution is unproven. | macOS owner | `SelectionFailurePolicy::StopDoNotBroaden`. No process tap ran. External input device name is unset and `qualified_in_m0` is false. | Name a Linux device as the M2 external input. | Blocks M5 and the M2 device reservation. |
+| R10 | Design frozen: the session takes verified local handles and has no fetch client. Inode proof is M1. | model owner | `preflight` / `fetch_models` refuse while pins are TBD. `release_ready()` is false. | A session URL or an HTTP client parameter. | M1 must prove the load boundary. M1 does not start before M0 is accepted. |
+| R11 | License records exist per model and per engine. SPDX fields are unset. | release owner | `LICENSES` keeps model subjects distinct from whisper.cpp and llama.cpp. | Invent license text, or treat an engine license as the model license. | Blocks distribution of weights. |
+| R12 | Stop. Not run. | inference/quality owners | No serialized-vs-concurrent measurement. | A microbenchmark or a CPU timing presented as the joint gate. | Blocks M0 acceptance and M4's baseline. |
+| R14 | Corners, terminal hosts, and devices are not provisioned. | release/quality owners | C2 OS build and the alternate terminal host are unnamed. | An aggregate "works on this VM" verdict. | Release cells stay not run. M1 and M5 stay blocked. |
+
 ## Acceptance criteria
 
 - [ ] Every M0 decision has a concrete resolution before dependent milestone exit.

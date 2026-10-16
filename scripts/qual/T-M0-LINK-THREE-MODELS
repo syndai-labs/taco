@@ -1,0 +1,14 @@
+#!/bin/sh
+# T-M0-LINK-THREE-MODELS — native tier evidence record.
+# Load pinned Silero, multilingual Whisper small, and main-repo Hy-MT2 in one
+# process on Metal. A subprocess CLI or -ngl 0 run does not pass.
+# Digests are TBD. This script must not report pass.
+set -eu
+out=${1:?evidence path}
+{
+  echo "id=T-M0-LINK-THREE-MODELS"
+  echo "verdict=not_run"
+  echo "reason=pinned models were not loaded; Metal GPU execution was not observed"
+  echo "blocks=M0-AC2,M0-AC3,M1,M5"
+} > "$out"
+exit 2

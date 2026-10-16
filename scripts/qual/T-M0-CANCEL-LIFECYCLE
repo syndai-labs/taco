@@ -1,0 +1,13 @@
+#!/bin/sh
+# T-M0-CANCEL-LIFECYCLE — native tier evidence record.
+# Cancel during initialization and active Metal decode, then join inside the
+# cancellation reserve. A wrapper timeout around a live thread does not pass.
+set -eu
+out=${1:?evidence path}
+{
+  echo "id=T-M0-CANCEL-LIFECYCLE"
+  echo "verdict=not_run"
+  echo "reason=no Metal worker was cancelled and joined"
+  echo "blocks=M0-AC3,M1,M5"
+} > "$out"
+exit 2

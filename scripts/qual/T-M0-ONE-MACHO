@@ -1,0 +1,14 @@
+#!/bin/sh
+# T-M0-ONE-MACHO — manual spike evidence.
+# Inspect the signed arm64 artifact: one Mach-O, system dylibs only, no sidecar
+# metal/so/dylib/weights/helper. Usage strings are necessary and not sufficient.
+# This revision does not claim that inspection passed.
+set -eu
+out=${1:?evidence path}
+{
+  echo "id=T-M0-ONE-MACHO"
+  echo "verdict=not_run"
+  echo "reason=no signed arm64 Mach-O was inspected"
+  echo "blocks=M0-AC2,M0-AC3,D2,M1,M5"
+} > "$out"
+exit 2
