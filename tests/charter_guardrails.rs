@@ -560,7 +560,7 @@ fn c1_named_freeze_matches_measured_host() {
 #[test]
 fn os_floor_and_alternate_host_stay_partial() {
     assert!(freeze::OS_FLOOR_PARTIAL);
-    assert!(!freeze::ALTERNATE_HOST_EXERCISED);
+    assert!(freeze::ALTERNATE_HOST_EXERCISED);
     assert_eq!(freeze::OS_FLOOR, "macOS 27.0.1 (26A434)");
     assert_eq!(freeze::OS_FLOOR, freeze::CORNERS[0].os_build.unwrap());
     assert_eq!(freeze::ALTERNATE_TERMINAL_HOST, "launchd user agent");
@@ -589,11 +589,30 @@ fn os_floor_and_alternate_host_stay_partial() {
     assert!(evidence.contains("f40f2f5"));
     assert!(evidence.contains("4c8dc27"));
     assert!(evidence.contains("cd9a4c8"));
-    assert!(evidence.contains("Not exercised"));
+    assert!(evidence.contains("ALTERNATE_HOST_EXERCISED"));
+    assert!(evidence.contains("launchd-host.md"));
+    assert!(!evidence.contains("Not exercised"));
     assert!(evidence.contains("was not measured"));
     assert!(evidence.contains("disclaim"));
     assert!(!evidence.contains("- [x]"));
     assert!(!evidence.contains("- [X]"));
+
+    let launch = read("docs/evidence/m0/launchd-host.md");
+    assert!(launch.contains("bootstrap_exit=0"));
+    assert!(launch.contains("bootout_exit=0"));
+    assert!(launch.contains("print_after_exit=113"));
+    assert!(launch.contains("last exit code = 0"));
+    assert!(launch.contains("job_exit_code=0"));
+    assert!(launch.contains("syndai-macbook-pro-01"));
+    assert!(launch.contains("27.0.1"));
+    assert!(launch.contains("26A434"));
+    assert!(launch.contains("ai.syndai.taco.m0-launch-host"));
+    assert!(launch.contains("taco shows subtitles"));
+    assert!(launch.contains("linker-signed"));
+    assert!(launch.contains("Info.plist=not bound"));
+    assert!(launch.contains("not a TCC allow or deny"));
+    assert!(!launch.contains("- [x]"));
+    assert!(!launch.contains("- [X]"));
 
     let risks = read("docs/roadmap/risks-and-decisions.md");
     assert!(risks.contains(freeze::ALTERNATE_TERMINAL_HOST));

@@ -117,9 +117,11 @@ pub const OS_FLOOR: &str = "macOS 27.0.1 (26A434)";
 pub const OS_FLOOR_PARTIAL: bool = true;
 
 /// TCC launch parent when a GUI parent would take responsibility.
-/// Named, not exercised. Not a second machine and not a TUI host.
+/// Load, run, and teardown were measured. The run exec'd debug `taco notices`
+/// through a stub. Not a signed install, not a TCC allow or deny, not a second
+/// machine, and not a TUI host.
 pub const ALTERNATE_TERMINAL_HOST: &str = "launchd user agent";
-pub const ALTERNATE_HOST_EXERCISED: bool = false;
+pub const ALTERNATE_HOST_EXERCISED: bool = true;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CorpusSlot {

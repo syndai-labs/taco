@@ -55,5 +55,7 @@ promise. Detail: [os-floor.md](os-floor.md).
 
 ## Alternate launch host
 
-Named: launchd user agent. Not exercised. Not a second machine. Cursor.app
+Named: launchd user agent. Load, run, and teardown were exercised. Not a TCC
+allow or deny. Not a signed install. Not a second machine. Cursor.app
 (`com.todesktop.230313mzl4w4u92`) is rejected as the TCC parent. C2 stays open.
+Detail: [launchd-host.md](launchd-host.md).

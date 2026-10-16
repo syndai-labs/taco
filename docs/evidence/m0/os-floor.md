@@ -30,9 +30,9 @@ Rejected: keep "macOS 14.2" as a confirmed minimum; treat 26A434 as a qualified 
 
 ## Alternate terminal host
 
-Named: **launchd user agent**. Not exercised. `ALTERNATE_HOST_EXERCISED` is false.
+Named: **launchd user agent**. Load, run, and teardown were exercised on 2026-10-16. `ALTERNATE_HOST_EXERCISED` is true. The run is debug `taco notices` via `scripts/m0-launchd-host-stub.sh`, then `launchctl bootout`. It is not a signed `ai.syndai.taco` install and not a TCC allow or deny. Measurement: [launchd-host.md](launchd-host.md).
 
-This is the acceptance launch parent for the signed CLI when a GUI parent would take TCC responsibility. It is not a second Mac and not a TUI host. C2's chip, memory, and OS build stay unnamed. Presentation cells that run stay in Apple Terminal until a second GUI terminal is measured.
+This is the acceptance launch parent for the signed CLI when a GUI parent would take TCC responsibility. The measured run did not use that signed binary. It is not a second Mac and not a TUI host. C2's chip, memory, and OS build stay unnamed. Presentation cells that run stay in Apple Terminal until a second GUI terminal is measured.
 
 Why this name, from runs that already exist on the other branches:
 
