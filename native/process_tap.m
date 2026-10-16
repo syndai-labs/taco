@@ -7,7 +7,14 @@
 #include <string.h>
 
 typedef struct taco_shared_ring taco_shared_ring;
-void taco_ring_push(taco_shared_ring *ring, const uint8_t *bytes, size_t len);
+// ponytail: weak no-op so this .o links. Tap open does not start IO.
+// Replace with a real ring push when a callback actually runs.
+__attribute__((weak)) void taco_ring_push(taco_shared_ring *ring, const uint8_t *bytes,
+                                          size_t len) {
+    (void)ring;
+    (void)bytes;
+    (void)len;
+}
 
 enum { TACO_TAP_SYSTEM = 1, TACO_TAP_PID = 2, TACO_TAP_BUNDLE = 3 };
 enum { TACO_OK = 0, TACO_NOT_FOUND = 1, TACO_AMBIGUOUS = 2, TACO_OS = 3, TACO_REFUSED = 4 };

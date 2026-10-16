@@ -1,0 +1,9 @@
+[package]
+name = "taco-tap"
+version = "0.1.0-m0"
+edition = "2021"
+publish = false
+description = "Unsafe CoreAudio process-tap boundary. The taco crate forbids unsafe_code."
+
+[build-dependencies]
+cc = "=1.2.16"

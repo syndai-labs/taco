@@ -123,9 +123,8 @@ fn session_stays_local_and_commits_are_immutable() {
         ]
     );
     assert!(
-        read("docs/evidence/m0/pin-measurement.md").contains(
-            "dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699"
-        ),
+        read("docs/evidence/m0/pin-measurement.md")
+            .contains("dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699"),
         "freeze digests must match the measured evidence file"
     );
     assert_eq!(

@@ -3,7 +3,7 @@
 //! Milestone 0 freezes selectors, events, outcomes, errors, and stage traits.
 //! Later milestones fill those types in. They do not invent a second session path.
 //! Preflight does not start capture or load models, and this build claims no qualification.
-//! `capture` is a macOS spike. It is not on the session path.
+//! `capture` opens only behind `TACO_CAPTURE_SPIKE` on macOS arm64.
 
 #![forbid(unsafe_code)]
 
