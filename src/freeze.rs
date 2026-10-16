@@ -91,16 +91,20 @@ pub struct Corner {
     pub qualified: bool,
 }
 
+/// Set when C1's chip, memory bytes, and OS build are copied from a measurement.
+/// Does not set `Corner::qualified`. C2 may still have `os_build: None`.
+pub const C1_NAMED: bool = true;
+
 pub const CORNERS: [Corner; 2] = [
     Corner {
         id: "C1",
-        machine: "Apple Silicon M1 class, 16 GiB unified memory, AC power",
-        os_build: Some("macOS 14.2"),
+        machine: "Apple M1 Pro, 34359738368 bytes (32 GiB)",
+        os_build: Some("macOS 27.0.1 (26A434)"),
         qualified: false,
     },
     Corner {
         id: "C2",
-        machine: "a different Apple Silicon machine",
+        machine: "open",
         os_build: None,
         qualified: false,
     },

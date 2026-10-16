@@ -92,6 +92,13 @@ tests failing before the contract types satisfy them. Do not rename the IDs.
   match the ADRs and the acceptance plan. Stage traits can be faked independently.
   The test plan covers every source category, both UIs, and both corners.
 
+## Corners named so far
+
+C1: Apple M1 Pro, 34359738368 bytes (32 GiB), macOS 27.0.1 (26A434). Named, not qualified.
+C2: open. Missing a second Apple Silicon chip, its memory in bytes, and its macOS product version and build.
+M0-AC4 stays unchecked. C2 is unnamed, and quantization, sampling, corpus inventory, and reviewed numeric targets are still open.
+Record: [qualification-corners.md](../evidence/m0/qualification-corners.md).
+
 ## Evidence and handoff
 
 Deliver a feasibility report, pinned dependency/model manifest, command/event fixture

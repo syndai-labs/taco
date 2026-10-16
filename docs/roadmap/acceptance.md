@@ -4,7 +4,8 @@ This is the only numeric specification for milestone and release verdicts.
 The machine-readable copy imported by `T-M0-LIMIT-VECTORS` is
 `fixtures/m0/limit-vectors.txt`. That file is not a second budget: a cap that
 disagrees with this page fails the test.
-**No measurement below has been collected.** Values are proposed targets for M0
+**Numeric limits below have not been measured.** The C1 row is a copied host
+identity, not a performance result. Other values are proposed targets for M0
 to confirm or revise through the [decision register](risks-and-decisions.md).
 They are not promises copied from upstream model cards or benchmarks. Other
 documents point here instead of keeping a second set of limits.
@@ -45,14 +46,21 @@ It is not a model-selection flag. v0.1 fetches one bundle.
 
 ## Qualification corners to freeze in M0
 
-| Corner | Proposed starting point | Evidence before the support claim |
+C1 is the only host measured in
+[macos-spike-results.md](../evidence/m0/macos-spike-results.md) and
+[native-impl.md](../evidence/m0/native-impl.md). That name is not qualification.
+The unmeasured "M1 class, 16 GiB, macOS 14.2" proposal is not C1. C2 is open.
+Record: [qualification-corners.md](../evidence/m0/qualification-corners.md).
+
+| Corner | Named machine and OS build | Evidence before the support claim |
 | --- | --- | --- |
-| C1, reference | Apple Silicon M1 class, 16 GiB unified memory, on AC power, macOS 14.2 | Native arm64 artifact, tap/permission/packaging run on that OS build, thermal notes |
-| C2, second | A different Apple Silicon machine on a named current macOS build | Exact chip, memory, and OS build. “Latest macOS” is not a name |
+| C1, reference | Apple M1 Pro, 34359738368 bytes (32 GiB), macOS 27.0.1 (26A434) | Named, not qualified. Still missing a tap/permission/packaging run and thermal notes on this build. Power source was not recorded |
+| C2, second | Open. Missing a second Apple Silicon chip, its memory in bytes, and its macOS product version and build | Exact chip, memory, and OS build. “Latest macOS” is not a name |
 
 These are two corners, not a full hardware-by-OS matrix. An M1 on the current
 OS, or a newer chip on 14.2, is unqualified until it has its own evidence.
-Results from C2 do not stand in for C1.
+Results from C2 do not stand in for C1. The named C1 does not prove a 16 GiB
+machine or macOS 14.2.
 
 | Dimension | Proposed starting point | Required evidence |
 | --- | --- | --- |
@@ -71,7 +79,8 @@ M0 may revise a number in this file by a decision record that names the
 measurement, the rejected alternative, and the invalidated tests. M0 may raise
 the process memory ceiling only up to 8 GiB on the 16 GiB reference machine. A
 higher ceiling changes the support floor and stays unresolved until that
-decision exists. No revision may redefine `t_audio_end`, drop failures from a
+decision exists. The named C1 is 32 GiB, so that revision is not available from
+this corner, and the 6 GiB ceiling is unchanged. No revision may redefine `t_audio_end`, drop failures from a
 denominator, or replace human review with an automatic metric alone.
 
 ## Operational limits
