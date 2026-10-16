@@ -1,8 +1,9 @@
 # AudioCapture prompt prep (2026-10-17)
 
 M0-AC1 stays unchecked. This note is the operator path for the AudioCapture
-prompt on `ai.syndai.taco`. No tap was started. No dialog was clicked. No
-`tccutil reset` was run.
+prompt on `ai.syndai.taco`. The code on this branch starts the aggregate
+under the spike. No Mac run of that start is recorded here. No dialog was
+clicked. No `tccutil reset` was run.
 
 Host: macOS 27.0.1 (26A434), arm64. This machine is not C1 and it is not a
 named C2. Tip `cd9a4c8` (`origin/cursor/m0-process-tap-b19b`).
@@ -31,23 +32,44 @@ Starting one while a microphone open is in flight can take that prompt.
 The dry-run stays undone until that `taco run --source default` is gone and
 the microphone decision is already copied down.
 
-## What the CLI does on this tip
+## Start gap and the fix
+
+On tip `cd9a4c8` the spike created the private process tap and the private
+aggregate with `kAudioAggregateDeviceTapAutoStartKey` set to 0, then dropped
+both. It did not call `AudioDeviceStart` on that aggregate. The
+`AudioDeviceStart` in the same file was only the microphone input proc.
+Apple's tap sample ties the AudioCapture prompt to the first start of an
+aggregate that contains a tap. Exit 0 on that tip was create-and-drop. It
+was not an Allow and it was not a Deny. The recorded `system` and Chrome
+`app:` / `pid:` runs in `process-tap.md` logged a Microphone preflight and
+no `kTCCServiceAudioCapture` line.
+
+This tree still opens a tap only when `TACO_CAPTURE_SPIKE` is set. After the
+aggregate exists, and after the default-output check, it registers a no-op
+IO proc and calls `AudioDeviceStart` on the aggregate. The auto-start key
+stays 0 so that start does not wait for a tapped process to deliver audio.
+`AudioDeviceStart` returns before an operator answers, so the aggregate stays
+started for `TACO_CAPTURE_SPIKE_OPEN_MS` milliseconds (default 180000, values
+above 600000 or not a whole number use that default, `0` starts and stops
+without waiting). Then `AudioDeviceStop`, the IO proc is destroyed, and Rust
+`Drop` destroys the aggregate and the tap. Nothing in this path presses
+Allow or Deny.
+
+No Mac run of this start is recorded. No dialog was clicked. Exit 0 after
+the hold is still not an Allow. `error capture_not_available` is still a
+miss or an OS failure, including a failed `AudioDeviceStart`. It is not a
+Deny.
+
+## What the CLI does
 
 `TACO_CAPTURE_SPIKE` unset: `start_capture` returns `capture_not_available`
-and does not open a tap.
+and does not open or start a tap.
 
 `TACO_CAPTURE_SPIKE=1` and `--source system`, `app:<bundle-id>`, or `pid:<pid>`:
-`native/process_tap.m` creates a private process tap and a private aggregate,
-then Rust drops them. The aggregate dictionary sets
-`kAudioAggregateDeviceTapAutoStartKey` to 0. This path does not call
-`AudioDeviceStart` on that aggregate. `AudioDeviceStart` in the same file is
-the microphone input proc.
-
-Recorded Chrome `app:` and `pid:` runs on this wiring exited 0 with no
-AudioCapture request and no dialog. Exit 0 means the tap was created and
-dropped. It is an Allow only after an operator press and an AudioCapture row
-for `ai.syndai.taco`. `error capture_not_available` is a miss or an OS
-failure. It is not a Deny.
+the path above. Recorded Chrome `app:` and `pid:` runs on the `cd9a4c8`
+wiring exited 0 with no AudioCapture request and no dialog. Those runs did
+not call `AudioDeviceStart`. Exit 0 is an Allow only after an operator press
+and an AudioCapture row for `ai.syndai.taco`.
 
 AudioCapture is one TCC service for the client bundle. `system` and
 `app:` / `pid:` are two selectors of that service. A grant on one selector
@@ -154,11 +176,12 @@ TACO_CAPTURE_SPIKE=1 ./target/debug/taco run --source app:com.google.Chrome --fr
 TACO_CAPTURE_SPIKE=1 ./target/debug/taco run --source pid:PID --from en --to zh
 ```
 
-On `cd9a4c8` these commands return after create-and-drop. A dialog is
-unexpected. If the process exits with no `kTCCServiceAudioCapture` prompting
-line, record that and stop. That exit is not Allow and not Deny. The prompt
-Apple's tap sample ties to the first start of an aggregate is the
-`AudioDeviceStart` this path does not call.
+These commands call `AudioDeviceStart` and hold the aggregate for
+`TACO_CAPTURE_SPIKE_OPEN_MS` (default 180000) before teardown. A dialog is
+possible and is not recorded yet. If the process exits with no
+`kTCCServiceAudioCapture` prompting line, record that and stop. That exit
+is not Allow and not Deny. The tool does not press a button. If a dialog
+appears, press one button once.
 
 If a dialog does appear, press one button once. Then:
 
