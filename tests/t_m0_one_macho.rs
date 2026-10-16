@@ -41,8 +41,7 @@ fn macho_cmd(cmd: u32, cputype: u32, dylib: &str, trailer: &[u8]) -> Vec<u8> {
     file
 }
 
-const USAGE: &[u8] =
-    b"NSMicrophoneUsageDescription NSAudioCaptureUsageDescription __info_plist";
+const USAGE: &[u8] = b"CFBundleIdentifier CFBundleName NSMicrophoneUsageDescription NSAudioCaptureUsageDescription __info_plist";
 
 #[test]
 fn t_m0_one_macho_host_binary() {

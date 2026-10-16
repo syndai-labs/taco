@@ -104,6 +104,12 @@ fn parse_macho_64(bytes: &[u8]) -> Verdict {
         }
         offset += cmdsize;
     }
+    if !contains(bytes, b"CFBundleIdentifier") {
+        reasons.push("missing CFBundleIdentifier".into());
+    }
+    if !contains(bytes, b"CFBundleName") {
+        reasons.push("missing CFBundleName".into());
+    }
     if !contains(bytes, b"NSMicrophoneUsageDescription") {
         reasons.push("missing NSMicrophoneUsageDescription".into());
     }

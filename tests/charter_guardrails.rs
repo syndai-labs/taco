@@ -412,6 +412,21 @@ fn package_source_and_milestone_boxes() {
     assert!(read("src/main.rs").contains("forbid(unsafe_code)"));
     assert!(!src.contains("process::exit"));
 
+    let plist = read("assets/Info.plist");
+    assert!(
+        plist.contains("CFBundleIdentifier") && plist.contains("ai.syndai.taco"),
+        "Info.plist must name CFBundleIdentifier ai.syndai.taco for codesign bind"
+    );
+    assert!(
+        plist.contains("CFBundleName"),
+        "Info.plist must name CFBundleName for codesign bind"
+    );
+    assert!(plist.contains("NSMicrophoneUsageDescription"));
+    assert!(plist.contains("NSAudioCaptureUsageDescription"));
+    assert!(taco::usage_keys_present());
+    assert!(read("build.rs").contains("sectcreate"));
+    assert!(read("build.rs").contains("__info_plist"));
+
     for path in [
         "docs/roadmap/m0-feasibility.md",
         "docs/roadmap/acceptance.md",

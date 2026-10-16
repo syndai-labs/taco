@@ -9,7 +9,9 @@ fn main() {
     }
     let manifest = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let plist = manifest.join("assets/Info.plist");
-    // Bind usage strings into the executable so codesign reports Info.plist as bound.
+    // Apple: -sectcreate __TEXT __info_plist <path>, with CFBundleIdentifier and
+    // CFBundleName in that plist. Without those keys, otool can show the section
+    // while codesign still prints Info.plist=not bound.
     println!(
         "cargo:rustc-link-arg=-Wl,-sectcreate,__TEXT,__info_plist,{}",
         plist.display()

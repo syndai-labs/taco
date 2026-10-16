@@ -21,15 +21,21 @@ pub use error::ErrorCode;
 pub use limits::{limits, Limits};
 pub use session::{preflight, Session, SessionState};
 
-/// Embedded usage declarations for the single-file tool.
-/// Linking them is not evidence that TCC attributed the prompts.
+/// Embedded Info.plist for the single-file tool.
+/// `include_bytes!` alone does not bind the plist for codesign; `build.rs`
+/// must `-sectcreate __TEXT __info_plist`, and the plist must carry
+/// `CFBundleIdentifier` and `CFBundleName` or codesign still reports unbound.
+/// Presence here is not evidence that TCC attributed the prompts.
 pub fn usage_plist() -> &'static [u8] {
     include_bytes!("../assets/Info.plist")
 }
 
 pub fn usage_keys_present() -> bool {
     let plist = usage_plist();
-    contains(plist, b"NSMicrophoneUsageDescription")
+    contains(plist, b"CFBundleIdentifier")
+        && contains(plist, b"CFBundleName")
+        && contains(plist, b"ai.syndai.taco")
+        && contains(plist, b"NSMicrophoneUsageDescription")
         && contains(plist, b"NSAudioCaptureUsageDescription")
 }
 
