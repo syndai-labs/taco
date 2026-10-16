@@ -137,7 +137,7 @@ fn dispatch(cli: Cli) -> Result<(), i32> {
             from,
             to,
             ui,
-            model_dir: _,
+            model_dir,
         } => {
             let mut session = Session::new();
             let req = RunRequest {
@@ -150,7 +150,14 @@ fn dispatch(cli: Cli) -> Result<(), i32> {
                 Ok(_) => {
                     // In-process adapters are the inference path. Their refusal
                     // does not replace the capture stop; the stages stay separate.
-                    let _ = session::open_inference();
+                    if let Some(dir) = &model_dir {
+                        session::bind_inference_dir(dir);
+                        if let Err(code) = session::open_inference() {
+                            return refuse(Err(code));
+                        }
+                    } else {
+                        let _ = session::open_inference();
+                    }
                     refuse(session::start_capture(&mut session))
                 }
                 Err(code) => refuse(Err(code)),

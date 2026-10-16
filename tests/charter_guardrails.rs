@@ -545,10 +545,9 @@ fn inference_adapters_refuse_in_process() {
         );
     }
     let note = read("docs/evidence/m0/engine-adapters.md");
-    assert!(note.contains("scaffolding"));
-    assert!(note.contains("scaffolding bridge only"));
     assert!(note.contains("not M0-AC2"));
     assert!(note.contains("not M0-AC3"));
+    assert!(note.contains("fail closed"));
     assert!(!note.contains("- [x]"));
     assert!(!note.contains("- [X]"));
     let probe = engines::gpu_offload_linked();

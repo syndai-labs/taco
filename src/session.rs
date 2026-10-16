@@ -122,12 +122,25 @@ pub fn start_capture(session: &mut Session) -> Result<(), ErrorCode> {
     Err(ErrorCode::CaptureNotAvailable)
 }
 
+/// Bind the pinned-model directory, then open VAD, ASR, and MT in this process.
+pub fn bind_inference_dir(dir: &std::path::Path) {
+    crate::engines::bind_model_dir(dir);
+}
+
 /// Open VAD, ASR, and MT in this process. Does not start capture.
+/// Refuses until `bind_inference_dir` and a static engine link are both present.
 pub fn open_inference() -> Result<(), ErrorCode> {
+    // The session path names every engine entry so dead_strip cannot drop them.
+    let _kept = std::hint::black_box(crate::engines::native_entrypoints());
     for role in crate::engines::ROLES {
         crate::engines::initialize(role)?;
     }
     Ok(())
+}
+
+/// Load, infer, and cancel the three pinned files in this process.
+pub fn prove_native(dir: &std::path::Path, reserve_ms: u64) -> Result<crate::engines::Proof, ErrorCode> {
+    crate::engines::prove_pins(dir, reserve_ms)
 }
 
 pub fn platform_supported() -> bool {

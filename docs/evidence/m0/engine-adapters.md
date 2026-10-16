@@ -1,31 +1,22 @@
-# Engine adapter scaffolding (2026-10-16)
+# Engine adapters (2026-10-17)
 
 `src/engines.rs` is the in-process surface for VAD, ASR (Whisper), and MT
 (llama / Hy-MT2): `initialize`, bounded `infer`, cooperative `cancel`, and
 `close`. `session::open_inference` is the call site. `taco run` uses that
 function and does not spawn an inference CLI.
 
-Every product call refuses. Missing pins, a non-macOS host, and an unset
-`native` feature each refuse. A host that passes those checks still refuses.
-Bounded `infer` rejects an oversized buffer before that refusal.
+An unbound call still refuses. Missing pins, a non-macOS host, and an unset
+`native` feature each refuse. A host that has not bound a model directory
+still refuses, even when the static archives are linked. That refusal is
+fail closed. Bounded `infer` rejects an oversized buffer before any native call.
 
-## Static link hook
+When a model directory is bound and this Mach-O linked the static engines,
+`initialize`, `infer`, and `cancel` call `taco_engines_init`,
+`taco_engines_infer`, and `taco_engines_cancel`. VAD uses the static ONNX
+Runtime session when those archives were present at build time. ASR and MT
+use whisper.cpp and llama.cpp on one ggml with Metal shaders embedded.
+`session::prove_native` runs the three-pin load, infer, and cancel in this
+process. A nonzero native status stays `engine_not_linked`. It is not a pass.
 
-This note is scaffolding bridge only. `native/taco_engines.h` is the probe symbol
-`taco_engines_linked` from `cursor/m0-metal-link-b19b` at `afa3cab`.
-`native/CMakeLists.txt` builds the product static library on llama.cpp's
-ggml, then whisper.cpp, with shared libraries off and Metal shaders embedded.
-It does not build `taco_link_probe`.
-
-`native/ffi` is the only crate that may call that symbol. The `taco` crate
-still forbids unsafe. `--features native` on macOS aarch64 links those static
-archives into `taco` when both `TACO_LLAMA_SRC` and `TACO_WHISPER_SRC` point
-at local checkouts. Unset variables skip cmake. Linux ignores those variables.
-Nothing is downloaded. Models are not opened. Silero stays out of this hook.
-
-`engines::gpu_offload_linked` is that call. `initialize`, `infer`, `cancel`,
-and `close` do not use it. A true result is the probe's GPU-offload flag,
-not a model load, not a joined cancel, and not a pass.
-
-This is scaffolding, not M0-AC2 and not M0-AC3. `T-M0-LINK-THREE-MODELS` and
-`T-M0-CANCEL-LIFECYCLE` stay fail-closed. Acceptance checkboxes stay open.
+This is not M0-AC2 and not M0-AC3. Acceptance checkboxes stay open.
+The measured Mach-O is in `taco-engines.md`.
