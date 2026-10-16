@@ -77,3 +77,27 @@ error capture_not_available
 ```
 
 Exit 1. Stdout empty. Returned immediately. No dialog. Not a TCC allow or deny.
+
+`authValue=2` from the system-spike preflight stays a number. `man` has no `tcc` or `tccd` page on this host, and the `tccd` binary does not define which integer is denied, restricted, or allowed. It is not recorded as either.
+
+## Terminal running (2026-10-17 00:10 KST)
+
+`open -a Terminal`. `pgrep -x Terminal` printed `42771 Terminal`. Same signed binary as the run above. Neither command hung. No dialog was shown. No button was pressed. The CLI does not print the native tap status; stderr is only the closed error string. M0-AC1 stays unchecked.
+
+### `app:com.apple.Terminal`
+
+```text
+$ TACO_CAPTURE_SPIKE=1 ./target/debug/taco run --source app:com.apple.Terminal --from en --to zh
+error capture_not_available
+```
+
+Exit 1. Stdout empty. Process 43241 returned immediately.
+
+### `pid:42771`
+
+```text
+$ TACO_CAPTURE_SPIKE=1 ./target/debug/taco run --source pid:42771 --from en --to zh
+error capture_not_available
+```
+
+Exit 1. Stdout empty. Process 43248 returned immediately. Not a TCC allow or deny.
