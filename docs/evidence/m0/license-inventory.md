@@ -14,7 +14,7 @@ commits in [metal-link.md](metal-link.md). Fetches were on 2026-10-16.
 | Subject | Covers | SPDX | Notice | LICENSE fetched |
 | --- | --- | --- | --- | --- |
 | `silero-vad-weights` | model | `MIT` | `Copyright (c) 2020-present Silero Team` | [snakers4/silero-vad `1e261b0` LICENSE](https://github.com/snakers4/silero-vad/blob/1e261b036686cd0017d500ee96acd1c4ba572a9d/LICENSE) |
-| `whisper-small-weights` | model | unset | unset | No LICENSE file in the pin repo. See the gap below. |
+| `whisper-small-weights` | model | `MIT` | `Copyright (c) 2022 OpenAI` | [openai/whisper `86098128` LICENSE](https://github.com/openai/whisper/blob/86098128c0b4f24f0e2aa2994de830614b474227/LICENSE) |
 | `hy-mt2-1.8b-gguf` | model | `Apache-2.0` | `Copyright (C) 2026 Tencent. All rights reserved.` | [tencent/Hy-MT2-1.8B-GGUF `LICENSE.txt`](https://huggingface.co/tencent/Hy-MT2-1.8B-GGUF/blob/a0c709d9fac510f2c807aa3af52872340dc37a4a/LICENSE.txt) |
 | `whisper.cpp` | engine | `MIT` | `Copyright (c) 2023-2026 The ggml authors` | [ggml-org/whisper.cpp `0c7be69` LICENSE](https://github.com/ggml-org/whisper.cpp/blob/0c7be696371069e0baa2515ed7aa08d5a5473aa6/LICENSE) |
 | `llama.cpp` | engine | `MIT` | `Copyright (c) 2023-2026 The ggml authors` | [ggml-org/llama.cpp `2a66703` LICENSE](https://github.com/ggml-org/llama.cpp/blob/2a667032dc788c3a071d538e0b572e45a3f12731/LICENSE) |
@@ -27,7 +27,8 @@ that copyright line. They are not copied onto `whisper-small-weights`,
 
 None of the MIT files contain an `SPDX-License-Identifier` header. Each begins
 `MIT License` and continues with the MIT permission grant. `MIT` is the SPDX
-license-list identifier for that text.
+license-list identifier for that text. The OpenAI weights LICENSE uses that
+same grant. Its copyright line is the `whisper-small-weights` notice.
 
 `LICENSE.txt` on the Hy-MT2 GGUF repo says `Hy-MT2-1.8B-GGUF is licensed under
 the Apache License, Version 2.0.` From `Version 2.0, January 2004` through the
@@ -35,7 +36,7 @@ end, that file matches [Apache License 2.0](https://www.apache.org/licenses/LICE
 after stripping surrounding whitespace. `Apache-2.0` is the SPDX identifier for
 that text. The model card writes the same license as `apache-2.0`.
 
-## What was checked before a field was left unset
+## What was checked
 
 ### Silero weights
 
@@ -50,19 +51,37 @@ MIT. The alt text was not used.
 
 ### Whisper small weights
 
-The pin URL is
+The pin is `ggml-small.bin` sha256
+`1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b`, 487601967
+bytes, from
 `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin`.
-Repo revision `5359861c739e955e79d9a303bcbc70fb988958b1` (card
-`lastModified` 2024-10-29) lists README and weight files. It does not list a
-LICENSE file. The README frontmatter is `license: mit`. That tag is not license
-text and was not written into `spdx` or `notice`. There is no copyright line
-on the card to store.
+On 2026-10-16 the Hugging Face tree for `ggerganov/whisper.cpp` revision
+`5359861c739e955e79d9a303bcbc70fb988958b1` listed `ggml-small.bin` with that
+LFS oid and that size. The tree lists a README and weight files. It lists no
+LICENSE file.
 
-whisper.cpp `models/README.md` at `0c7be69` points at OpenAI's model URLs and
-does not state a license for `ggml-small.bin`. `openai/whisper` `main` has an
-MIT LICENSE with `Copyright (c) 2022 OpenAI`. `main` is not a pin of this
-file, and that LICENSE was not applied. The whisper.cpp engine LICENSE was
-not applied either.
+The README at that revision is titled "OpenAI's Whisper models converted to
+ggml format". Its frontmatter is `license: mit`. That tag was not written
+into `spdx` or `notice`. The table row for `small` shows
+`55356645c2b361a969dfd0ef2c5a50d530afd8d5`. That value is 40 hex digits and
+is not the pin sha256, so it was not used as the identity check.
+
+whisper.cpp `0c7be696371069e0baa2515ed7aa08d5a5473aa6`
+`models/download-ggml-model.sh` downloads model `small` from that URL.
+`models/README.md` at that commit says the original OpenAI PyTorch models
+are converted with `models/convert-pt-to-ggml.py`, and that the pre-converted
+files are that Hugging Face tree. The script writes the checkpoint
+`model_state_dict` plus mel filters and the tokenizer from a clone of
+`openai/whisper`. It does not train. This inventory did not run it.
+
+`openai/whisper` `86098128c0b4f24f0e2aa2994de830614b474227`
+`whisper/__init__.py` names multilingual `small` as
+`https://openaipublic.azureedge.net/main/whisper/models/9ecf779972d90ba49c06d968637d720dd632c55bbf19d441fb42bf17a411e794/small.pt`.
+The path segment is the publisher sha256 of the PyTorch file. It is not the
+ggml pin. The same commit's README says Whisper's code and model weights are
+released under the MIT License. Its LICENSE is the MIT grant cited above,
+with `Copyright (c) 2022 OpenAI`. That is the record. The whisper.cpp engine
+LICENSE was not applied.
 
 ### Hy-MT2 GGUF
 
@@ -105,7 +124,8 @@ files. It is not itself a license.
 
 ## Still open
 
-- `whisper-small-weights` has no verified SPDX and no verified notice.
+- `whisper-small-weights` was not regenerated from `small.pt`
+  `9ecf779972d90ba49c06d968637d720dd632c55bbf19d441fb42bf17a411e794`.
 - `LicenseRecord.notice` is the copyright line. The MIT permission notice and
   the Apache terms are not in the crate.
 - Vendor, binding, example, and test LICENSE files above are not in the five
