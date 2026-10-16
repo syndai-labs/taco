@@ -469,6 +469,21 @@ fn package_source_and_milestone_boxes() {
         assert!(!text.contains("- [x]"), "{path} checks a box");
         assert!(!text.contains("- [X]"), "{path} checks a box");
     }
+    let plan = read("docs/roadmap/m0-feasibility.md");
+    for n in 1..=6 {
+        assert!(
+            plan.contains(&format!("- [ ] **M0-AC{n}:**")),
+            "M0-AC{n} must stay an open box"
+        );
+    }
+    for mark in [
+        format!("- [{}] **M0-AC", "x"),
+        format!("- [{}] **M0-AC", "X"),
+        format!("- [{}] M0-AC", "x"),
+        format!("- [{}] M0-AC", "X"),
+    ] {
+        assert!(!walk_contains(&root(), &mark), "checked M0-AC box: {mark}");
+    }
 
     for id in [
         "T-M0-REJECT-INPUTS",
@@ -529,7 +544,11 @@ fn microphone_spike_hold_follows_open_ok() {
 
     let hold = fn_body(&src, "fn spike_hold_ms");
     assert!(hold.contains("TACO_CAPTURE_SPIKE_HOLD_MS"));
-    assert!(hold.contains("unwrap_or(1_800_000)"));
+    assert_eq!(
+        unwrap_or_arg(hold),
+        "1_800_000",
+        "HOLD_MS unwrap_or must stay 1_800_000"
+    );
 
     let note = read("docs/evidence/m0/mic-hold.md");
     assert!(note.contains("TACO_CAPTURE_SPIKE"));
@@ -542,11 +561,20 @@ fn microphone_spike_hold_follows_open_ok() {
 #[test]
 fn microphone_spike_open_timeout_bounds_cpal_wait() {
     let src = read("src/capture/microphone.rs");
-    assert!(src.contains("TACO_CAPTURE_SPIKE_OPEN_MS"));
     let timeout_fn = fn_body(&src, "fn open_timeout_ms");
-    assert!(timeout_fn.contains("unwrap_or(300_000)"));
     assert!(
-        !timeout_fn.contains("180_000") && !timeout_fn.contains("180000"),
+        timeout_fn.contains("TACO_CAPTURE_SPIKE_OPEN_MS"),
+        "OPEN_MS default lives in open_timeout_ms"
+    );
+    assert_eq!(
+        unwrap_or_arg(timeout_fn),
+        "300_000",
+        "OPEN_MS unwrap_or must stay 300_000"
+    );
+    let banned_sep = format!("{}_000", 180);
+    let banned_plain = format!("{}", 180_000);
+    assert!(
+        !code_has_bounded(timeout_fn, &banned_sep) && !code_has_bounded(timeout_fn, &banned_plain),
         "OPEN_MS default must not regress to 180_000"
     );
     assert!(src.contains("uses `300_000` (5 minutes)"));
@@ -570,6 +598,13 @@ fn microphone_spike_open_timeout_bounds_cpal_wait() {
     let opened = body.find("open_default_microphone").expect("open");
     let held = body.find("spike_hold_ms()").expect("hold");
     assert!(opened < held, "hold still runs after open returns Ok");
+    let hold = fn_body(&session, "fn spike_hold_ms");
+    assert!(hold.contains("TACO_CAPTURE_SPIKE_HOLD_MS"));
+    assert_eq!(
+        unwrap_or_arg(hold),
+        "1_800_000",
+        "HOLD_MS unwrap_or must stay 1_800_000"
+    );
 
     let note = read("docs/evidence/m0/mic-open-timeout.md");
     assert!(note.contains("TACO_CAPTURE_SPIKE_OPEN_MS"));
@@ -580,19 +615,37 @@ fn microphone_spike_open_timeout_bounds_cpal_wait() {
     let stale_uses = format!("uses `{}` ", 180_000);
     let stale_uses_sep = format!("uses `{}_000`", 180);
     let stale_default = format!("default `{}_000`", 180);
+    let stale_default_plain = format!("default `{}`", 180_000);
+    let stale_default_word = format!("default {}", 180_000);
+    let stale_defaults_to = format!("defaults to {}", 180_000);
+    let stale_defaults_to_bt = format!("defaults to `{}`", 180_000);
+    let stale_default_is = format!("default is {}", 180_000);
+    let stale_default_is_bt = format!("default is `{}`", 180_000);
     let stale_minutes = format!("({} minutes)", 3);
+    let stale_minutes_plain = format!("{} minutes", 3);
     let stale_hyphen = format!("{}-minute", 3);
+    let stale_three = format!("{} minutes", "three");
+    let stale_three_hyphen = format!("{}-minute", "three");
     for stale in [
         &stale_unwrap,
         &stale_plain,
         &stale_uses,
         &stale_uses_sep,
         &stale_default,
+        &stale_default_plain,
+        &stale_default_word,
+        &stale_defaults_to,
+        &stale_defaults_to_bt,
+        &stale_default_is,
+        &stale_default_is_bt,
         &stale_minutes,
+        &stale_minutes_plain,
         &stale_hyphen,
+        &stale_three,
+        &stale_three_hyphen,
     ] {
         assert!(
-            !walk_contains(&root(), stale),
+            !walk_has_bounded(&root(), stale),
             "stale OPEN_MS default still claimed: {stale}"
         );
     }
@@ -607,11 +660,59 @@ fn microphone_spike_open_timeout_bounds_cpal_wait() {
 fn fn_body<'a>(src: &'a str, name: &str) -> &'a str {
     let start = src.find(name).unwrap_or_else(|| panic!("missing {name}"));
     let rest = &src[start..];
-    let end = rest[1..]
-        .find("\nfn ")
-        .map(|index| index + 1)
-        .unwrap_or(rest.len());
-    &rest[..end]
+    let brace = rest.find('{').unwrap_or_else(|| panic!("missing body {name}"));
+    let mut depth = 0;
+    for (index, ch) in rest[brace..].char_indices() {
+        match ch {
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return &rest[..brace + index + 1];
+                }
+            }
+            _ => {}
+        }
+    }
+    panic!("unclosed {name}");
+}
+
+fn unwrap_or_arg(body: &str) -> &str {
+    let mut found = None;
+    for line in body.lines() {
+        let code = line.split("//").next().unwrap();
+        let Some(at) = code.find(".unwrap_or(") else {
+            continue;
+        };
+        let rest = &code[at + ".unwrap_or(".len()..];
+        let end = rest.find(')').expect("unclosed unwrap_or");
+        let arg = rest[..end].trim();
+        assert!(found.replace(arg).is_none(), "more than one unwrap_or");
+    }
+    found.expect("missing unwrap_or")
+}
+
+fn code_has_bounded(body: &str, token: &str) -> bool {
+    body.lines().any(|line| {
+        let code = line.split("//").next().unwrap();
+        contains_bounded(code, token)
+    })
+}
+
+fn contains_bounded(text: &str, token: &str) -> bool {
+    let mut from = 0;
+    while let Some(index) = text[from..].find(token) {
+        let at = from + index;
+        let prev = text[..at].chars().next_back();
+        let next = text[at + token.len()..].chars().next();
+        let prev_ok = !matches!(prev, Some(ch) if ch.is_ascii_digit() || ch == '_');
+        let next_ok = !matches!(next, Some(ch) if ch.is_ascii_digit() || ch == '_');
+        if prev_ok && next_ok {
+            return true;
+        }
+        from = at + token.len();
+    }
+    false
 }
 
 fn src_text() -> String {
@@ -626,6 +727,14 @@ fn src_text() -> String {
 }
 
 fn walk_contains(dir: &Path, needle: &str) -> bool {
+    walk_has(dir, &|text| text.contains(needle))
+}
+
+fn walk_has_bounded(dir: &Path, token: &str) -> bool {
+    walk_has(dir, &|text| contains_bounded(text, token))
+}
+
+fn walk_has(dir: &Path, hit: &dyn Fn(&str) -> bool) -> bool {
     for entry in fs::read_dir(dir).unwrap().flatten() {
         let path = entry.path();
         if matches!(
@@ -635,11 +744,11 @@ fn walk_contains(dir: &Path, needle: &str) -> bool {
             continue;
         }
         if path.is_dir() {
-            if walk_contains(&path, needle) {
+            if walk_has(&path, hit) {
                 return true;
             }
         } else if let Ok(text) = fs::read_to_string(&path) {
-            if text.contains(needle) {
+            if hit(&text) {
                 return true;
             }
         }
