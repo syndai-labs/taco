@@ -426,6 +426,15 @@ fn package_source_and_milestone_boxes() {
     assert!(taco::usage_keys_present());
     assert!(read("build.rs").contains("sectcreate"));
     assert!(read("build.rs").contains("__info_plist"));
+    let sign = read("scripts/sign-debug.sh");
+    assert!(
+        sign.contains("ai.syndai.taco") && sign.contains("codesign"),
+        "scripts/sign-debug.sh must re-sign with ai.syndai.taco so Info.plist binds"
+    );
+    assert!(
+        read("scripts/measure-pins.sh").contains("sha256"),
+        "scripts/measure-pins.sh must print measured digests without inventing them"
+    );
 
     for path in [
         "docs/roadmap/m0-feasibility.md",
