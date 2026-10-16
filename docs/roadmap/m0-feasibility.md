@@ -102,3 +102,7 @@ those runtime artifacts. M1 begins only after M0 is accepted, including a viable
 If single-file permissions, native coexistence, bounded cancellation, or reasonable
 combined performance fail, stop and revise the relevant ADR with measured evidence.
 Do not conceal the failure by adding an inference server or dropping app capture.
+
+M0-AC2 and M0-AC3 stay unchecked on tip `7f98ab1`: CPU VAD, a cargo-test prove
+path, and unmeasured catalog residency. Record:
+[ac2-ac3-open.md](../evidence/m0/ac2-ac3-open.md).
