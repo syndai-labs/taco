@@ -89,6 +89,9 @@ pub fn parse_selector(raw: &str) -> Result<SourceSelector, ErrorCode> {
     if raw.eq_ignore_ascii_case("stdin") || raw == "-" {
         return Err(ErrorCode::StdinSourceRejected);
     }
+    if raw.contains("://") {
+        return Err(ErrorCode::InvalidSelectorSyntax);
+    }
     if is_path(raw) {
         return Err(ErrorCode::PathSourceRejected);
     }

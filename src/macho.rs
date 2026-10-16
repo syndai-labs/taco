@@ -118,7 +118,8 @@ fn parse_macho_64(bytes: &[u8]) -> Verdict {
 }
 
 fn is_dylib(cmd: u32) -> bool {
-    matches!(cmd, 0xC | 0x8000_0018 | 0x8000_001F | 0x8000_0023)
+    // 0x20 is LC_LAZY_LOAD_DYLIB. The high bit marks LC_REQ_DYLD.
+    matches!(cmd, 0xC | 0x20 | 0x8000_0018 | 0x8000_001F | 0x8000_0023)
 }
 
 fn is_system(name: &str) -> bool {

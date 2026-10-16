@@ -81,6 +81,14 @@ fn t_m0_reject_inputs_stdin_and_path() {
         parse_selector("clip.wav").unwrap_err(),
         ErrorCode::PathSourceRejected,
     );
+    assert_code(
+        parse_selector("input:https://example.com/a.wav").unwrap_err(),
+        ErrorCode::InvalidSelectorSyntax,
+    );
+    assert_code(
+        parse_selector("https://example.com/a.wav").unwrap_err(),
+        ErrorCode::InvalidSelectorSyntax,
+    );
     let output = run(&["run", "--source", "stdin", "--from", "en", "--to", "zh"]);
     assert_eq!(output.status.code(), Some(2));
     assert!(String::from_utf8_lossy(&output.stderr).contains("stdin_source_rejected"));

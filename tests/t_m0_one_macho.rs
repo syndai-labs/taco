@@ -14,15 +14,19 @@ fn le(n: u32) -> [u8; 4] {
 }
 
 fn macho(cputype: u32, dylib: &str, trailer: &[u8]) -> Vec<u8> {
+    macho_cmd(0xC, cputype, dylib, trailer)
+}
+
+fn macho_cmd(cmd: u32, cputype: u32, dylib: &str, trailer: &[u8]) -> Vec<u8> {
     let name = dylib.as_bytes();
     let name_off = 24u32;
     let raw = name_off as usize + name.len() + 1;
     let cmdsize = (raw + 7) & !7;
-    let mut cmd = vec![0u8; cmdsize];
-    cmd[0..4].copy_from_slice(&le(0xC));
-    cmd[4..8].copy_from_slice(&le(cmdsize as u32));
-    cmd[8..12].copy_from_slice(&le(name_off));
-    cmd[name_off as usize..name_off as usize + name.len()].copy_from_slice(name);
+    let mut bytes = vec![0u8; cmdsize];
+    bytes[0..4].copy_from_slice(&le(cmd));
+    bytes[4..8].copy_from_slice(&le(cmdsize as u32));
+    bytes[8..12].copy_from_slice(&le(name_off));
+    bytes[name_off as usize..name_off as usize + name.len()].copy_from_slice(name);
     let mut file = Vec::new();
     file.extend_from_slice(&le(0xFEEDFACF));
     file.extend_from_slice(&le(cputype));
@@ -32,7 +36,7 @@ fn macho(cputype: u32, dylib: &str, trailer: &[u8]) -> Vec<u8> {
     file.extend_from_slice(&le(cmdsize as u32));
     file.extend_from_slice(&le(0));
     file.extend_from_slice(&le(0));
-    file.extend_from_slice(&cmd);
+    file.extend_from_slice(&bytes);
     file.extend_from_slice(trailer);
     file
 }
@@ -70,6 +74,10 @@ fn t_m0_one_macho_inspector_rejects_bad_artifacts() {
     assert!(inspect_bytes(&good).is_pass(), "{:?}", inspect_bytes(&good));
     let foreign = macho(0x0100_000C, "/usr/local/lib/libfoo.dylib", USAGE);
     assert!(!inspect_bytes(&foreign).is_pass());
+    let lazy = macho_cmd(0x20, 0x0100_000C, "/usr/local/lib/libfoo.dylib", USAGE);
+    assert!(!inspect_bytes(&lazy).is_pass(), "lazy non-system dylib");
+    let lazy_system = macho_cmd(0x20, 0x0100_000C, "/usr/lib/libSystem.B.dylib", USAGE);
+    assert!(inspect_bytes(&lazy_system).is_pass(), "system lazy dylib stays");
     let missing = macho(0x0100_000C, "/usr/lib/libSystem.B.dylib", b"");
     assert!(!inspect_bytes(&missing).is_pass());
     let intel = macho(0x0100_0007, "/usr/lib/libSystem.B.dylib", USAGE);

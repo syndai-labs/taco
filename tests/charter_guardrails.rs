@@ -379,9 +379,15 @@ fn package_source_and_milestone_boxes() {
     let src = src_text();
     for forbidden in [
         "reqwest",
+        "ureq",
+        "isahc",
+        "attohttpc",
+        "minreq",
         "hyper::",
+        "std::net::",
         "TcpStream",
         "UdpSocket",
+        "TcpListener",
         "llama-server",
         "whisper-cli",
         "ScreenCaptureKit",
@@ -400,14 +406,7 @@ fn package_source_and_milestone_boxes() {
     assert!(!src.contains("capture_started = true"));
     assert!(read("src/lib.rs").contains("forbid(unsafe_code)"));
     assert!(read("src/main.rs").contains("forbid(unsafe_code)"));
-    let lib_src = src
-        .lines()
-        .filter(|line| !line.contains("src/main.rs"))
-        .collect::<Vec<_>>()
-        .join("\n");
-    assert!(!read("src/session.rs").contains("process::exit"));
-    assert!(!read("src/ledger.rs").contains("process::exit"));
-    let _ = lib_src;
+    assert!(!src.contains("process::exit"));
 
     for path in [
         "docs/roadmap/m0-feasibility.md",
@@ -430,15 +429,28 @@ fn package_source_and_milestone_boxes() {
         let found = walk_contains(&root(), id);
         assert!(found, "missing test id {id}");
     }
+    let ignored = format!("{}{}", "#", "[ignore]");
     for test in [
         "tests/t_m0_reject_inputs.rs",
         "tests/t_m0_limit_vectors.rs",
         "tests/charter_guardrails.rs",
         "tests/t_m0_one_macho.rs",
         "tests/t_m0_spike_sources.rs",
+        "tests/t_m0_link_three_models.rs",
+        "tests/t_m0_cancel_lifecycle.rs",
     ] {
-        let ignored = format!("{}{}", "#", "[ignore]");
         assert!(!read(test).contains(&ignored), "{test}");
+    }
+    for test in [
+        "tests/t_m0_link_three_models.rs",
+        "tests/t_m0_cancel_lifecycle.rs",
+    ] {
+        let text = read(test);
+        assert!(text.contains("panic!"), "{test} must fail closed");
+        assert!(
+            text.contains("not macOS Apple Silicon"),
+            "{test} must keep the Linux block"
+        );
     }
 }
 
