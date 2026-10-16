@@ -30,9 +30,10 @@ run. Freeze the final corners, bundle, and corpora before the release run.
 Qualify the actual single executable and its exact model digests, engine revisions,
 prompt and decoder settings, SDK, and the two qualification corners in the
 acceptance plan. C2 does not prove C1, and the two corners are not a full
-hardware-by-OS cross. The proposed C1 floor is an M1 with 16 GiB unified memory on
-macOS 14.2. If that machine is unavailable, report the gap and resolve the support
-floor in M0 instead of pretending a newer machine proves it.
+hardware-by-OS cross. The unmeasured proposal was an M1 with 16 GiB on macOS
+14.2. That machine was not obtained. The OS floor is Partial at the measured
+build macOS 27.0.1 (26A434). The 16 GiB memory proposal stays unmeasured. C1 is
+the 32 GiB M1 Pro and is not qualified. A newer machine does not prove 14.2.
 
 Measure from annotated utterance-end sample time mapped to a monotonic clock through
 final subtitle presentation. Include capture buffering, VAD hangover, ASR queue and

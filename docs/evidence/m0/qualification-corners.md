@@ -46,3 +46,14 @@ machine.
 Consequence: M0-AC4 stays open. The support claim, M1, and M5 stay blocked.
 The 6 GiB memory ceiling is unchanged. The 8 GiB revision reserved for an
 unmeasured 16 GiB machine is not available from this 32 GiB corner.
+
+## Minimum OS floor
+
+Partial. Revised floor is macOS 27.0.1 (26A434), the only measured build.
+macOS 14.2 was not measured and is not the floor. This is not a support
+promise. Detail: [os-floor.md](os-floor.md).
+
+## Alternate launch host
+
+Named: launchd user agent. Not exercised. Not a second machine. Cursor.app
+(`com.todesktop.230313mzl4w4u92`) is rejected as the TCC parent. C2 stays open.

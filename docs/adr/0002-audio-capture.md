@@ -21,10 +21,11 @@ not a v0.1 user recording/playback feature.
 ## Decision
 
 Use CPAL/CoreAudio inputs for microphones and input devices. Use CoreAudio process
-taps with a private aggregate device for system/application output. Tentatively set
-the unified v0.1 minimum to **macOS 14.2 on Apple Silicon**, subject to M0 proving
-the exact APIs, packaging, and permission behavior on that version. Do not claim
-every macOS version or every application is supported.
+taps with a private aggregate device for system/application output. The proposal
+of macOS 14.2 on Apple Silicon was not measured. The acceptance floor is Partial:
+macOS 27.0.1 (26A434), the only build in the C1 record. That is not a support
+promise. Do not claim every macOS version or every application is supported.
+See [os-floor.md](../evidence/m0/os-floor.md).
 
 Apple's sample describes system/process taps on macOS 14.2 and later, aggregate
 devices, and the `NSAudioCaptureUsageDescription` privacy declaration. Microphone
@@ -100,8 +101,10 @@ instead of fabricating silence that would imply source continuity.
 ScreenCaptureKit or a virtual driver may be investigated if taps fail, but neither
 is a silent substitute for the charter's selected path. Raise an ADR revision with
 the deployment/permission tradeoff. CPAL alone does not establish app-output capture.
-Native taps add unsafe FFI and cleanup obligations. A uniform 14.2 floor simplifies
-the support contract but excludes older Macs even if microphone capture could work.
+Native taps add unsafe FFI and cleanup obligations. Keeping 14.2 as a confirmed
+floor would claim a build this project has not run. The Partial revision drops
+that claim and leaves every build older than 26A434 outside the floor until one
+is measured.
 
 ## Acceptance criteria
 

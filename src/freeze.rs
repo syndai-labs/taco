@@ -110,6 +110,17 @@ pub const CORNERS: [Corner; 2] = [
     },
 ];
 
+/// Only OS build with taco evidence. Not a qualified support promise.
+/// Stays partial until an allow and a deny exist on this build, and until any
+/// older build is either measured or left outside the floor on purpose.
+pub const OS_FLOOR: &str = "macOS 27.0.1 (26A434)";
+pub const OS_FLOOR_PARTIAL: bool = true;
+
+/// TCC launch parent when a GUI parent would take responsibility.
+/// Named, not exercised. Not a second machine and not a TUI host.
+pub const ALTERNATE_TERMINAL_HOST: &str = "launchd user agent";
+pub const ALTERNATE_HOST_EXERCISED: bool = false;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CorpusSlot {
     pub name: &'static str,
