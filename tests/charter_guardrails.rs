@@ -125,8 +125,13 @@ fn session_stays_local_and_commits_are_immutable() {
     assert!(freeze::SELECTED_SAMPLING.is_none());
     assert_eq!(freeze::SAMPLING_ARMS.len(), 2);
     assert_eq!(freeze::CORNERS.len(), 2);
+    assert!(freeze::C1_NAMED);
     assert_eq!(freeze::CORNERS[0].id, "C1");
-    assert_eq!(freeze::CORNERS[0].os_build, Some("macOS 14.2"));
+    assert_eq!(
+        freeze::CORNERS[0].machine,
+        "Apple M1 Pro, 34359738368 bytes (32 GiB)"
+    );
+    assert_eq!(freeze::CORNERS[0].os_build, Some("macOS 27.0.1 (26A434)"));
     assert!(!freeze::CORNERS[0].qualified);
     assert_eq!(freeze::CORNERS[1].id, "C2");
     assert!(freeze::CORNERS[1].os_build.is_none());
@@ -480,6 +485,76 @@ fn package_source_and_milestone_boxes() {
             "{test} must keep the Linux block"
         );
     }
+}
+
+#[test]
+fn c1_named_freeze_matches_measured_host() {
+    // C1_NAMED is the freeze marker. With it set, the C1 row cannot keep the placeholder.
+    let spike = read("docs/evidence/m0/macos-spike-results.md");
+    for fact in ["Apple M1 Pro", "34359738368", "macOS 27.0.1", "26A434"] {
+        assert!(spike.contains(fact), "spike missing {fact}");
+    }
+    assert!(
+        freeze::C1_NAMED,
+        "the spike measured a host; C1_NAMED stays set"
+    );
+    let c1 = &freeze::CORNERS[0];
+    assert!(c1.machine.contains("Apple M1 Pro"), "{}", c1.machine);
+    assert!(c1.machine.contains("34359738368"), "{}", c1.machine);
+    let build = c1.os_build.expect("named C1 has an OS build");
+    assert_eq!(build, "macOS 27.0.1 (26A434)");
+    assert!(!c1.qualified, "naming C1 is not qualification");
+
+    let acceptance = read("docs/roadmap/acceptance.md");
+    let c1_row = acceptance
+        .lines()
+        .find(|line| line.starts_with("| C1,"))
+        .expect("C1 row");
+    assert!(
+        !c1_row.contains("proposed starting point"),
+        "C1 placeholder: {c1_row}"
+    );
+    assert!(c1_row.contains(c1.machine), "{c1_row}");
+    assert!(c1_row.contains(build), "{c1_row}");
+
+    let c2_row = acceptance
+        .lines()
+        .find(|line| line.starts_with("| C2,"))
+        .expect("C2 row");
+    assert!(freeze::CORNERS[1].os_build.is_none());
+    assert!(c2_row.contains("Open"), "{c2_row}");
+    assert!(c2_row.contains("Missing"), "{c2_row}");
+    assert!(
+        !c2_row.contains("26A434"),
+        "C2 must not reuse the C1 build: {c2_row}"
+    );
+    assert!(
+        !c2_row.contains("34359738368"),
+        "C2 must not reuse the C1 memory: {c2_row}"
+    );
+
+    let feasibility = read("docs/roadmap/m0-feasibility.md");
+    assert!(feasibility.contains(c1.machine));
+    assert!(feasibility.contains(build));
+    if freeze::CORNERS[1].os_build.is_none() {
+        let ac4 = feasibility
+            .lines()
+            .find(|line| line.contains("**M0-AC4:**"))
+            .expect("M0-AC4");
+        assert!(
+            ac4.starts_with("- [ ]"),
+            "M0-AC4 stays open until both corners are named: {ac4}"
+        );
+    }
+
+    let record = read("docs/evidence/m0/qualification-corners.md");
+    assert!(record.contains(c1.machine));
+    assert!(record.contains(build));
+    assert!(record.contains("C2"));
+    assert!(
+        record.to_lowercase().contains("open"),
+        "C2 must stay explicit while it has no OS build"
+    );
 }
 
 fn src_text() -> String {
