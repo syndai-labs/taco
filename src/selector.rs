@@ -65,8 +65,9 @@ pub fn on_unresolved_app() -> SelectionFailurePolicy {
     SelectionFailurePolicy::StopDoNotBroaden
 }
 
-/// M2 external-input reservation. Mac evidence names no device, so both fields
-/// stay unset. That open slot blocks M0-AC1. M0 does not qualify a device.
+/// M2 external-input reservation. The display name is the non-default input
+/// observed on the tap host. No UID was listed. `qualified_in_m0` stays false:
+/// the name is not an M0 qualification and does not close M0-AC1.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ExternalInputReservation {
     pub display_name: Option<&'static str>,
@@ -75,7 +76,7 @@ pub struct ExternalInputReservation {
 }
 
 pub const EXTERNAL_INPUT: ExternalInputReservation = ExternalInputReservation {
-    display_name: None,
+    display_name: Some("syndai-iphone-02 Microphone"),
     device_uid: None,
     qualified_in_m0: false,
 };

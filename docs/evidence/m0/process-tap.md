@@ -168,3 +168,29 @@ AUTHREQ_RESULT authValue=2 authReason=2
 ```
 
 `authValue=2` stays a number. This is not an operator Allow or Deny. No `kTCCServiceAudioCapture` line was in that slice. Exit 0 means the tap open returned and the process-tap value was dropped before exit, which destroys the tap and the private aggregate in-process. That destroy was not separately traced in a log.
+
+### Why exit 0 had no dialog
+
+Both Chrome spike processes sent a microphone preflight. `tccd` attributed the request to responsible process Cursor (`com.todesktop.230313mzl4w4u92`, `/Applications/Cursor.app`) and accessor `ai.syndai.taco` (`.../taco-m0-tap/target/debug/taco`). The subject of the preflight was Cursor's bundle id. There was no `AUTHREQ_PROMPTING` line. The process exited before a dialog could be required.
+
+`tccutil list` on this host, which prints its own granted/denied word, said:
+
+```text
+Microphone com.todesktop.230313mzl4w4u92: granted
+AudioCapture com.todesktop.230313mzl4w4u92: denied
+SystemAudioRecording com.todesktop.230313mzl4w4u92: denied
+```
+
+`ai.syndai.taco` had no listed services. Those words are `tccutil`'s. They are not a mapping of `authValue=2`. A prior Microphone record for the responsible app is consistent with a preflight that does not prompt. It is not recorded here as proof that `authValue=2` means granted.
+
+Exit 0 is also not an AudioCapture authorization. The same `tccutil` list says AudioCapture and SystemAudioRecording are denied for that responsible bundle, and the Chrome log slice had no AudioCapture request. The CLI still exited 0. A denied AudioCapture record did not become a dialog or a CLI deny.
+
+## Allow and deny are still missing
+
+AC1 needs an allow and a deny from `taco run` for microphone, system, and an app. These Chrome and system runs did not show a dialog and no button was pressed. That gap is open.
+
+`tccutil reset Microphone com.apple.Terminal` printed `Successfully reset Microphone approval status for com.apple.Terminal`. The next `tccutil list -s Microphone -b com.apple.Terminal` still printed `denied`. Terminal's AudioCapture list was already `denied`. A second launch, `osascript` `tell application "Terminal" to do script` of `taco run --source default`, did not start `taco` and did not return. A dialog with Don't Allow and Allow was on screen. Its title was not read, so it is not recorded as a microphone or AudioCapture prompt. Neither button was pressed. The `osascript` process was then killed. No allow and no deny were taken.
+
+## External input reserved for M2
+
+`system_profiler SPAudioDataType` on this Mac listed `MacBook Pro Microphone` as the default input and `syndai-iphone-02 Microphone` as another input (transport Unknown, not default). The second name is reserved for M2. `qualified_in_m0` stays false. Tip `d42010a` left `EXTERNAL_INPUT.display_name` unset. This decision-sync branch sets it to `syndai-iphone-02 Microphone`. No device UID was listed, so `device_uid` stays unset. This is not an M0 qualification.
