@@ -44,13 +44,13 @@ impl Drop for MicrophoneSession {
 }
 
 /// Milliseconds the caller waits for the CPAL open.
-/// Unset or not a `u64` uses `180_000` (3 minutes).
+/// Unset or not a `u64` uses `300_000` (5 minutes).
 #[cfg(target_os = "macos")]
 fn open_timeout_ms() -> u64 {
     std::env::var("TACO_CAPTURE_SPIKE_OPEN_MS")
         .ok()
         .and_then(|raw| raw.parse().ok())
-        .unwrap_or(180_000)
+        .unwrap_or(300_000)
 }
 
 pub fn open_default_microphone(ring: Arc<CaptureRing>) -> Result<MicrophoneSession, ()> {
