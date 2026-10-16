@@ -62,6 +62,11 @@ Results from C2 do not stand in for C1.
 | Terminal hosts | Apple Terminal, plus one named alternate | Named before M6. Unnamed “a modern terminal” is not evidence |
 | Corpus | Licensed or consented development set and a disjoint held-out set | Fixture hashes, speakers, timings, exclusions, reviewer names |
 
+R4 names quantization and sampling as unselected. M0 accepts no quantization
+arm and no sampling arm. The only main-repo Hy-MT2 file pinned and loaded is
+`Hy-MT2-1.8B-Q4_K_M.gguf`. The record is
+[r4-sampling.md](../evidence/m0/r4-sampling.md). M0-AC4 stays open.
+
 At least two directions, with two source languages, are required. Identical
 source and target tags fail preflight. There is no auto-detect. The publisher’s
 language inventory is not taco’s language support. Reviewer availability is a
