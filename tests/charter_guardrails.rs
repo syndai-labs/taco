@@ -20,7 +20,7 @@ use taco::ledger::{
 };
 use taco::limits::limits;
 use taco::selector::{self, category_name, ClassifiedSource, SourceSelector, SOURCE_CATEGORIES};
-use taco::session::{Edge, Session, SessionState};
+use taco::session::{self, Edge, PreflightOk, Session, SessionState};
 use taco::stage::{Asr, Capture, FrameMeta, LossRing, Translator, Vad, View};
 
 fn root() -> PathBuf {
@@ -429,7 +429,10 @@ fn package_source_and_milestone_boxes() {
     }
     assert!(!src.contains("unsafe fn"), "src uses unsafe");
     assert!(!src.contains("unsafe {"), "src uses unsafe");
+    assert!(!src.contains("unsafe impl"), "src uses unsafe");
+    assert!(!src.contains("unsafe trait"), "src uses unsafe");
     assert!(!src.contains("capture_started = true"));
+    assert!(!src.contains("capture_started=true"));
     assert!(read("src/lib.rs").contains("forbid(unsafe_code)"));
     assert!(read("src/main.rs").contains("forbid(unsafe_code)"));
     assert!(!src.contains("process::exit"));
@@ -504,15 +507,120 @@ fn package_source_and_milestone_boxes() {
     }
 }
 
+/// Gaps that were prose or only scanned the top of `src/`.
+#[test]
+fn charter_harness_gaps() {
+    let cargo = read("Cargo.toml");
+    assert_eq!(cargo.matches("[[bin]]").count(), 1, "one user-facing binary");
+    assert_eq!(cargo.matches("[lib]\n").count(), 1, "one library");
+    assert_eq!(
+        cargo.matches("name = \"taco\"").count(),
+        3,
+        "package, lib, and bin are all named taco"
+    );
+    assert!(!cargo.contains("taco-spike"));
+    assert!(!read("src/main.rs").contains("name = \"taco-"));
+
+    assert_eq!(language::LANGUAGES.map(|lang| lang.tag), ["en", "zh"]);
+    assert!(language::EXPERIMENTAL_PAIRS.is_empty());
+    assert!(language::parse_pair("en", "zh").is_ok());
+    assert!(language::parse_pair("zh", "en").is_ok());
+    assert!(language::parse_pair("en", "en").is_err());
+    assert!(language::parse_pair("ja", "zh").is_err());
+
+    let grammar = [
+        ("default", ClassifiedSource::InputPendingDevice),
+        ("input:BuiltInSpeakerDevice", ClassifiedSource::InputPendingDevice),
+        ("system", ClassifiedSource::SystemOutput),
+        ("app:com.apple.Safari", ClassifiedSource::SelectedApplication),
+        ("pid:42", ClassifiedSource::SelectedApplication),
+    ];
+    assert_eq!(SOURCE_CATEGORIES.len(), 4);
+    for (raw, classified) in grammar {
+        assert_eq!(
+            selector::parse_selector(raw).unwrap().classify(),
+            classified,
+            "{raw}"
+        );
+    }
+
+    let evidence = read("docs/evidence/m0/pin-measurement.md");
+    assert_eq!(freeze::PINS_MEASURED, freeze::release_ready());
+    assert!(freeze::PINS_MEASURED);
+    for pin in freeze::PINS {
+        let digest = pin.sha256.expect("measured pin has a digest");
+        let filename = pin.filename.expect("measured pin has a filename");
+        assert_eq!(digest.len(), 64);
+        assert!(digest.chars().all(|c| c.is_ascii_hexdigit()));
+        assert!(evidence.contains(digest), "{digest} missing from pin evidence");
+        assert!(evidence.contains(filename), "{filename} missing from pin evidence");
+    }
+
+    let plist = fs::read(root().join("assets/Info.plist")).unwrap();
+    let text = String::from_utf8(plist.clone()).unwrap();
+    for key in [
+        "CFBundleIdentifier",
+        "CFBundleName",
+        "CFBundleExecutable",
+        "NSMicrophoneUsageDescription",
+        "NSAudioCaptureUsageDescription",
+    ] {
+        assert!(text.contains(&format!("<key>{key}</key>")), "{key}");
+    }
+    assert!(text.contains("<string>ai.syndai.taco</string>"));
+    assert!(text.contains("<string>taco</string>"));
+    assert_eq!(taco::usage_plist(), plist.as_slice());
+    assert!(taco::usage_keys_present());
+
+    assert!(std::env::var_os("TACO_CAPTURE_SPIKE").is_none());
+    assert!(!session::capture_spike_enabled());
+    let rings = taco::capture::rings_allocated();
+    let calls = taco::capture::backend_calls();
+    let mut session = Session::new();
+    let ok = PreflightOk {
+        selector: selector::parse_selector("default").unwrap(),
+        pair: language::parse_pair("en", "zh").unwrap(),
+    };
+    assert_eq!(
+        session::start_capture(&mut session, &ok).unwrap_err(),
+        taco::error::ErrorCode::CaptureNotAvailable
+    );
+    assert!(!session.capture_started);
+    assert_eq!(session.state, SessionState::Preflight);
+    assert_eq!(taco::capture::rings_allocated(), rings);
+    assert_eq!(taco::capture::backend_calls(), calls);
+    assert!(taco::capture::open_system_tap().is_err());
+    assert!(taco::capture::open_pid_tap(1).is_err());
+    assert!(taco::capture::open_bundle_tap("com.apple.Safari").is_err());
+    assert!(!taco::capture::spike_linked());
+
+    if !session::platform_supported() {
+        use std::sync::Arc;
+        let ring = Arc::new(
+            taco::capture::CaptureRing::allocate(48_000, 1, 4).expect("ring plan"),
+        );
+        assert!(taco::capture::open_default_microphone(ring).is_err());
+        assert_eq!(taco::capture::backend_calls(), calls);
+        assert!(!session::platform_supported());
+    }
+}
+
 fn src_text() -> String {
     let mut out = String::new();
-    for entry in fs::read_dir(root().join("src")).unwrap() {
-        let entry = entry.unwrap();
-        if entry.path().extension().and_then(|ext| ext.to_str()) == Some("rs") {
-            out.push_str(&fs::read_to_string(entry.path()).unwrap());
+    append_rs(&root().join("src"), &mut out);
+    out
+}
+
+fn append_rs(dir: &Path, out: &mut String) {
+    for entry in fs::read_dir(dir).unwrap().flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            append_rs(&path, out);
+        } else if path.extension().and_then(|ext| ext.to_str()) == Some("rs") {
+            out.push_str(&fs::read_to_string(path).unwrap());
+            out.push('\n');
         }
     }
-    out
 }
 
 fn walk_contains(dir: &Path, needle: &str) -> bool {
