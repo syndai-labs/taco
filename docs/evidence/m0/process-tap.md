@@ -125,3 +125,46 @@ error capture_not_available
 ```
 
 Exit 1. `object=0` is `kAudioObjectUnknown`. The pid was not in the same process list. CoreAudio's `kAudioHardwarePropertyTranslatePIDToProcessObject` returns that unknown id without an error when the pid is not a HAL client. `kAudioHardwarePropertyProcessObjectList` is only clients connected to CoreAudio. Terminal was running and was not one of them. No dialog. Not an allow or a deny.
+
+## Chrome, a client already on the list (2026-10-17 00:18 KST)
+
+A one-shot list of `kAudioHardwarePropertyProcessObjectList` (not kept in the tree) printed `count=29 osstatus=0`. Terminal was still absent. Chrome was present:
+
+```text
+object=103 pid=688 pid_os=0 running=0 running_os=0 bundle=com.google.Chrome
+```
+
+`running=0` means `kAudioProcessPropertyIsRunning` was 0. No media was started. The main bundle id appeared once. Helper processes were `com.google.Chrome.helper`, so `app:com.google.Chrome` is not an ambiguous match. The miss was not turned into a system tap. M0-AC1 stays unchecked.
+
+Signed `target/debug/taco` after `./scripts/sign-debug.sh`:
+
+```text
+Identifier=ai.syndai.taco
+CDHash=adbd84482322ad3d53fc7eef81d356eba28d2ccb
+Signature=adhoc
+Info.plist entries=5
+TeamIdentifier=not set
+```
+
+`ps` still showed pid 688 as `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`.
+
+```text
+$ TACO_CAPTURE_SPIKE=1 ./target/debug/taco run --source app:com.google.Chrome --from en --to zh
+```
+
+Stdout empty. Stderr empty. Exit 0. Did not hang. No dialog was shown. No button was pressed.
+
+```text
+$ TACO_CAPTURE_SPIKE=1 ./target/debug/taco run --source pid:688 --from en --to zh
+```
+
+Stdout empty. Stderr empty. Exit 0. Did not hang. No dialog was shown. No button was pressed.
+
+`tccd` for those two processes (52235 and 52251) logged a microphone preflight only, with no `AUTHREQ_PROMPTING` line:
+
+```text
+service=kTCCServiceMicrophone preflight=yes
+AUTHREQ_RESULT authValue=2 authReason=2
+```
+
+`authValue=2` stays a number. This is not an operator Allow or Deny. No `kTCCServiceAudioCapture` line was in that slice. Exit 0 means the tap open returned and the process-tap value was dropped before exit, which destroys the tap and the private aggregate in-process. That destroy was not separately traced in a log.
