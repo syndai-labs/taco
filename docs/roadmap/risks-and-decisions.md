@@ -86,6 +86,15 @@ Host: Apple M1 Pro, 32 GiB (34359738368 bytes), macOS 27.0.1 (26A434),
 | R12 | Stop. Not run. | inference/quality owners | No serialized-vs-concurrent measurement. The installed Metal compiler was not a timing run. | A microbenchmark or a CPU timing presented as the joint gate. | Blocks M0 acceptance and M4's baseline. |
 | R14 | Corners, terminal hosts, and devices are not provisioned. | release/quality owners | This shell on macOS 27.0.1 is a measurement host, not a qualified corner. C2 OS build and the alternate terminal host are unnamed. No second terminal host was exercised. | An aggregate "works on this Mac" verdict. | Release cells stay not run. M1 and M5 stay blocked. |
 
+## M0 VAD execution provider (2026-10-17)
+
+Host: Apple M1 Pro, macOS 27.0.1 (26A434), arm64. Detail is in
+[vad-metal-ep.md](../evidence/m0/vad-metal-ep.md). M0-AC2 stays open.
+
+| ID | Decision | Owner | Evidence on this host | Rejected alternative | Consequence |
+| --- | --- | --- | --- | --- | --- |
+| R3 | Stop. Silero stays on the CPU execution provider. | audio owner | ONNX Runtime 1.31.0 has no Metal execution provider. A static CoreML build (`onnxruntime_USE_COREML=ON`, no ORT dylib) was linked into one Mach-O with `taco_vad_ort.cpp`. The run requested `CoreML` / `CPUAndGPU` / `MLProgram`. Measured lines: `vad_ort_input_ep` index 0–2 `ep=CPUExecutionProvider hw=cpu`, `vad_ort_plan=missing`, `vad_ort=ok device=cpu`. Frame probabilities matched the earlier CPU run (0.000592 / 0.000528 / 0.000592). `GetHardwareDevices` also listed Apple GPU and NPU; those lines are inventory, not the session assignment. | Print `device=metal` from the request flag, call the hardware inventory the VAD device, or ship an ONNX Runtime dylib. | M0-AC2 stays unchecked. Incremental Silero still runs, on CPU. M2's real VAD does not gain a Metal or CoreML device from this run. |
+
 ## Acceptance criteria
 
 - [ ] Every M0 decision has a concrete resolution before dependent milestone exit.

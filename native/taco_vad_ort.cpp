@@ -1,12 +1,18 @@
 // Incremental Silero on the pinned ONNX, inside this Mach-O.
-// CPU execution provider only. This is not a Metal VAD and not whisper_full.
+// The device token is read from the session assignment and, when CoreML is
+// linked, from MLComputePlan. It is not the provider option we requested.
+// This is not whisper_full.
 
 #include <array>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <string>
+#include <unordered_map>
+#include <unistd.h>
 #include <vector>
 
 #ifdef TACO_HAVE_ORT
@@ -25,28 +31,149 @@ void print_dims(const std::vector<int64_t> & dims) {
     }
 }
 
+#ifdef TACO_HAVE_ORT
+std::string make_cache_dir() {
+    const char * tmp = std::getenv("TMPDIR");
+    std::string dir = tmp != nullptr && tmp[0] != '\0' ? tmp : "/tmp";
+    if (dir.back() != '/') {
+        dir.push_back('/');
+    }
+    dir += "taco-vad-coreml-XXXXXX";
+    std::vector<char> buf(dir.begin(), dir.end());
+    buf.push_back('\0');
+    if (mkdtemp(buf.data()) == nullptr) {
+        return {};
+    }
+    return std::string(buf.data());
+}
+
+struct CacheDir {
+    std::string path;
+    ~CacheDir() {
+        if (!path.empty()) {
+            std::error_code err;
+            std::filesystem::remove_all(path, err);
+        }
+    }
+};
+
+const char * hw_kind(OrtHardwareDeviceType type) {
+    switch (type) {
+    case OrtHardwareDeviceType_CPU:
+        return "cpu";
+    case OrtHardwareDeviceType_GPU:
+        return "gpu";
+    case OrtHardwareDeviceType_NPU:
+        return "npu";
+    }
+    return "other";
+}
+
+#endif
+
 }  // namespace
+
+#ifdef TACO_HAVE_ORT_COREML
+extern "C" void taco_vad_profile_cache(const char * cache_dir, int * cpu, int * gpu, int * ane, int * other);
+#endif
 
 #ifdef TACO_HAVE_ORT
 
 int taco_vad_ort(const char * path) {
     try {
         const OrtApiBase * api = OrtGetApiBase();
-        Ort::Env env(ORT_LOGGING_LEVEL_ERROR, "taco");
+        Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "taco");
+        for (const std::string & name : Ort::GetAvailableProviders()) {
+            std::printf("vad_ort_provider=%s\n", name.c_str());
+        }
+        try {
+            for (const Ort::ConstHardwareDevice & hw : env.GetHardwareDevices()) {
+                const char * vendor = hw.Vendor();
+                std::printf("vad_ort_hw type=%s vendor=%s\n", hw_kind(hw.Type()), vendor == nullptr ? "" : vendor);
+            }
+        } catch (const Ort::Exception & err) {
+            std::printf("vad_ort_hw=fail msg=%s\n", err.what());
+        }
+        std::fflush(stdout);
+
+        CacheDir cache;
+        bool requested_coreml = false;
         Ort::SessionOptions opts;
         opts.SetIntraOpNumThreads(1);
         opts.SetInterOpNumThreads(1);
         opts.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
+#ifdef TACO_HAVE_ORT_COREML
+        cache.path = make_cache_dir();
+        if (!cache.path.empty()) {
+            try {
+                const std::unordered_map<std::string, std::string> coreml = {
+                    {"MLComputeUnits", "CPUAndGPU"},
+                    {"ModelFormat", "MLProgram"},
+                    {"ProfileComputePlan", "1"},
+                    {"ModelCacheDirectory", cache.path},
+                };
+                opts.AppendExecutionProvider("CoreML", coreml);
+                requested_coreml = true;
+                std::printf("vad_ort_request ep=CoreML units=CPUAndGPU format=MLProgram\n");
+            } catch (const Ort::Exception & err) {
+                std::printf("vad_ort_request=fail ep=CoreML msg=%s\n", err.what());
+                opts = Ort::SessionOptions();
+                opts.SetIntraOpNumThreads(1);
+                opts.SetInterOpNumThreads(1);
+                opts.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
+            }
+        } else {
+            std::printf("vad_ort_request=fail ep=CoreML msg=cache_dir\n");
+        }
+#else
+        std::printf("vad_ort_request ep=CPU\n");
+#endif
+        std::fflush(stdout);
         Ort::Session session(env, path, opts);
 
         Ort::AllocatorWithDefaultOptions allocator;
         const size_t n_in = session.GetInputCount();
         const size_t n_out = session.GetOutputCount();
         std::printf(
-            "vad_ort_session=ok version=%s inputs=%zu outputs=%zu ep=CPU\n",
+            "vad_ort_session=ok version=%s inputs=%zu outputs=%zu\n",
             api == nullptr || api->GetVersionString() == nullptr ? "unknown" : api->GetVersionString(),
             n_in,
             n_out);
+        int coreml_nodes = 0;
+        int cpu_nodes = 0;
+        try {
+            const std::vector<Ort::ConstEpAssignedSubgraph> graphs = session.GetEpGraphAssignmentInfo();
+            if (graphs.empty()) {
+                std::printf("vad_ort_assign ep=none nodes=0\n");
+            }
+            for (const Ort::ConstEpAssignedSubgraph & graph : graphs) {
+                const std::string ep = graph.GetEpName();
+                const size_t nodes = graph.GetNodes().size();
+                std::printf("vad_ort_assign ep=%s nodes=%zu\n", ep.c_str(), nodes);
+                if (ep.find("CoreML") != std::string::npos) {
+                    coreml_nodes += static_cast<int>(nodes);
+                }
+                if (ep.find("CPU") != std::string::npos) {
+                    cpu_nodes += static_cast<int>(nodes);
+                }
+            }
+        } catch (const Ort::Exception & err) {
+            std::printf("vad_ort_assign=fail msg=%s\n", err.what());
+        }
+        try {
+            const std::vector<Ort::ConstEpDevice> inputs = session.GetEpDeviceForInputs();
+            for (size_t i = 0; i < inputs.size(); i++) {
+                const char * ep = inputs[i].EpName();
+                const char * kind = hw_kind(inputs[i].Device().Type());
+                std::printf(
+                    "vad_ort_input_ep index=%zu ep=%s hw=%s\n",
+                    i,
+                    ep == nullptr ? "" : ep,
+                    kind);
+            }
+        } catch (const Ort::Exception & err) {
+            std::printf("vad_ort_input_ep=fail msg=%s\n", err.what());
+        }
         std::vector<std::string> in_names;
         std::vector<std::string> out_names;
         for (size_t i = 0; i < n_in; i++) {
@@ -153,7 +280,35 @@ int taco_vad_ort(const char * path) {
             "vad_ort_reset=1 match=%d carried_state=%d window=512 state=2x1x128\n",
             match ? 1 : 0,
             second_l2 > 0.0 ? 1 : 0);
-        std::printf("vad_ort=%s device=cpu\n", match ? "ok" : "fail");
+        int plan_cpu = 0;
+        int plan_gpu = 0;
+        int plan_ane = 0;
+        int plan_other = 0;
+#ifdef TACO_HAVE_ORT_COREML
+        if (requested_coreml) {
+            taco_vad_profile_cache(cache.path.c_str(), &plan_cpu, &plan_gpu, &plan_ane, &plan_other);
+        }
+#else
+        (void)requested_coreml;
+#endif
+        const char * device = "cpu";
+        if (plan_gpu > 0) {
+            device = "MLGPUComputeDevice";
+        } else if (plan_ane > 0) {
+            device = "MLNeuralEngineComputeDevice";
+        } else if (plan_cpu > 0) {
+            device = "MLCPUComputeDevice";
+        }
+        std::printf(
+            "vad_ort=%s device=%s plan_gpu=%d plan_cpu=%d plan_ane=%d plan_other=%d coreml_nodes=%d cpu_nodes=%d\n",
+            match ? "ok" : "fail",
+            device,
+            plan_gpu,
+            plan_cpu,
+            plan_ane,
+            plan_other,
+            coreml_nodes,
+            cpu_nodes);
         std::fflush(stdout);
         return match ? 0 : 1;
     } catch (const Ort::Exception & err) {
