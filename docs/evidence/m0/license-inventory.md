@@ -137,8 +137,8 @@ files. It is not itself a license.
   (`CDHash=f5455d873156271820035ef4fe0ac7bbe2e8be07`, Info.plist not bound)
   is not that artifact.
 
-R11 is Partial. Distribution of weights remains blocked until a signed install
-exists. Charter invariant 4 and ADR 0005 keep weights outside the binary; the
+R11 is Stop (PR #38 tip `e7433c2`). Distribution of weights remains blocked
+until a signed install exists. Charter invariant 4 and ADR 0005 keep weights outside the binary; the
 user fetches them only when a manifest inside a signed executable is the trust
 root. That artifact does not exist, so the charter path is not open. M0-AC4
 and M0-AC5 stay open. No M0-AC checkbox is checked.
