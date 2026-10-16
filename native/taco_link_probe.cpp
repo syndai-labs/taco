@@ -136,7 +136,7 @@ int run_vad(const char * path) {
     return first && second && first_probs > 0 && second_probs > 0 ? 0 : 1;
 }
 
-int run_asr(const char * path) {
+int run_asr(const char * path, whisper_context ** kept) {
     whisper_context_params cparams = whisper_context_default_params();
     cparams.use_gpu = true;
     whisper_context * ctx = whisper_init_from_file_with_params(path, cparams);
@@ -145,6 +145,7 @@ int run_asr(const char * path) {
         std::fflush(stdout);
         return 1;
     }
+    *kept = ctx;
     std::vector<float> audio(16000, 0.0f);
     for (int i = 0; i < 16000; i++) {
         const float t = static_cast<float>(i) / 16000.0f;
@@ -176,9 +177,171 @@ int run_asr(const char * path) {
         }
     }
     std::printf("asr=%s use_gpu=1 segments=%d text_bytes=%d\n", rc == 0 ? "ok" : "fail", nseg, text_bytes);
-    whisper_free(ctx);
     std::fflush(stdout);
     return rc == 0 ? 0 : 1;
+}
+
+// whisper_init_from_file_with_params has no abort callback. The loader read is
+// the checkpoint: once the weight section is reached and abort is set, the next
+// 4-byte header field is 99, which whisper_model_load rejects. Returning 0 from
+// read does not fail the load; this function ignores that count.
+struct AbortRead {
+    FILE * file = nullptr;
+    std::atomic<int> * abort = nullptr;
+    size_t offset = 0;
+    bool poison = false;
+    int poisoned = 0;
+};
+
+size_t abort_read(void * ctx, void * output, size_t read_size) {
+    auto * file = static_cast<AbortRead *>(ctx);
+    const bool in_weights = file->offset > (4u << 20);
+    if (file->abort->load() != 0 && in_weights && file->poison && read_size == sizeof(int32_t)) {
+        const int32_t bad = 99;
+        std::memcpy(output, &bad, sizeof bad);
+        file->poison = false;
+        file->poisoned = 1;
+        file->offset += read_size;
+        return read_size;
+    }
+    if (file->abort->load() != 0 && in_weights && read_size == sizeof(int32_t)) {
+        const int32_t bad = 99;
+        std::memcpy(output, &bad, sizeof bad);
+        file->poisoned = 1;
+        file->offset += read_size;
+        return read_size;
+    }
+    if (file->abort->load() != 0 && in_weights && read_size >= 4096) {
+        std::memset(output, 0, read_size);
+        file->poison = true;
+        file->offset += read_size;
+        return read_size;
+    }
+    const size_t got = std::fread(output, 1, read_size, file->file);
+    if (got < read_size) {
+        std::memset(static_cast<unsigned char *>(output) + got, 0, read_size - got);
+    }
+    file->offset += read_size;
+    return read_size;
+}
+
+bool abort_eof(void * ctx) {
+    auto * file = static_cast<AbortRead *>(ctx);
+    if (file->poisoned != 0 || file->poison) {
+        return false;
+    }
+    return std::feof(file->file) != 0;
+}
+
+void abort_close(void * ctx) {
+    auto * file = static_cast<AbortRead *>(ctx);
+    if (file->file != nullptr) {
+        std::fclose(file->file);
+        file->file = nullptr;
+    }
+}
+
+int cancel_whisper_init(const char * path, int * join_ms, int * poisoned) {
+    Gate gate;
+    AbortRead file;
+    file.abort = &gate.abort;
+    file.file = std::fopen(path, "rb");
+    if (file.file == nullptr) {
+        return 0;
+    }
+    whisper_context * loaded = nullptr;
+    std::thread worker([&] {
+        gate.started.store(1);
+        whisper_model_loader loader{};
+        loader.context = &file;
+        loader.read = abort_read;
+        loader.eof = abort_eof;
+        loader.close = abort_close;
+        whisper_context_params cparams = whisper_context_default_params();
+        cparams.use_gpu = true;
+        loaded = whisper_init_with_params(&loader, cparams);
+        gate.done.store(1);
+    });
+    while (gate.started.load() == 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    const int64_t t0 = now_ms();
+    gate.abort.store(1);
+    worker.join();
+    *join_ms = static_cast<int>(now_ms() - t0);
+    *poisoned = file.poisoned;
+    if (loaded != nullptr) {
+        whisper_free(loaded);
+        return 2;
+    }
+    return 1;
+}
+
+struct WhisperAbort {
+    std::atomic<int> * abort = nullptr;
+    std::atomic<int> hits{0};
+};
+
+bool whisper_abort_cb(void * data) {
+    auto * gate = static_cast<WhisperAbort *>(data);
+    const int hit = gate->hits.fetch_add(1) + 1;
+    // Hit 1 is the end of the encoder graph. Let that pass so the next
+    // checkpoint is the decoder graph. Later hits honor the abort flag.
+    if (hit == 1) {
+        return false;
+    }
+    return gate->abort->load() != 0;
+}
+
+bool whisper_begin_cb(struct whisper_context *, struct whisper_state *, void * data) {
+    static_cast<Gate *>(data)->started.store(1);
+    return true;
+}
+
+int cancel_whisper_decode(whisper_context * ctx, int * join_ms, int * hits, int * full_rc) {
+    Gate gate;
+    WhisperAbort abort;
+    abort.abort = &gate.abort;
+    std::vector<float> audio(16000, 0.0f);
+    for (int i = 0; i < 16000; i++) {
+        const float t = static_cast<float>(i) / 16000.0f;
+        audio[static_cast<size_t>(i)] = 0.1f * std::sin(2.0f * 3.14159265f * 440.0f * t);
+    }
+    whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
+    params.translate = false;
+    params.language = "en";
+    params.n_threads = 4;
+    params.print_progress = false;
+    params.print_realtime = false;
+    params.print_special = false;
+    params.print_timestamps = false;
+    params.no_timestamps = true;
+    params.single_segment = true;
+    params.no_context = true;
+    params.suppress_blank = true;
+    params.vad = false;
+    params.abort_callback = whisper_abort_cb;
+    params.abort_callback_user_data = &abort;
+    params.encoder_begin_callback = whisper_begin_cb;
+    params.encoder_begin_callback_user_data = &gate;
+    std::thread worker([&] {
+        gate.decode_rc = whisper_full(ctx, params, audio.data(), static_cast<int>(audio.size()));
+        gate.done.store(1);
+    });
+    const int64_t wait_start = now_ms();
+    while (gate.started.load() == 0 && gate.done.load() == 0 && now_ms() - wait_start < 60000) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    const int64_t t0 = now_ms();
+    gate.abort.store(1);
+    worker.join();
+    *join_ms = static_cast<int>(now_ms() - t0);
+    *hits = abort.hits.load();
+    *full_rc = gate.decode_rc;
+    if (gate.decode_rc == -8) {
+        return 1;
+    }
+    return 0;
 }
 
 int cancel_init(const char * path, int * join_ms, int * progress_milli) {
@@ -364,7 +527,58 @@ int main(int argc, char ** argv) {
     std::printf("gpu_device=%s\n", gpu == nullptr ? "none" : ggml_backend_dev_name(gpu));
     std::fflush(stdout);
 
-    const int asr_rc = gpu == nullptr ? 1 : run_asr(argv[2]);
+    whisper_context * asr_ctx = nullptr;
+    const int asr_rc = gpu == nullptr ? 1 : run_asr(argv[2], &asr_ctx);
+
+    int whisper_decode_join_ms = -1;
+    int whisper_decode_hits = 0;
+    int whisper_decode_rc = -1;
+    int whisper_decode_status = 0;
+    if (asr_ctx != nullptr) {
+        whisper_decode_status =
+            cancel_whisper_decode(asr_ctx, &whisper_decode_join_ms, &whisper_decode_hits, &whisper_decode_rc);
+        whisper_free(asr_ctx);
+        asr_ctx = nullptr;
+    }
+    const char * whisper_decode_name = "not_run";
+    if (whisper_decode_rc == -8) {
+        whisper_decode_name = "aborted";
+    } else if (whisper_decode_rc == -6) {
+        whisper_decode_name = "encode_checkpoint";
+    } else if (whisper_decode_status == 0 && whisper_decode_rc >= 0) {
+        whisper_decode_name = "ran_through";
+    }
+    const int whisper_decode_within =
+        whisper_decode_rc == -8 && whisper_decode_join_ms >= 0 && whisper_decode_join_ms <= kReserveMs;
+    std::printf(
+        "whisper_cancel_decode=%s rc=%d hits=%d join_ms=%d reserve_ms=%d within_reserve=%d\n",
+        whisper_decode_name,
+        whisper_decode_rc,
+        whisper_decode_hits,
+        whisper_decode_join_ms,
+        kReserveMs,
+        whisper_decode_within);
+    std::fflush(stdout);
+
+    int whisper_init_join_ms = -1;
+    int whisper_init_poisoned = 0;
+    const int whisper_init_status = cancel_whisper_init(argv[2], &whisper_init_join_ms, &whisper_init_poisoned);
+    const char * whisper_init_name = "not_started";
+    if (whisper_init_status == 1) {
+        whisper_init_name = "aborted";
+    } else if (whisper_init_status == 2) {
+        whisper_init_name = "loaded_fully";
+    }
+    const int whisper_init_within =
+        whisper_init_status == 1 && whisper_init_join_ms >= 0 && whisper_init_join_ms <= kReserveMs;
+    std::printf(
+        "whisper_cancel_init=%s join_ms=%d poisoned=%d reserve_ms=%d within_reserve=%d\n",
+        whisper_init_name,
+        whisper_init_join_ms,
+        whisper_init_poisoned,
+        kReserveMs,
+        whisper_init_within);
+    std::fflush(stdout);
 
     int init_join_ms = -1;
     int init_progress = -1;
@@ -429,7 +643,7 @@ int main(int argc, char ** argv) {
 
     const int layers_on_gpu = off_n > 0 && off_d > 0 && off_n == off_d;
     const int link_pass = vad_rc == 0 && asr_rc == 0 && mt_rc == 0 && gpu != nullptr && layers_on_gpu;
-    const int cancel_pass = init_within && decode_within;
+    const int cancel_pass = whisper_init_within && whisper_decode_within && init_within && decode_within;
     std::printf("link_three=%d cancel_lifecycle=%d ac2=0 ac3=0\n", link_pass, cancel_pass);
     std::printf("result=%s\n", link_pass && cancel_pass ? "ran" : "incomplete");
 

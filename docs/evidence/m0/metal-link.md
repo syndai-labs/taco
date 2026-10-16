@@ -5,8 +5,9 @@ Measured in worktree `~/workspace/syndai/taco-m0-metal` on
 One static Mach-O links whisper.cpp and llama.cpp on llama.cpp's ggml with
 Metal shaders embedded. A later run of that probe opened the three pinned
 files. Whisper small and Hy-MT2 loaded on MTL0. The pinned Silero ONNX was
-rejected. Llama init and decode cancellation joined inside 2 s. M0-AC2 and
-M0-AC3 stay open. This binary is not `taco`.
+rejected by whisper.cpp's VAD loader. Llama and Whisper init/decode
+cancellation joined inside 2 s; process exit then asserted in Metal teardown.
+M0-AC2 and M0-AC3 stay open. This binary is not `taco`.
 
 ## Host
 
@@ -158,9 +159,13 @@ language `en`, VAD inside that call off). `ggml_metal_free` follows
 R4 selection. The file did not need the unmerged CPU STQ pull request to load
 on this llama.cpp commit.
 
-The pinned `silero_vad.onnx` matches the freeze digest and whisper.cpp rejects
-it: bad magic. That loader expects a ggml VAD file. No other VAD file was
-substituted. `link_three=0` because of that.
+The pinned `silero_vad.onnx` matches the freeze digest. The probe calls
+`whisper_vad_init_from_file_with_params`, and `whisper_vad_init_with_params`
+rejects the file at the ggml magic check (`invalid model data (bad magic)`).
+That is the VAD API, not `whisper_init` on the ONNX. The frame loop
+(`whisper_vad_detect_speech_no_reset`) never runs. No other VAD file was
+substituted. `whisper_full` in the ASR pass keeps `vad` false. `link_three=0`
+because of that.
 
 Cancellation, same process, reserve 2000 ms:
 
@@ -174,13 +179,66 @@ Cancellation, same process, reserve 2000 ms:
   returns 2. Join is 9 ms. Stderr reports
   `ggml_backend_sched_graph_compute_async failed with error 1`.
 
-`cancel_lifecycle=1` is only that llama pair. Whisper was not cancelled.
-`T-M0-CANCEL-LIFECYCLE` is still the Rust panic. The probe is not `taco`.
+`cancel_lifecycle=1` on that run is only the llama pair. The next section is the Whisper cancel run.
+
+## Whisper cancel (2026-10-17)
+
+Same probe, after it learned Whisper init and decode cancel. Digests matched
+again. ASR still used `vad=false`. Decode cancel is a second `whisper_full` on
+the context that just transcribed. Init cancel is a later
+`whisper_init_with_params` through a loader that, once abort is set and the
+read is past 4 MiB, supplies `99` for the next 4-byte weight header.
+`whisper_init_from_file_with_params` has no abort callback, and `read`'s
+return count is ignored, so this is the checkpoint the loader can force.
+There is no wrapper timeout and no `pthread_cancel`.
+
+```text
+vad=fail
+gpu_offload=1
+gpu_device=MTL0
+asr=ok use_gpu=1 segments=1 text_bytes=21
+whisper_cancel_decode=aborted rc=-8 hits=2 join_ms=204 reserve_ms=2000 within_reserve=1
+whisper_cancel_init=aborted join_ms=115 poisoned=1 reserve_ms=2000 within_reserve=1
+cancel_init=aborted join_ms=312 progress_milli=0 reserve_ms=2000 within_reserve=1
+mt_load=0 n_gpu_layers=-1 offloaded=33/33
+mt=ok text_bytes=34
+cancel_decode=aborted rc=2 steps=2 join_ms=10 reserve_ms=2000 within_reserve=1
+link_three=0 cancel_lifecycle=1 ac2=0 ac3=0
+result=incomplete
+```
+
+The shell status after that process was 134, not 1. Stderr for the new
+checkpoints:
+
+```text
+whisper_vad_init_from_file_with_params: loading VAD model from '.../silero_vad.onnx'
+whisper_vad_init_with_params: invalid model data (bad magic)
+whisper_full_with_state: failed to decode
+whisper_model_load:         MTL0 total size =   487.01 MB
+whisper_model_load: invalid n_dims 99 in model file (expected 0 <= n_dims <= 4)
+whisper_init_with_params_no_state: failed to load model
+ggml_metal_device.m:1041: GGML_ASSERT([rsets->data count] == 0) failed
+```
+
+Decode: `encoder_begin` marks the worker inside `whisper_full`. The abort flag
+is set then. The callback's first hit is the end of the encoder graph and
+returns false, so the call continues. The second hit is the end of the first
+decoder graph and returns true. `whisper_full` returns -8. Join is 204 ms.
+The callback is not consulted in the middle of a Metal graph; the in-flight
+graph runs to that checkpoint.
+
+Init: `use gpu = 1`. The load prints `MTL0 total size = 487.01 MB` and then
+`invalid n_dims 99`. The context pointer is null. Join is 115 ms.
+`whisper_init_with_params_no_state` deletes that context without
+`whisper_free`, so the Metal buffers from the aborted load are not released.
+At process exit, `ggml_metal_device_free` asserts that residency-set count is
+0. The four joins had already been printed. `cancel_lifecycle=1` is those
+joins. It is not a released-ownership result, and it is not the Rust test.
 
 ## What this does not accept
 
 - [ ] **M0-AC2:** Silero ONNX did not load. ASR and translation ran in the probe, not in `taco`.
-- [ ] **M0-AC3:** Llama init and decode joined inside the reserve. Whisper did not. The Rust test did not pass.
+- [ ] **M0-AC3:** Whisper and llama init/decode joins fit in 2 s inside the probe. Exit then asserted in Metal teardown. The Rust test did not pass. The probe is not `taco`.
 - The `taco` binary from `cargo build` does not link these engines. `cargo test` does not build this probe.
 - `T-M0-LINK-THREE-MODELS` and `T-M0-CANCEL-LIFECYCLE` stay fail-closed.
 - A helper process, a sidecar dylib, and `-ngl 0` were not used, and they remain rejected.
