@@ -169,7 +169,7 @@ fn open_microphone_spike() -> Result<(), ErrorCode> {
     let ring = Arc::new(CaptureRing::allocate(48_000, 1, 4)?);
     let mic = capture::open_default_microphone(Arc::clone(&ring))
         .map_err(|_| ErrorCode::CaptureNotAvailable)?;
-    // Hold only after open returns Ok. CPAL may still block inside open until TCC answers.
+    // After Ok only. Does not cover a CPAL wait inside open.
     thread::sleep(Duration::from_millis(spike_hold_ms()));
     drop(mic);
     let _ = ring.lost();
