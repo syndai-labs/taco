@@ -54,12 +54,19 @@ These are two corners, not a full hardware-by-OS matrix. An M1 on the current
 OS, or a newer chip on 14.2, is unqualified until it has its own evidence.
 Results from C2 do not stand in for C1.
 
+PR #19 tip `8ebd0fc` ([os-floor.md](../evidence/m0/os-floor.md)) revises the
+minimum OS floor to Partial: macOS 27.0.1 (26A434) on Apple Silicon. macOS 14.2
+was not measured and is not a confirmed floor. That revision is not a support
+promise. C2 stays open. The alternate TCC launch parent is a launchd user
+agent, named and not exercised. Cursor.app is not an acceptance host.
+M0-AC1 and M0-AC4 stay open.
+
 | Dimension | Proposed starting point | Required evidence |
 | --- | --- | --- |
 | Models | Silero; multilingual Whisper small; Hy-MT2 1.8B GGUF from the main GGUF repository | Publisher revision, format, quantization, SHA-256, license, llama.cpp commit, Metal settings |
 | Language table | Closed. Proposed qualified pairs `en→zh` and `zh→en` | Manifest maps each user tag to the ASR id and the publisher’s full prompt language name |
 | Experimental pairs | None | An empty list is valid. Adding a pair is an M0 decision, not an implied model feature |
-| Terminal hosts | Apple Terminal, plus one named alternate | Named before M6. Unnamed “a modern terminal” is not evidence |
+| Terminal hosts | Apple Terminal for presentation. Alternate TCC launch parent: launchd user agent, named at PR #19 tip `8ebd0fc` and not exercised. Cursor.app is not an acceptance host | A second GUI terminal was not measured. The launchd name is not a run |
 | Corpus | Licensed or consented development set and a disjoint held-out set | Fixture hashes, speakers, timings, exclusions, reviewer names |
 
 R4 names quantization and sampling as unselected. M0 accepts no quantization
@@ -296,8 +303,10 @@ run. There is no provisional pass.
 Sixteen endurance cells: 4 source categories × 2 UI modes × 2 corners. Each
 cell is 5 unscored warmup minutes plus at least 60 measured minutes, one frozen
 direction, and the normal-load schedule. Each cell contains at least 200 timed
-natural utterances so its own latency quantiles are valid. C1 cells run in
-Apple Terminal. C2 cells run in the named alternate host.
+natural utterances so its own latency quantiles are valid. Presentation cells
+that run use Apple Terminal. C2 has no machine, so those cells are not run.
+The named alternate is a launchd user agent (PR #19 tip `8ebd0fc`), not a GUI
+terminal and not C2. It has not been exercised.
 
 Direction assignment, with d1 and d2 the ordered qualified pairs. This rotation
 puts both directions on every source category and every corner. Do not collapse a
