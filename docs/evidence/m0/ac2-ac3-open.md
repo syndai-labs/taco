@@ -1,36 +1,27 @@
-# M0-AC2 and M0-AC3 stay unchecked (tip `7f98ab1`)
+# M0-AC2 and M0-AC3 stay unchecked
 
-Recorded 2026-10-16 against `cursor/m0-taco-engines-b19b` at `7f98ab1`.
-Measurements are the ones already in [taco-engines.md](taco-engines.md).
-This note does not re-run them and does not check an acceptance box.
+Refreshed 2026-10-16. No acceptance box is checked. The cargo-test prove on
+`7f98ab1` stays in [taco-engines.md](taco-engines.md). This note does not
+re-run it.
 
-Proven on that tip: `T-M0-LINK-THREE-MODELS` and `T-M0-CANCEL-LIFECYCLE` are
-ok via `session::prove_native`. The process printed
-`link_three=1 cancel_lifecycle=1 ac2=0 ac3=0`. Silero ran through static ORT
-on the CPU execution provider (`vad_ort=ok device=cpu`). Whisper VAD failed
-bad magic. ASR and MT ran on Metal MTL0. Joins were under 2 seconds.
-`otool -L` showed system libraries only. The run was not `taco run`.
-Multi-cycle residency was not measured.
+## Gaps
 
-`origin/cursor/m0-engines-residency-b19b` is not on the remote. No pull
-request measures catalog residency.
+(a) Still open. Silero is the ORT CPU execution provider (`device=cpu` on
+the #30 `taco run`, `ep=CPU` on the #32 residency series). M0-AC2 requires
+observed Metal GPU execution. A Metal EP worker may ship separately.
 
-## Why both boxes stay open
+(b) Closed for prove reachable from `taco run`. #30 `e2ec751` ran an ad-hoc
+signed Mac `taco run` with `TACO_ENGINES_PROVE=1`. Stdout printed
+`link_three=1 cancel_lifecycle=1 ac2=0 ac3=0`. Exit 0. `codesign` reports
+`Signature=adhoc`, which is not a Developer ID signature. `ac2` and `ac3`
+stayed 0. Detail: [taco-run-prove.md](taco-run-prove.md).
 
-(a) The VAD provider was CPU. M0-AC2 requires observed Metal GPU execution.
-A CPU-only VAD run does not pass.
-
-(b) The cargo-test pass on tip `7f98ab1` called `session::prove_native`.
-A later ad-hoc signed Mac `taco run` with `TACO_ENGINES_PROVE=1` is in
-[taco-run-prove.md](taco-run-prove.md). It printed
-`link_three=1 cancel_lifecycle=1 ac2=0 ac3=0` and exited 0. This note does
-not check either box.
-
-(c) `T-M0-LINK-THREE-MODELS` requires repeated init and teardown, with
-resident native allocations back at the post-first-teardown baseline. Each
-cargo test called `prove_native` once. That measurement was not taken.
+(c) Still blocks M0-AC2 and M0-AC3. #32 `0972b2d`
+(`cursor/m0-engines-residency-b19b`, `docs/evidence/m0/engines-residency.md`)
+ran 100 `session::prove_native` cycles in one process.
+`phys_footprint` after cycle 100 is 252346632 bytes above the cycle-1
+teardown. Tolerance is 33554432 bytes. The comparison fails.
 
 ## Consequence
 
-M0 cannot claim M0-AC2 or M0-AC3 until (a), (b), and (c) are closed, or the
-charter accepts them.
+M0-AC2 and M0-AC3 stay unchecked. (a) and (c) are still open.
