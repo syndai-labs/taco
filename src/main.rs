@@ -139,6 +139,10 @@ fn dispatch(cli: Cli) -> Result<(), i32> {
             ui,
             model_dir,
         } => {
+            // Spike only. Unset keeps the capture stop. Not an acceptance pass.
+            if std::env::var("TACO_ENGINES_PROVE").ok().as_deref() == Some("1") {
+                return engines_prove(model_dir.as_deref());
+            }
             let mut session = Session::new();
             let req = RunRequest {
                 sources: &source,
@@ -163,6 +167,28 @@ fn dispatch(cli: Cli) -> Result<(), i32> {
                 Err(code) => refuse(Err(code)),
             }
         }
+    }
+}
+
+/// Same load, infer, and cancel as `session::prove_native`. Prints the
+/// engine predicates with `ac2` and `ac3` fixed at 0. Refuses when this
+/// binary has no native engines or no model directory.
+fn engines_prove(model_dir: Option<&std::path::Path>) -> Result<(), i32> {
+    let env_dir = std::env::var_os("TACO_MODEL_DIR")
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from);
+    let Some(dir) = model_dir.or(env_dir.as_deref()) else {
+        return refuse(Err(ErrorCode::EngineNotLinked));
+    };
+    match session::prove_native(dir, taco::limits().cancel_reserve_ms()) {
+        Ok(proof) => {
+            println!(
+                "link_three={} cancel_lifecycle={} ac2=0 ac3=0",
+                proof.link_three, proof.cancel_lifecycle
+            );
+            Ok(())
+        }
+        Err(code) => refuse(Err(code)),
     }
 }
 

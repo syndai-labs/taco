@@ -208,6 +208,54 @@ fn t_m0_reject_inputs_accepts_closed_selectors() {
     assert!(parse_pair("zh", "en").is_ok());
 }
 
+#[test]
+fn taco_run_engines_prove_fails_closed() {
+    let args = [
+        "run",
+        "--source",
+        "default",
+        "--from",
+        "en",
+        "--to",
+        "zh",
+        "--model-dir",
+        "/tmp/taco-m0-absent",
+    ];
+    let off = taco_bin()
+        .args(args)
+        .env_remove("TACO_ENGINES_PROVE")
+        .output()
+        .expect("spawn taco");
+    assert!(!off.status.success());
+    let off_err = String::from_utf8_lossy(&off.stderr);
+    if !cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+        assert!(off_err.contains("platform_unsupported"), "{off_err}");
+        assert!(!off_err.contains("engine_not_linked"), "{off_err}");
+    }
+    let other = taco_bin()
+        .args(args)
+        .env("TACO_ENGINES_PROVE", "0")
+        .output()
+        .expect("spawn taco");
+    if !cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+        let other_err = String::from_utf8_lossy(&other.stderr);
+        assert!(other_err.contains("platform_unsupported"), "{other_err}");
+    }
+    let on = taco_bin()
+        .args(args)
+        .env("TACO_ENGINES_PROVE", "1")
+        .output()
+        .expect("spawn taco");
+    let err = String::from_utf8_lossy(&on.stderr);
+    let out = String::from_utf8_lossy(&on.stdout);
+    assert_eq!(on.status.code(), Some(1), "{err}{out}");
+    assert!(err.contains("engine_not_linked"), "{err}");
+    assert!(
+        !out.contains("link_three="),
+        "unbound prove must not print a predicate: {out}"
+    );
+}
+
 fn parse_many(sources: &[String]) -> ErrorCode {
     let mut session = Session::new();
     session::preflight(
