@@ -1,10 +1,10 @@
 //! In-process VAD, ASR, and MT adapters.
 //!
 //! `initialize`, `infer`, `cancel`, and `close` are the product path.
-//! This revision always refuses: pins, host, and the `native` feature are
-//! checked, then the call still fails because no engine is linked.
-//! ponytail: no worker flag until a Mac build can join one. Unsafe FFI, if it
-//! is required, belongs in a path crate outside this `forbid(unsafe_code)` crate.
+//! Pins, host, and the `native` feature are checked, then the call still
+//! fails. `taco_engines.h` only exports the probe symbol; that is not a load.
+//! ponytail: no worker flag until a Mac build can join one. Unsafe stays in
+//! `native/ffi`, outside this `forbid(unsafe_code)` crate.
 
 use crate::error::ErrorCode;
 use crate::freeze::release_ready;
@@ -31,7 +31,23 @@ pub fn block_reason() -> ErrorCode {
     if !cfg!(feature = "native") {
         return ErrorCode::EngineNotLinked;
     }
+    // ponytail: do not call gpu_offload_linked here. A true probe flag is not
+    // initialize, infer, or cancel, and the call can touch Metal.
     ErrorCode::EngineNotLinked
+}
+
+/// Probe hook. False unless this build linked `taco_engines_linked`.
+/// Not a model load and not an acceptance result.
+#[must_use]
+pub fn gpu_offload_linked() -> bool {
+    #[cfg(feature = "native")]
+    {
+        taco_engines_ffi::gpu_offload_linked()
+    }
+    #[cfg(not(feature = "native"))]
+    {
+        false
+    }
 }
 
 pub fn initialize(role: EngineRole) -> Result<(), ErrorCode> {

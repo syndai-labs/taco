@@ -1,0 +1,10 @@
+[package]
+name = "taco_engines_ffi"
+version = "0.1.0-m0"
+edition = "2021"
+publish = false
+links = "taco_engines"
+description = "Call taco_engines_linked from the static whisper/llama Mach-O. Not a second binary."
+
+[lib]
+path = "src/lib.rs"
