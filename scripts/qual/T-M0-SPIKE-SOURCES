@@ -1,0 +1,14 @@
+#!/bin/sh
+# T-M0-SPIKE-SOURCES — manual tier.
+# Record allow/deny/cleanup for microphone, system output, and one application
+# from the signed spike, then name the external input reserved for M2.
+# This revision has not executed that run. Do not print verdict=pass here.
+set -eu
+out=${1:?evidence path}
+{
+  echo "id=T-M0-SPIKE-SOURCES"
+  echo "verdict=not_run"
+  echo "reason=no signed-artifact allow/deny/cleanup was executed"
+  echo "blocks=M0-AC1,M1,M5"
+} > "$out"
+exit 2

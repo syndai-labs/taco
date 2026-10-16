@@ -1,0 +1,22 @@
+name: ci
+
+on:
+  push:
+    branches: [main, "cursor/**"]
+  pull_request:
+
+jobs:
+  default-tier:
+    name: cargo test (default tier)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Default-tier tests
+        run: cargo test
+      - name: Native tier must stay fail-closed off macOS
+        run: |
+          if cargo test --features native; then
+            echo "native tests unexpectedly passed on Linux" >&2
+            exit 1
+          fi

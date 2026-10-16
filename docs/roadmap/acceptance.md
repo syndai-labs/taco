@@ -1,6 +1,9 @@
 # Acceptance profile and evidence plan
 
 This is the only numeric specification for milestone and release verdicts.
+The machine-readable copy imported by `T-M0-LIMIT-VECTORS` is
+`fixtures/m0/limit-vectors.txt`. That file is not a second budget: a cap that
+disagrees with this page fails the test.
 **No measurement below has been collected.** Values are proposed targets for M0
 to confirm or revise through the [decision register](risks-and-decisions.md).
 They are not promises copied from upstream model cards or benchmarks. Other

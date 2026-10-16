@@ -1,6 +1,6 @@
 # M0 — Feasibility and executable contracts
 
-Status: **Not started**. Depends on: charter only.
+Status: **Not accepted.** Shared `taco` types and default-tier tests are in the tree. Hardware spikes are recorded blockers in the decision register. Acceptance checkboxes stay open. Depends on: charter only.
 Accountable: technical lead; reviewers: capture, inference, and release owners.
 Decisions: [ADR 0001](../adr/0001-process-and-pipeline.md),
 [0002](../adr/0002-audio-capture.md), [0004](../adr/0004-local-inference.md),
