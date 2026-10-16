@@ -101,3 +101,27 @@ error capture_not_available
 ```
 
 Exit 1. Stdout empty. Process 43248 returned immediately. Not a TCC allow or deny.
+
+## Native status with Terminal still live (2026-10-17 00:15 KST)
+
+Same Terminal pid `42771`. A spike-only `fprintf` in `native/process_tap.m` printed the HAL result, then that print was removed. `forbid(unsafe_code)` stayed on `taco`. The lookup was not changed: this is not a binding bug, and a miss does not become a system tap. M0-AC1 stays unchecked.
+
+Diagnostic binary `CDHash=d52e10825f6efdc77472f9404e250661a22a04cf`, Info.plist entries=5, ad-hoc.
+
+`TACO_CAPTURE_SPIKE=1` `--source app:com.apple.Terminal`:
+
+```text
+capture_tap where=find_bundle taco=1 osstatus=0 count=29 matches=0
+error capture_not_available
+```
+
+Exit 1. `taco=1` is `TACO_NOT_FOUND`. `osstatus=0` is `noErr`. The process list read succeeded (29 HAL clients). None had bundle id `com.apple.Terminal`. `AudioHardwareCreateProcessTap` was not called.
+
+`TACO_CAPTURE_SPIKE=1` `--source pid:42771`:
+
+```text
+capture_tap where=find_pid taco=1 osstatus=0 pid=42771 object=0 in_list=0
+error capture_not_available
+```
+
+Exit 1. `object=0` is `kAudioObjectUnknown`. The pid was not in the same process list. CoreAudio's `kAudioHardwarePropertyTranslatePIDToProcessObject` returns that unknown id without an error when the pid is not a HAL client. `kAudioHardwarePropertyProcessObjectList` is only clients connected to CoreAudio. Terminal was running and was not one of them. No dialog. Not an allow or a deny.

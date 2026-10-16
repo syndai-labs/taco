@@ -65,6 +65,10 @@ static AudioObjectID default_output(void) {
 
 int taco_spike_linked(void) { return 1; }
 
+// HAL process objects are clients connected to CoreAudio right now
+// (kAudioHardwarePropertyProcessObjectList). TranslatePIDToProcessObject
+// returns kAudioObjectUnknown and noErr when the pid is not one of them.
+// That miss stays not-found. It does not become a system tap.
 static int find_pid(int32_t pid, AudioObjectID *out_proc) {
     pid_t value = (pid_t)pid;
     AudioObjectID proc = kAudioObjectUnknown;
