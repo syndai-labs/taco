@@ -580,6 +580,64 @@ fn inference_adapters_refuse_in_process() {
     assert!(src_text().contains("fn initialize"));
 }
 
+#[test]
+fn taco_run_prove_gate_fails_closed_in_source() {
+    let main = read("src/main.rs");
+    let run = fn_body(&main, "Commands::Run");
+    let gate = run.find("TACO_ENGINES_PROVE").expect("product gate");
+    let only_one = run.find("== Some(\"1\")").expect("only 1 opens prove");
+    let call = run.find("return engines_prove(").expect("product call");
+    let capture = run.find("start_capture").expect("capture stop");
+    assert!(
+        gate < only_one && only_one < call && call < capture,
+        "unset keeps the capture stop"
+    );
+    assert!(
+        run.contains("Unset keeps the capture stop"),
+        "prove gate must not replace the capture stop"
+    );
+
+    let prove = fn_body(&main, "fn engines_prove");
+    let empty = prove.find("!value.is_empty()").expect("empty model dir");
+    let missing = prove
+        .find("ErrorCode::EngineNotLinked")
+        .expect("missing dir refuses");
+    let native = prove.find("prove_native").expect("native prove");
+    assert!(
+        empty < missing && missing < native,
+        "missing or empty model dir returns before native code"
+    );
+    assert!(prove.contains("ac2=0 ac3=0"), "ac2 and ac3 stay 0");
+    assert!(
+        prove[native..].contains("refuse(Err(code))"),
+        "native Err refuses"
+    );
+
+    let harness = read("tests/t_m0_reject_inputs.rs");
+    assert!(harness.contains("fn taco_run_engines_prove_fails_closed"));
+    assert!(harness.contains("env_remove(\"TACO_ENGINES_PROVE\")"));
+    assert!(harness.contains("\"TACO_ENGINES_PROVE\", \"0\""));
+    assert!(harness.contains("\"TACO_ENGINES_PROVE\", \"1\""));
+    assert!(harness.contains("engine_not_linked"));
+    assert!(harness.contains("platform_unsupported"));
+
+    let note = read("docs/evidence/m0/engines-prove-guards.md");
+    assert!(note.contains("TACO_ENGINES_PROVE"));
+    assert!(note.contains("engine_not_linked"));
+    assert!(note.contains("- [ ]"));
+    assert!(!note.contains("- [x]") && !note.contains("- [X]"));
+}
+
+fn fn_body<'a>(src: &'a str, name: &str) -> &'a str {
+    let start = src.find(name).unwrap_or_else(|| panic!("missing {name}"));
+    let rest = &src[start..];
+    let end = rest[1..]
+        .find("\nfn ")
+        .map(|index| index + 1)
+        .unwrap_or(rest.len());
+    &rest[..end]
+}
+
 fn src_text() -> String {
     let mut out = String::new();
     append_rs(&root().join("src"), &mut out);
