@@ -12,6 +12,7 @@ fn main() {
     println!("cargo:rerun-if-changed=../taco_engines.cpp");
     println!("cargo:rerun-if-changed=../taco_engines.h");
     println!("cargo:rerun-if-changed=../taco_vad_ort.cpp");
+    println!("cargo:rerun-if-changed=../taco_vad_plan.mm");
     println!("cargo:rerun-if-changed=../taco_runtime.cpp");
     println!("cargo:rerun-if-changed=../patches/whisper-free-buffers-on-init-fail.patch");
     println!("cargo:rustc-check-cfg=cfg(taco_engines_static)");
@@ -164,10 +165,14 @@ fn link_ort(out: &Path) {
         return;
     }
     for line in text.lines() {
-        let Some((kind, path)) = line.split_once('\t') else {
+        let Some((kind, raw)) = line.split_once('\t') else {
             continue;
         };
-        let path = PathBuf::from(path);
+        if kind == "framework" {
+            println!("cargo:rustc-link-lib=framework={raw}");
+            continue;
+        }
+        let path = PathBuf::from(raw);
         match kind {
             "normal" => {
                 let stem = stem_of(&path);
