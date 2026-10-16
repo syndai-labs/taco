@@ -388,7 +388,10 @@ fn package_source_and_milestone_boxes() {
     let cargo = read("Cargo.toml");
     assert!(cargo.contains("name = \"taco\""));
     assert!(!cargo.contains("[workspace]"));
-    assert!(cargo.contains("native = []"));
+    assert!(cargo.contains("native = [\"dep:taco_engines_ffi\"]"));
+    assert!(cargo.contains("path = \"native/ffi\""));
+    assert!(cargo.contains("optional = true"));
+    assert!(!cargo.contains("whisper-rs"));
     assert!(cargo.contains("required-features = [\"native\"]"));
     let deps = cargo
         .split("[dependencies]")
@@ -543,10 +546,35 @@ fn inference_adapters_refuse_in_process() {
     }
     let note = read("docs/evidence/m0/engine-adapters.md");
     assert!(note.contains("scaffolding"));
+    assert!(note.contains("scaffolding bridge only"));
     assert!(note.contains("not M0-AC2"));
     assert!(note.contains("not M0-AC3"));
     assert!(!note.contains("- [x]"));
     assert!(!note.contains("- [X]"));
+    let probe = engines::gpu_offload_linked();
+    if !cfg!(all(
+        feature = "native",
+        target_os = "macos",
+        target_arch = "aarch64"
+    )) {
+        assert!(
+            !probe,
+            "static engine link stays false off macOS aarch64 native builds"
+        );
+    }
+    let cmake = read("native/CMakeLists.txt");
+    assert!(cmake.contains("BUILD_SHARED_LIBS OFF"));
+    assert!(cmake.contains("GGML_METAL_EMBED_LIBRARY ON"));
+    assert!(!cmake.contains("taco_link_probe"));
+    assert!(!cmake.contains("FetchContent"));
+    let hook = read("native/ffi/build.rs");
+    assert!(hook.contains("TACO_LLAMA_SRC"));
+    assert!(hook.contains("TACO_WHISPER_SRC"));
+    assert!(hook.contains("macos"));
+    assert!(read("native/taco_engines.h").contains("taco_engines_linked"));
+    assert!(!read("native/ffi/Cargo.toml").contains("[[bin]]"));
+    assert!(!read("native/ffi/Cargo.toml").contains("cdylib"));
+    assert!(read("native/ffi/src/lib.rs").contains("unsafe {"));
     assert!(read("src/main.rs").contains("open_inference"));
     assert!(!read("Cargo.toml").contains("cdylib"));
     assert!(!read("Cargo.toml").contains("crate-type"));

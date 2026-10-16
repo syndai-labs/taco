@@ -16,11 +16,13 @@ path = "src/main.rs"
 
 [dependencies]
 clap = { version = "=4.5.21", features = ["derive"] }
+taco_engines_ffi = { path = "native/ffi", optional = true }
 
 [features]
 default = []
-# Native tests load pinned models on Metal. They are not part of `cargo test`.
-native = []
+# Off by default. Pulls only the path crate that can call taco_engines_linked.
+# Does not fetch models or build Metal unless TACO_LLAMA_SRC and TACO_WHISPER_SRC are set.
+native = ["dep:taco_engines_ffi"]
 
 [[test]]
 name = "t_m0_reject_inputs"

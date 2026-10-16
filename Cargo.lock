@@ -156,7 +156,12 @@ name = "taco"
 version = "0.1.0-m0"
 dependencies = [
  "clap",
+ "taco_engines_ffi",
 ]
+
+[[package]]
+name = "taco_engines_ffi"
+version = "0.1.0-m0"
 
 [[package]]
 name = "unicode-ident"
