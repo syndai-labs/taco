@@ -10,6 +10,9 @@
 
 #include <CommonCrypto/CommonDigest.h>
 
+#include <mach/mach.h>
+#include <malloc/malloc.h>
+
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -21,6 +24,35 @@
 #include <vector>
 
 int taco_vad_ort(const char * path);
+
+extern "C" void taco_engines_vm_sample(taco_vm_sample * out) {
+    if (out == nullptr) {
+        return;
+    }
+    std::memset(out, 0, sizeof *out);
+    task_vm_info_data_t info;
+    std::memset(&info, 0, sizeof info);
+    mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
+    const kern_return_t kr = task_info(mach_task_self(), TASK_VM_INFO, reinterpret_cast<task_info_t>(&info), &count);
+    if (kr != KERN_SUCCESS || count < TASK_VM_INFO_REV1_COUNT) {
+        return;
+    }
+    out->ok = 1;
+    out->phys_footprint = info.phys_footprint;
+    out->resident_size = info.resident_size;
+    out->device = info.device;
+    if (count >= TASK_VM_INFO_REV3_COUNT) {
+        out->graphics_ok = 1;
+        out->ledger_phys_footprint_peak = info.ledger_phys_footprint_peak;
+        out->graphics_footprint = info.ledger_tag_graphics_footprint;
+        out->graphics_nofootprint = info.ledger_tag_graphics_nofootprint;
+    }
+    malloc_statistics_t stats;
+    std::memset(&stats, 0, sizeof stats);
+    malloc_zone_statistics(malloc_default_zone(), &stats);
+    out->malloc_size_in_use = stats.size_in_use;
+    out->malloc_max_size_in_use = stats.max_size_in_use;
+}
 
 namespace {
 
