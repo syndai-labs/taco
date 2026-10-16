@@ -1,5 +1,6 @@
 //! Frozen manifest, corners, corpora, and the unrun scheduling experiment.
-//! Digests stay unset until a macOS measurement records them.
+//! Digests come from `docs/evidence/m0/pin-measurement.md` (2026-10-16 Mac host).
+//! Measurement is not a Metal load and does not qualify M0-AC2.
 
 use crate::error::ErrorCode;
 use crate::language::Language;
@@ -13,27 +14,27 @@ pub struct ArtifactPin {
     pub filename: Option<&'static str>,
 }
 
-/// Flip only together with measured digests from the native spike.
-pub const PINS_MEASURED: bool = false;
+/// True only together with measured digests and filenames below.
+pub const PINS_MEASURED: bool = true;
 
 pub const PINS: [ArtifactPin; 3] = [
     ArtifactPin {
         role: "vad",
         family: "silero",
-        sha256: None,
-        filename: None,
+        sha256: Some("1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3"),
+        filename: Some("silero_vad.onnx"),
     },
     ArtifactPin {
         role: "asr",
         family: "whisper-small-multilingual",
-        sha256: None,
-        filename: None,
+        sha256: Some("1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b"),
+        filename: Some("ggml-small.bin"),
     },
     ArtifactPin {
         role: "mt",
         family: "hy-mt2-1.8b-gguf",
-        sha256: None,
-        filename: None,
+        sha256: Some("dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699"),
+        filename: Some("Hy-MT2-1.8B-Q4_K_M.gguf"),
     },
 ];
 
