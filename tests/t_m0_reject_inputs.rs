@@ -173,19 +173,23 @@ fn t_m0_reject_inputs_skips_state_machine() {
 fn t_m0_reject_inputs_valid_selector_does_not_capture() {
     let mut session = Session::new();
     let sources = vec!["default".to_string()];
-    let err = session::preflight(
-        &mut session,
-        &RunRequest {
-            sources: &sources,
-            from: "en",
-            to: "zh",
-            ui: "cli",
-        },
-    )
-    .unwrap_err();
-    assert_code(err, ErrorCode::ModelsUnpinned);
-    assert_eq!(session.state, SessionState::Failed);
-    assert!(!session.capture_started);
+    let req = RunRequest {
+        sources: &sources,
+        from: "en",
+        to: "zh",
+        ui: "cli",
+    };
+    // Digests are measured; preflight still does not start capture.
+    if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+        let ok = session::preflight(&mut session, &req).expect("pinned macOS preflight");
+        assert_eq!(ok.selector, parse_selector("default").unwrap());
+        assert!(!session.capture_started);
+    } else {
+        let err = session::preflight(&mut session, &req).unwrap_err();
+        assert_code(err, ErrorCode::PlatformUnsupported);
+        assert_eq!(session.state, SessionState::Failed);
+        assert!(!session.capture_started);
+    }
     assert_eq!(
         session::start_capture(&mut session).unwrap_err(),
         ErrorCode::CaptureNotAvailable
