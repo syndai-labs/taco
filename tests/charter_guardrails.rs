@@ -81,7 +81,10 @@ fn closed_vocabularies_and_four_sources() {
         selector::on_unresolved_app(),
         selector::SelectionFailurePolicy::StopDoNotBroaden
     );
-    assert!(selector::EXTERNAL_INPUT.display_name.is_none());
+    assert_eq!(
+        selector::EXTERNAL_INPUT.display_name,
+        Some("syndai-iphone-02 Microphone")
+    );
     assert!(!selector::EXTERNAL_INPUT.qualified_in_m0);
 
     assert_eq!(taco::ledger::TOP_LEVEL.len(), 5);
