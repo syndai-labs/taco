@@ -82,6 +82,7 @@ fn closed_vocabularies_and_four_sources() {
         selector::SelectionFailurePolicy::StopDoNotBroaden
     );
     assert!(selector::EXTERNAL_INPUT.display_name.is_none());
+    assert!(selector::EXTERNAL_INPUT.device_uid.is_none());
     assert!(!selector::EXTERNAL_INPUT.qualified_in_m0);
 
     assert_eq!(taco::ledger::TOP_LEVEL.len(), 5);

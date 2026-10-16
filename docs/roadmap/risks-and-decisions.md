@@ -62,29 +62,61 @@ proposed mitigation was implemented; inspect whether the experiment actually pas
 
 ## M0 stop records (2026-10-16)
 
-The contract freeze is `828bd48`. Early measurements are in
+The contract freeze is `828bd48`. Measured pins are `5e9649c`
+([pin-measurement.md](../evidence/m0/pin-measurement.md)). Early measurements are in
 [macos-spike-results.md](../evidence/m0/macos-spike-results.md). The Info.plist
 bind follow-up is in [native-impl.md](../evidence/m0/native-impl.md) (`3602000`).
-None of these rows accept M0. Milestone checkboxes stay open. M1 and M5 stay blocked.
+The Metal link probe is [metal-link.md](../evidence/m0/metal-link.md), copied from
+`cursor/m0-metal-link-b19b` tip `c0b2b22` (PR #12). The process-tap runs are
+[process-tap.md](../evidence/m0/process-tap.md), copied from
+`cursor/m0-process-tap-b19b` tip `5958a71` (PR #11). That tip includes the Terminal
+HAL miss first recorded at `fcb3ae2`. Native probe and tap sources stay on those
+branches. This branch does not relink ggml or CoreAudio.
 
-Host: Apple M1 Pro, 32 GiB (34359738368 bytes), macOS 27.0.1 (26A434),
-`aarch64-apple-darwin`, rustc 1.99.0. Not C1 (16 GiB, macOS 14.2). Not a named C2.
+None of these rows accept M0. M0-AC1, M0-AC2, and M0-AC3 stay open. Milestone
+checkboxes stay unchecked. M1 and M5 stay blocked.
+
+Host for the cited Mac runs: Apple M1 Pro, 32 GiB (34359738368 bytes), macOS
+27.0.1 (26A434), `aarch64-apple-darwin`, rustc 1.99.0. Not C1 (16 GiB, macOS 14.2).
+Not a named C2.
 
 | ID | Decision | Owner | Evidence on this host | Rejected alternative | Consequence |
 | --- | --- | --- | --- | --- | --- |
-| R1 | Stop. Capture not reached. Packaging bind is fixed; digests are measured; session still lacks a capture backend. | macOS owner | At `234c26a`, `scripts/sign-debug.sh` yields `Info.plist entries=5`. Pin measurement recorded three digests (`pin-measurement.md`) and `PINS_MEASURED` is true. Bound `taco run` previously stopped at `models_unpinned` before pins; with pins, preflight should reach `capture_not_available` until CoreAudio/process-tap lands. No TCC prompt yet. `T-M0-SPIKE-SOURCES` remains `verdict=not_run`. | Treat linker-signed unbound, inspector `Pass`, `models_unpinned`, or `capture_not_available` as a TCC/capture result. | Blocks M0 acceptance, M1, and M5 until real capture evidence lands. |
-| R2 | Digests measured; Metal link still not run. llama.cpp commit stays TBD. | native runtime owner | `docs/evidence/m0/pin-measurement.md` records sha256 for `silero_vad.onnx`, `ggml-small.bin`, and `Hy-MT2-1.8B-Q4_K_M.gguf`. `PINS_MEASURED` is true with those filenames. Files were hashed, not loaded. The Metal compiler is installed (32023.921) and was not used. `T-M0-LINK-THREE-MODELS` did not execute. | Subprocess `whisper-cli` / `llama-completion`, `-ngl 0`, a helper dylib, another family's GGUF, or the 1.25-bit and 2-bit repos. | Blocks M0-AC2 until in-process Metal load. M1/M5 still blocked. |
-| R3 | Stop. Not run. | audio owner | No incremental Silero runtime was linked. Forced-split behavior is a contract (`max_duration`, zero owned overlap), not a model result. | Batch `whisper_full` VAD, a hand-written model, or a user-installed ONNX dylib. | Blocks M0 acceptance and M2's real VAD. M1 stays blocked with the rest of M0. |
-| R4 | Stop. Not run. No quantization, instruction winner, or sampling arm is selected. | inference owner | `EXPERIMENT.ran` is false and every selected field is empty. No development-corpus comparison ran on this host. Baseline instruction remains the publisher English template; that is the ADR starting point, not a comparison result. Publisher temperature 0.7 is an arm, not the active sampler (`SELECTED_SAMPLING` is none). | Pick a quant or temperature without the development-corpus comparison. | Blocks M0 acceptance and M1's releasable bundle. |
-| R5 | Stop. Not run. | runtime owner | `t_m0_cancel_lifecycle` panicked: `no Metal worker was cancelled or joined inside the shutdown reserve`. Shutdown arithmetic stays 8 s drain + 2 s join. | `pthread_cancel`, a detached worker, or a wrapper timeout. | Blocks M0 acceptance, M1, and M5. |
+| R1 | Stop. System and Chrome process taps opened and were dropped. Neither TCC prompt was shown. | macOS owner | Tip `5958a71`, [process-tap.md](../evidence/m0/process-tap.md). Ad-hoc `ai.syndai.taco`, Info.plist entries=5, `CDHash=adbd8448…`. `TACO_CAPTURE_SPIKE=1` `--source system` exited 0. `--source app:com.google.Chrome` and `--source pid:688` exited 0. `tccd` logged `kTCCServiceMicrophone` preflight only (`authValue=2`, `authReason=2`). No `AUTHREQ_PROMPTING`. No `kTCCServiceAudioCapture` line. No dialog, no Allow, no Deny. Tap and private-aggregate destroy were not separately traced. Terminal as a source (`app:com.apple.Terminal`, `pid:42771`) is the R9 miss, not a second terminal host. Both terminal hosts still lack an allow/deny record. `T-M0-SPIKE-SOURCES` stays `verdict=not_run`. | Treat a microphone preflight, exit 0, or `authValue=2` as Allow or Deny. Treat a HAL miss as a TCC result. | Blocks M0-AC1, M1, and M5 until microphone and audio-capture prompts are shown, with allow, deny, and observed cleanup, in both terminal hosts. |
+| R2 | Partial. Whisper small and Hy-MT2 loaded on MTL0 in the probe. Pinned Silero ONNX did not. | native runtime owner | Tip `c0b2b22`, [metal-link.md](../evidence/m0/metal-link.md). One static Mach-O. llama.cpp `2a66703` (ggml 0.27.0) and whisper.cpp `0c7be69` on that ggml; whisper's vendored ggml was not compiled. In-process SHA-256 matched the three pins. `ggml-small.bin` is type small, `use gpu = 1`, `MTL0 total size = 487.01 MB`, `whisper_full` returned 0. `Hy-MT2-1.8B-Q4_K_M.gguf` is `hunyuan-dense`, `n_gpu_layers=-1`, `offloaded 33/33 layers to GPU`, `MTL0_Mapped` 1075.74 MiB plus `CPU_Mapped` 193.57 MiB. Publisher PR 22836 stays an unmerged CPU STQ kernel and was not required for this load. `silero_vad.onnx` failed `invalid model data (bad magic)`. Probe stdout: `link_three=0` `ac2=0`. The probe is not the `taco` binary. `T-M0-LINK-THREE-MODELS` still panics. | Subprocess `whisper-cli` / `llama-completion`, `-ngl 0`, a helper process, a sidecar dylib, a ggml VAD substituted for the pinned ONNX, another family's GGUF, or the 1.25-bit and 2-bit repos. | Blocks M0-AC2 until all three pinned files load in `taco` on Metal. M1 and M5 stay blocked. |
+| R3 | Stop. No Silero runtime is chosen. The pinned ONNX is rejected by the whisper VAD loader. | audio owner | Tip `c0b2b22`, [metal-link.md](../evidence/m0/metal-link.md). Digest matched `1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3`. `whisper_vad_init_with_params` reported `invalid model data (bad magic)`. That loader expects a ggml VAD file. No other VAD file was substituted. No incremental Silero runtime was linked: frame shape, state reset, forced 15-second split, and zero owned overlap were not measured. Those bounds stay a contract, not a model result. | Batch `whisper_full` VAD, a hand-written model, a user-installed ONNX dylib, or swapping a ggml VAD in under the Silero pin. | Blocks M0 acceptance and M2's real VAD. M1 stays blocked with the rest of M0. |
+| R4 | Stop. Not run. No quantization, instruction winner, or sampling arm is selected. | inference owner | `EXPERIMENT.ran` is false and every selected field is empty. No development-corpus comparison ran on this host. Baseline instruction remains the publisher English template; that is the ADR starting point, not a comparison result. Publisher temperature 0.7 is an arm, not the active sampler (`SELECTED_SAMPLING` is none). The greedy 8-token smoke in metal-link.md (`c0b2b22`, 34 bytes) is not an R4 selection. | Pick a quant or temperature without the development-corpus comparison. Do not treat the probe's greedy smoke as the winner. | Blocks M0 acceptance and M1's releasable bundle. |
+| R5 | Partial. Llama init and decode joined inside 2 s. Whisper was not cancelled. | runtime owner | Tip `c0b2b22`, [metal-link.md](../evidence/m0/metal-link.md). Init abort at progress 0 made `llama_model_load_from_file` return null; join 222 ms. After a kept Metal context existed, `llama_decode` returned 2 and the worker joined in 9 ms. Stderr: `ggml_backend_sched_graph_compute_async failed with error 1`. Reserve is 2000 ms. Whisper had no cancel. Probe stdout: `cancel_lifecycle=1` `ac3=0`. That flag is only the llama pair. `t_m0_cancel_lifecycle` still panics. Shutdown arithmetic stays 8 s drain + 2 s join. The probe is not `taco`. | `pthread_cancel`, a detached worker, or a wrapper timeout. | Blocks M0-AC3, M1, and M5 until both engines cancel inside the reserve in `taco`. |
 | R6 | Corners are named and unqualified. | release owner | This worker is M1 Pro, 32 GiB, macOS 27.0.1 (26A434). C1 stays "M1 class, 16 GiB, macOS 14.2". C2 stays "a different Apple Silicon machine" with no OS build. Neither `qualified` flag is set. | Call this Mac C1, or call "macOS 27.0.1" the unnamed C2 build without a decision. | Blocks the support claim, M1, and M5. |
 | R7 | Closed table frozen: `en→zh` and `zh→en`. Experimental pairs empty. Quality is not qualified. | product/quality owner | `language::PAIRS` and the reject tests. No corpus was scored on this host. | Auto-detect, identical tags, or the publisher language inventory. | The table is binding. Adequacy gates stay blocked. M1 still waits on M0 acceptance. |
 | R8 | Proposed numbers are frozen in `fixtures/m0/limit-vectors.txt` and were not revised. Measurement was not run. | audio/runtime/quality owners | No latency, memory, or slope measurement on this host. `T-M0-LIMIT-VECTORS` still fails if the fixture drifts from acceptance.md. | Redefine `t_audio_end`, drop failures, or widen the slope past 1 MiB/min. | R8 stays open for a later measured revision. Quality gates stay blocked. |
-| R9 | Selector semantics frozen: a failed app selection does not become system capture. Helper attribution is unproven. | macOS owner | `app:com.apple.Terminal` exited `models_unpinned` before a tap. `SelectionFailurePolicy::StopDoNotBroaden`. External input device name is unset and `qualified_in_m0` is false. | Treat `models_unpinned` as an app-tap result, or name a device that was not reserved. | Blocks M5 and the M2 device reservation. |
-| R10 | Design frozen: the session takes verified local handles and has no fetch client. Inode proof is M1. | model owner | `taco run` refused with `models_unpinned`. `release_ready()` is false. Pins stay TBD. | A session URL or an HTTP client parameter. | M1 must prove the load boundary. M1 does not start before M0 is accepted. |
+| R9 | Partial. A failed app selection does not become system capture. Helper inclusion, isolation, and the external-input name are open. | macOS owner | Tip `5958a71`, [process-tap.md](../evidence/m0/process-tap.md). `SelectionFailurePolicy::StopDoNotBroaden` held. Terminal was running (pid 42771) and was not a HAL client: `find_bundle` `osstatus=0` `count=29` `matches=0`; `find_pid` `object=0` `in_list=0`. Both selectors returned `capture_not_available`. `AudioHardwareCreateProcessTap` was not called for that miss. Chrome (`com.google.Chrome`, object=103, pid=688, `IsRunning=0`) was already on the list; `app:` and `pid:` exited 0. A one-shot list showed `com.google.Chrome.helper` as a different bundle. No helper was selected. No other-audio isolation fixture ran. `EXTERNAL_INPUT.display_name` and `device_uid` stay unset. `qualified_in_m0` is false. No Mac evidence names an external input class or UID. | Treat the Terminal miss as a TCC deny, or broaden it to system capture. Treat the Chrome open as proof that helpers are included. Invent a device name that was not observed. Drop the selected-app category. | Blocks M0-AC1's named-device clause, M5's selector proof, and M2 qualification of external input. |
+| R10 | Design frozen: the session takes verified local handles and has no fetch client. Inode proof is M1. | model owner | Digests are in [pin-measurement.md](../evidence/m0/pin-measurement.md) (`5e9649c`). `PINS_MEASURED` and `release_ready()` are true. `fetch_models` still returns `fetch_refused_unpinned`. Inode or handle proof of the load boundary was not run. The earlier `models_unpinned` refusal predates those pins. | A session URL or an HTTP client parameter. | M1 must prove the load boundary. M1 does not start before M0 is accepted. |
 | R11 | License records exist per model and per engine. SPDX fields are unset. | release owner | No new license text was measured. `LICENSES` keeps model subjects distinct from whisper.cpp and llama.cpp. | Invent license text, or treat an engine license as the model license. | Blocks distribution of weights. |
-| R12 | Stop. Not run. | inference/quality owners | No serialized-vs-concurrent measurement. The installed Metal compiler was not a timing run. | A microbenchmark or a CPU timing presented as the joint gate. | Blocks M0 acceptance and M4's baseline. |
-| R14 | Corners, terminal hosts, and devices are not provisioned. | release/quality owners | This shell on macOS 27.0.1 is a measurement host, not a qualified corner. C2 OS build and the alternate terminal host are unnamed. No second terminal host was exercised. | An aggregate "works on this Mac" verdict. | Release cells stay not run. M1 and M5 stay blocked. |
+| R12 | Stop. Not run. | inference/quality owners | No serialized-vs-concurrent measurement. The MTL0 load in metal-link.md (`c0b2b22`) is not a timing run. | A microbenchmark, a CPU timing, or that load presented as the joint gate. | Blocks M0 acceptance and M4's baseline. |
+| R14 | Corners, terminal hosts, and devices are not provisioned. | release/quality owners | This shell on macOS 27.0.1 is a measurement host, not a qualified corner. C2 OS build and the alternate terminal host are unnamed. No second terminal host was exercised. The external-input slot below is unnamed. | An aggregate "works on this Mac" verdict. | Release cells stay not run. M1 and M5 stay blocked. |
+
+## M2 external-input reservation (blocks M0-AC1)
+
+M0-AC1 requires a named external input reserved for M2. Mac evidence through
+tap tip `5958a71` and metal tip `c0b2b22` does not name one. No CoreAudio device
+UID, transport, or product name for a non-default input appears in
+[process-tap.md](../evidence/m0/process-tap.md),
+[metal-link.md](../evidence/m0/metal-link.md), or
+[macos-spike-results.md](../evidence/m0/macos-spike-results.md).
+
+The slot is `selector::EXTERNAL_INPUT`. It reserves the category. It does not
+claim a device was seen, and it does not qualify M2.
+
+| Field | Value |
+| --- | --- |
+| Display name | TBD (unset) |
+| Device UID | TBD (unset) |
+| Device class | TBD (unset) |
+| `qualified_in_m0` | false |
+| Blocks | M0-AC1, and M2-AC1's non-default external input |
+
+Filling this slot needs a device observed on a Mac. A placeholder name does not.
 
 ## Acceptance criteria
 

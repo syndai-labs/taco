@@ -65,15 +65,18 @@ pub fn on_unresolved_app() -> SelectionFailurePolicy {
     SelectionFailurePolicy::StopDoNotBroaden
 }
 
-/// Named external input reserved for M2. M0 does not qualify a device.
+/// M2 external-input reservation. Mac evidence names no device, so both fields
+/// stay unset. That open slot blocks M0-AC1. M0 does not qualify a device.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ExternalInputReservation {
     pub display_name: Option<&'static str>,
+    pub device_uid: Option<&'static str>,
     pub qualified_in_m0: bool,
 }
 
 pub const EXTERNAL_INPUT: ExternalInputReservation = ExternalInputReservation {
     display_name: None,
+    device_uid: None,
     qualified_in_m0: false,
 };
 
