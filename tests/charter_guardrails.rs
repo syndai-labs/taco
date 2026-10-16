@@ -212,6 +212,7 @@ fn session_stays_local_and_commits_are_immutable() {
     assert_ne!(silero.notice, whisper_cpp.notice);
     assert_ne!(whisper_weights.notice, whisper_cpp.notice);
     assert_ne!(hy.notice, llama.notice);
+    assert!(freeze::SIGNED_INSTALL.is_none());
 
     let mut ledger = Ledger::default();
     ledger.commit_text(SegmentId(1), "Hello").unwrap();

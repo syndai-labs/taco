@@ -93,6 +93,10 @@ pub const LICENSES: [LicenseRecord; 5] = [
     },
 ];
 
+/// Notarized distribution artifact. `None`: no signed install exists.
+/// Filled `LICENSES` rows do not set this. Ad-hoc `codesign -s -` does not set this.
+pub const SIGNED_INSTALL: Option<&str> = None;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Corner {
     pub id: &'static str,

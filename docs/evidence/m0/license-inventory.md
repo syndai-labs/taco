@@ -4,7 +4,7 @@
 LICENSE file fetched for that subject. `notice` is the copyright line in that
 file. The permission paragraph and the Apache terms were not copied into the
 crate. An engine LICENSE is not a model license. No M0-AC checkbox is checked.
-This inventory does not clear distribution.
+This inventory does not clear distribution. `freeze::SIGNED_INSTALL` is `None`.
 
 Pins are the digests in [pin-measurement.md](pin-measurement.md) and the engine
 commits in [metal-link.md](metal-link.md). Fetches were on 2026-10-16.
@@ -130,6 +130,14 @@ files. It is not itself a license.
   the Apache terms are not in the crate.
 - Vendor, binding, example, and test LICENSE files above are not in the five
   records.
-- No signed install evidence.
+- No signed install and no notarized distribution artifact. `scripts/sign-debug.sh`
+  is ad-hoc `codesign -s -`. The Apple Development re-sign in
+  [macos-spike-results.md](macos-spike-results.md)
+  (`CDHash=f5455d873156271820035ef4fe0ac7bbe2e8be07`, Info.plist not bound)
+  is not that artifact.
 
-M0-AC4 and M0-AC5 stay open. R11 still blocks distribution of weights.
+R11 is Partial. Distribution of weights remains blocked until a signed install
+exists. Charter invariant 4 and ADR 0005 keep weights outside the binary; the
+user fetches them only when a manifest inside a signed executable is the trust
+root. That artifact does not exist, so the charter path is not open. M0-AC4
+and M0-AC5 stay open. No M0-AC checkbox is checked.
