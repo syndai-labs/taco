@@ -332,7 +332,10 @@ do not replace an endurance cell and do not repeat the full corpus.
 
 A built-in microphone and an external input are different categories. System
 and application are different categories. One microphone hour does not prove a
-tap. UI fidelity tests compare the presented ledger with the pipeline ledger;
+tap. M0 reserves the observed non-default input `syndai-iphone-02 Microphone`
+(`system_profiler SPAudioDataType` on 2026-10-17: not the default input, transport
+Unknown, one input channel) for M2. `qualified_in_m0` stays false. The code slot
+`EXTERNAL_INPUT.display_name` stays unset. That name is not an M0 qualification. UI fidelity tests compare the presented ledger with the pipeline ledger;
 they do not require a second human translation review of the same strings.
 
 ## Fault, privacy, and distribution gates
