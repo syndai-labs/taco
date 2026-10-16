@@ -543,12 +543,16 @@ fn microphone_spike_hold_follows_open_ok() {
 fn microphone_spike_open_timeout_bounds_cpal_wait() {
     let src = read("src/capture/microphone.rs");
     assert!(src.contains("TACO_CAPTURE_SPIKE_OPEN_MS"));
-    assert!(src.contains("unwrap_or(300_000)"));
+    let timeout_fn = fn_body(&src, "fn open_timeout_ms");
+    assert!(timeout_fn.contains("unwrap_or(300_000)"));
+    assert!(
+        !timeout_fn.contains("180_000") && !timeout_fn.contains("180000"),
+        "OPEN_MS default must not regress to 180_000"
+    );
+    assert!(src.contains("uses `300_000` (5 minutes)"));
     assert!(src.contains("recv_timeout"));
     assert!(!src.contains("unsafe "), "open timeout stays in safe Rust");
-    let timeout = src
-        .find("RecvTimeoutError::Timeout")
-        .expect("timeout arm");
+    let timeout = src.find("RecvTimeoutError::Timeout").expect("timeout arm");
     let arm = &src[timeout..];
     let arm = &arm[..arm.find("\nfn ").unwrap_or(arm.len())];
     assert!(
@@ -560,6 +564,7 @@ fn microphone_spike_open_timeout_bounds_cpal_wait() {
     let session = read("src/session.rs");
     assert!(session.contains("TACO_CAPTURE_SPIKE"));
     assert!(session.contains("TACO_CAPTURE_SPIKE_OPEN_MS"));
+    assert!(session.contains("(u64 millis, default `300_000`)"));
     assert!(session.contains("TACO_CAPTURE_SPIKE_HOLD_MS"));
     let body = fn_body(&session, "fn open_microphone_spike");
     let opened = body.find("open_default_microphone").expect("open");
@@ -568,7 +573,29 @@ fn microphone_spike_open_timeout_bounds_cpal_wait() {
 
     let note = read("docs/evidence/m0/mic-open-timeout.md");
     assert!(note.contains("TACO_CAPTURE_SPIKE_OPEN_MS"));
-    assert!(note.contains("300000") || note.contains("300_000"));
+    assert!(note.contains("uses `300000` (5 minutes)"));
+    let stale_unwrap = format!("unwrap_or({}_000)", 180);
+    let stale_plain = format!("unwrap_or({})", 180_000);
+    // Trailing space so the 30-minute hold `1800000` is not a hit.
+    let stale_uses = format!("uses `{}` ", 180_000);
+    let stale_uses_sep = format!("uses `{}_000`", 180);
+    let stale_default = format!("default `{}_000`", 180);
+    let stale_minutes = format!("({} minutes)", 3);
+    let stale_hyphen = format!("{}-minute", 3);
+    for stale in [
+        &stale_unwrap,
+        &stale_plain,
+        &stale_uses,
+        &stale_uses_sep,
+        &stale_default,
+        &stale_minutes,
+        &stale_hyphen,
+    ] {
+        assert!(
+            !walk_contains(&root(), stale),
+            "stale OPEN_MS default still claimed: {stale}"
+        );
+    }
     assert!(note.contains("capture_not_available"));
     assert!(note.contains("TACO_CAPTURE_SPIKE_HOLD_MS"));
     assert!(note.contains("TACO_CAPTURE_SPIKE"));
