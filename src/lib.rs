@@ -2,11 +2,13 @@
 //!
 //! Milestone 0 freezes selectors, events, outcomes, errors, and stage traits.
 //! Later milestones fill those types in. They do not invent a second session path.
-//! This crate does not capture audio, load models, or claim a macOS qualification.
+//! This crate does not capture audio or claim a macOS qualification.
+//! Engine adapters are in-process stubs and do not load models.
 
 #![forbid(unsafe_code)]
 
 pub mod cli_record;
+pub mod engines;
 pub mod error;
 pub mod freeze;
 pub mod language;

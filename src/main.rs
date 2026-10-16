@@ -147,7 +147,12 @@ fn dispatch(cli: Cli) -> Result<(), i32> {
                 ui: &ui,
             };
             match session::preflight(&mut session, &req) {
-                Ok(_) => refuse(session::start_capture(&mut session)),
+                Ok(_) => {
+                    // In-process adapters are the inference path. Their refusal
+                    // does not replace the capture stop; the stages stay separate.
+                    let _ = session::open_inference();
+                    refuse(session::start_capture(&mut session))
+                }
                 Err(code) => refuse(Err(code)),
             }
         }

@@ -11,7 +11,8 @@ use std::process::Command;
 use taco::cli_record::{
     commit_line, escape_bytes, outcome_line, parse_commit_line, parse_outcome_line,
 };
-use taco::error::{exit_code, StopKind};
+use taco::engines::{self, EngineRole};
+use taco::error::{exit_code, ErrorCode, StopKind};
 use taco::freeze::{self, InstructionArm, PromptRole};
 use taco::language::{self, EN, ZH};
 use taco::ledger::{
@@ -123,9 +124,8 @@ fn session_stays_local_and_commits_are_immutable() {
         ]
     );
     assert!(
-        read("docs/evidence/m0/pin-measurement.md").contains(
-            "dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699"
-        ),
+        read("docs/evidence/m0/pin-measurement.md")
+            .contains("dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699"),
         "freeze digests must match the measured evidence file"
     );
     assert_eq!(
@@ -416,6 +416,14 @@ fn package_source_and_milestone_boxes() {
         "TcpListener",
         "llama-server",
         "whisper-cli",
+        "llama-completion",
+        "-ngl 0",
+        "n_gpu_layers",
+        "std::process::Command",
+        "Command::new",
+        ".dylib",
+        "libloading",
+        "cdylib",
         "ScreenCaptureKit",
         "pthread_cancel",
         "dump-audio",
@@ -504,15 +512,63 @@ fn package_source_and_milestone_boxes() {
     }
 }
 
+#[test]
+fn inference_adapters_refuse_in_process() {
+    let reason = engines::block_reason();
+    assert!(matches!(
+        reason,
+        ErrorCode::ModelsUnpinned | ErrorCode::PlatformUnsupported | ErrorCode::EngineNotLinked
+    ));
+    assert_eq!(taco::session::open_inference().unwrap_err(), reason);
+    let limits = limits();
+    let audio_cap =
+        limits.model_window_ms() * limits.normalized_rate_hz() / 1000 * limits.pcm_bytes_max();
+    let text_cap = limits.segment_text_bytes();
+    for role in engines::ROLES {
+        assert_eq!(engines::initialize(role).unwrap_err(), reason);
+        assert_eq!(engines::cancel(role).unwrap_err(), reason);
+        engines::close(role);
+        let cap = match role {
+            EngineRole::Mt => text_cap,
+            EngineRole::Vad | EngineRole::Asr => audio_cap,
+        };
+        assert_eq!(engines::input_cap(role), cap);
+        let mut fitting = vec![0u8; cap as usize];
+        assert_eq!(engines::infer(role, &fitting).unwrap_err(), reason);
+        fitting.push(0);
+        assert_eq!(
+            engines::infer(role, &fitting).unwrap_err(),
+            ErrorCode::WindowExceeded
+        );
+    }
+    let note = read("docs/evidence/m0/engine-adapters.md");
+    assert!(note.contains("scaffolding"));
+    assert!(note.contains("not M0-AC2"));
+    assert!(note.contains("not M0-AC3"));
+    assert!(!note.contains("- [x]"));
+    assert!(!note.contains("- [X]"));
+    assert!(read("src/main.rs").contains("open_inference"));
+    assert!(!read("Cargo.toml").contains("cdylib"));
+    assert!(!read("Cargo.toml").contains("crate-type"));
+    assert!(src_text().contains("fn initialize"));
+}
+
 fn src_text() -> String {
     let mut out = String::new();
-    for entry in fs::read_dir(root().join("src")).unwrap() {
-        let entry = entry.unwrap();
-        if entry.path().extension().and_then(|ext| ext.to_str()) == Some("rs") {
-            out.push_str(&fs::read_to_string(entry.path()).unwrap());
+    append_rs(&root().join("src"), &mut out);
+    out
+}
+
+fn append_rs(dir: &Path, out: &mut String) {
+    for entry in fs::read_dir(dir).unwrap().flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            append_rs(&path, out);
+        } else if path.extension().and_then(|ext| ext.to_str()) == Some("rs") {
+            out.push_str(&fs::read_to_string(path).unwrap());
+            out.push('\n');
         }
     }
-    out
 }
 
 fn walk_contains(dir: &Path, needle: &str) -> bool {

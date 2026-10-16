@@ -122,6 +122,14 @@ pub fn start_capture(session: &mut Session) -> Result<(), ErrorCode> {
     Err(ErrorCode::CaptureNotAvailable)
 }
 
+/// Open VAD, ASR, and MT in this process. Does not start capture.
+pub fn open_inference() -> Result<(), ErrorCode> {
+    for role in crate::engines::ROLES {
+        crate::engines::initialize(role)?;
+    }
+    Ok(())
+}
+
 pub fn platform_supported() -> bool {
     cfg!(all(target_os = "macos", target_arch = "aarch64"))
 }
