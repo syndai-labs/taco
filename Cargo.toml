@@ -51,3 +51,9 @@ required-features = ["native"]
 name = "t_m0_cancel_lifecycle"
 path = "tests/t_m0_cancel_lifecycle.rs"
 required-features = ["native"]
+
+[build-dependencies]
+cc = "=1.2.16"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+cpal = "=0.15.3"

@@ -2,10 +2,12 @@
 //!
 //! Milestone 0 freezes selectors, events, outcomes, errors, and stage traits.
 //! Later milestones fill those types in. They do not invent a second session path.
-//! This crate does not capture audio, load models, or claim a macOS qualification.
+//! Preflight does not start capture or load models, and this build claims no qualification.
+//! `capture` is a macOS spike. It is not on the session path.
 
 #![forbid(unsafe_code)]
 
+pub mod capture;
 pub mod cli_record;
 pub mod error;
 pub mod freeze;
