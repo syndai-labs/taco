@@ -32,9 +32,9 @@ Rejected: keep "macOS 14.2" as a confirmed minimum; treat 26A434 as a qualified 
 
 ## Alternate terminal host
 
-Named: **launchd user agent**. Not exercised. `ALTERNATE_HOST_EXERCISED` is false.
+Named: **launchd user agent**. On tip `8ebd0fc` it was not exercised. `ALTERNATE_HOST_EXERCISED` is false on that commit. PR #43 tip `0c880fb` ([launchd-host.md](launchd-host.md)) later set it true for one load, run, and teardown of debug `taco notices`. That run is ad-hoc (`TeamIdentifier=not set`) and not a TCC allow or deny. This branch does not replay either `freeze.rs` edit.
 
-This is the acceptance launch parent for the signed CLI when a GUI parent would take TCC responsibility. It is not a second Mac and not a TUI host. C2's chip, memory, and OS build stay unnamed. Presentation cells that run stay in Apple Terminal until a second GUI terminal is measured.
+This is the acceptance launch parent for the signed CLI when a GUI parent would take TCC responsibility. The measured #43 run did not use that signed binary. It is not a second Mac and not a TUI host. C2's chip, memory, and OS build stay unnamed. Presentation cells that run stay in Apple Terminal until a second GUI terminal is measured.
 
 Why this name, from runs that already exist on the other branches:
 

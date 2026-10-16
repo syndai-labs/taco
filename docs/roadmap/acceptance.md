@@ -58,7 +58,10 @@ PR #19 tip `8ebd0fc` ([os-floor.md](../evidence/m0/os-floor.md)) revises the
 minimum OS floor to Partial: macOS 27.0.1 (26A434) on Apple Silicon. macOS 14.2
 was not measured and is not a confirmed floor. That revision is not a support
 promise. C2 stays open. The alternate TCC launch parent is a launchd user
-agent, named and not exercised. Cursor.app is not an acceptance host.
+agent, named at PR #19 tip `8ebd0fc` and not exercised on that tip. PR #43 tip
+`0c880fb` ([launchd-host.md](../evidence/m0/launchd-host.md))
+loaded, ran, and removed debug `taco notices`. That run is ad-hoc and not a
+TCC allow or deny. Cursor.app is not an acceptance host.
 M0-AC1 and M0-AC4 stay open. PR #32 tip `0972b2d`
 ([engines-residency.md](../evidence/m0/engines-residency.md)) is that same M1
 Pro host. `proves_c1` stays false. It is not C2. PR #30 tip `e2ec751`
@@ -70,7 +73,7 @@ Pro host. `proves_c1` stays false. It is not C2. PR #30 tip `e2ec751`
 | Models | Silero; multilingual Whisper small; Hy-MT2 1.8B GGUF from the main GGUF repository | Publisher revision, format, quantization, SHA-256, license, llama.cpp commit, Metal settings |
 | Language table | Closed. Proposed qualified pairs `en→zh` and `zh→en` | Manifest maps each user tag to the ASR id and the publisher’s full prompt language name |
 | Experimental pairs | None | An empty list is valid. Adding a pair is an M0 decision, not an implied model feature |
-| Terminal hosts | Apple Terminal for presentation. Alternate TCC launch parent: launchd user agent, named at PR #19 tip `8ebd0fc` and not exercised. Cursor.app is not an acceptance host | A second GUI terminal was not measured. The launchd name is not a run |
+| Terminal hosts | Apple Terminal for presentation. Alternate TCC launch parent: launchd user agent, named at PR #19 tip `8ebd0fc`. PR #43 tip `0c880fb` loaded, ran, and removed a debug `taco notices` agent. That run is ad-hoc and not a TCC allow or deny. Cursor.app is not an acceptance host | A second GUI terminal was not measured. The #43 launchd run is debug notices, not a presentation cell |
 | Corpus | Licensed or consented development set and a disjoint held-out set | Fixture hashes, speakers, timings, exclusions, reviewer names |
 
 R4 names quantization and sampling as unselected. M0 accepts no quantization
@@ -310,7 +313,8 @@ direction, and the normal-load schedule. Each cell contains at least 200 timed
 natural utterances so its own latency quantiles are valid. Presentation cells
 that run use Apple Terminal. C2 has no machine, so those cells are not run.
 The named alternate is a launchd user agent (PR #19 tip `8ebd0fc`), not a GUI
-terminal and not C2. It has not been exercised.
+terminal and not C2. PR #43 tip `0c880fb` exercised load, run, and teardown of
+debug `taco notices`. That run is not a release cell.
 
 Direction assignment, with d1 and d2 the ordered qualified pairs. This rotation
 puts both directions on every source category and every corner. Do not collapse a
