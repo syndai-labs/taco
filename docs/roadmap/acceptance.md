@@ -62,6 +62,12 @@ Results from C2 do not stand in for C1.
 | Terminal hosts | Apple Terminal, plus one named alternate | Named before M6. Unnamed “a modern terminal” is not evidence |
 | Corpus | Licensed or consented development set and a disjoint held-out set | Fixture hashes, speakers, timings, exclusions, reviewer names |
 
+R4 names quantization and sampling as unselected. M0 accepts no quantization
+arm and no sampling arm. The only main-repo Hy-MT2 file pinned and loaded is
+`Hy-MT2-1.8B-Q4_K_M.gguf`. The record is PR #17 tip `1a52b8d`
+([r4-sampling.md](../evidence/m0/r4-sampling.md)) read with PR #12 tip
+`a8b2ebc`. The 34-byte greedy smoke is not a selection. M0-AC4 stays open.
+
 At least two directions, with two source languages, are required. Identical
 source and target tags fail preflight. There is no auto-detect. The publisher’s
 language inventory is not taco’s language support. Reviewer availability is a
@@ -332,7 +338,7 @@ do not replace an endurance cell and do not repeat the full corpus.
 
 A built-in microphone and an external input are different categories. System
 and application are different categories. One microphone hour does not prove a
-tap. M0 reserves the observed non-default input `syndai-iphone-02 Microphone`
+tap. Process-tap tip `cd9a4c8` (PR #11) reserves the observed non-default input `syndai-iphone-02 Microphone`
 (`system_profiler SPAudioDataType` on 2026-10-17: not the default input, transport
 Unknown, one input channel) for M2. That profiler record had no device uid.
 `EXTERNAL_INPUT.display_name` stores the name. `qualified_in_m0` stays false.

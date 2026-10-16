@@ -1,6 +1,6 @@
 # M0 — Feasibility and executable contracts
 
-Status: **Not accepted.** Shared `taco` types and default-tier tests are in the tree. Hardware spikes are recorded blockers in the decision register. Acceptance checkboxes stay open. Depends on: charter only.
+Status: **Not accepted.** Shared `taco` types and default-tier tests are in the tree. Hardware spikes are recorded blockers in the decision register. Cited tips: process tap `cd9a4c8` (PR #11), metal probe `a8b2ebc` (PR #12, `link_three=1`, Silero on CPU ORT, probe is not `taco`), license inventory `c04ab04` (PR #15), adapters `05c0c73` (PR #14), engine bridge `570364c` (PR #16), R4 sampling Stop `1a52b8d` (PR #17), Whisper small SPDX `7ee17c8` (PR #18, R11 Partial). Acceptance checkboxes stay open. Depends on: charter only.
 Accountable: technical lead; reviewers: capture, inference, and release owners.
 Decisions: [ADR 0001](../adr/0001-process-and-pipeline.md),
 [0002](../adr/0002-audio-capture.md), [0004](../adr/0004-local-inference.md),
