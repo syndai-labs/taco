@@ -20,8 +20,10 @@ request measures catalog residency.
 (a) The VAD provider was CPU. M0-AC2 requires observed Metal GPU execution.
 A CPU-only VAD run does not pass.
 
-(b) The prove path is `cargo test` calling `session::prove_native`. It is
-not the product CLI `taco run`.
+(b) The recorded pass is still `cargo test` calling `session::prove_native`.
+`taco run` can call that same function when `TACO_ENGINES_PROVE=1`
+([taco-run-prove.md](taco-run-prove.md)). This note does not record a signed
+Mac run of that gate.
 
 (c) `T-M0-LINK-THREE-MODELS` requires repeated init and teardown, with
 resident native allocations back at the post-first-teardown baseline. Each
