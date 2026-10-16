@@ -1,5 +1,9 @@
 # Engine residency (2026-10-17)
 
+A second attempt did not enter the band. The vmtrace and the reverted
+teardown experiments are in [engines-residency-retry.md](engines-residency-retry.md).
+M0-AC2 and M0-AC3 stay unchecked.
+
 One hundred `session::prove_native` cycles in one process. The catalog metric
 is `task_vm_info.phys_footprint` after teardown. Cycle 100 is 252346632 bytes
 above the cycle-1 teardown. The tolerance is 33554432 bytes (32 MiB). The
