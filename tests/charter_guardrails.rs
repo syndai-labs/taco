@@ -506,6 +506,49 @@ fn package_source_and_milestone_boxes() {
     }
 }
 
+#[test]
+fn microphone_spike_hold_follows_open_ok() {
+    let src = read("src/session.rs");
+    let start = fn_body(&src, "pub fn start_capture");
+    let gate = start.find("TACO_CAPTURE_SPIKE").expect("spike gate");
+    let open_call = start.find("open_microphone_spike()").expect("mic open");
+    assert!(gate < open_call, "TACO_CAPTURE_SPIKE gates the open");
+
+    let body = fn_body(&src, "fn open_microphone_spike");
+    let opened = body.find("open_default_microphone").expect("open");
+    let held = body.find("spike_hold_ms()").expect("hold");
+    assert!(opened < held, "hold runs after open returns Ok");
+    assert!(
+        body[opened..held].contains('?'),
+        "open Err returns before the hold"
+    );
+    assert!(
+        body.contains("Does not cover a CPAL wait inside open"),
+        "hold does not cover the CPAL-in-open wait"
+    );
+
+    let hold = fn_body(&src, "fn spike_hold_ms");
+    assert!(hold.contains("TACO_CAPTURE_SPIKE_HOLD_MS"));
+    assert!(hold.contains("unwrap_or(1_800_000)"));
+
+    let note = read("docs/evidence/m0/mic-hold.md");
+    assert!(note.contains("TACO_CAPTURE_SPIKE"));
+    assert!(note.contains("TACO_CAPTURE_SPIKE_HOLD_MS"));
+    assert!(note.contains("1800000") || note.contains("1_800_000"));
+    assert!(note.contains("does not cover a CPAL wait inside open"));
+    assert!(!note.contains("- [x]") && !note.contains("- [X]"));
+}
+
+fn fn_body<'a>(src: &'a str, name: &str) -> &'a str {
+    let start = src.find(name).unwrap_or_else(|| panic!("missing {name}"));
+    let rest = &src[start..];
+    let end = rest[1..]
+        .find("\nfn ")
+        .map(|index| index + 1)
+        .unwrap_or(rest.len());
+    &rest[..end]
+}
+
 fn src_text() -> String {
     let mut out = String::new();
     for entry in fs::read_dir(root().join("src")).unwrap() {
