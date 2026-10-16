@@ -1,5 +1,11 @@
-//! Session state machine. Capture is not started from this milestone.
+//! Session state machine and preflight. Capture opens only when the M0 spike
+//! env gate is set so default `cargo test` never touches CoreAudio/CPAL devices.
 
+use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
+
+use crate::capture::{self, CaptureRing};
 use crate::error::ErrorCode;
 use crate::freeze::release_ready;
 use crate::language::{self, LanguagePair};
@@ -88,7 +94,7 @@ pub struct PreflightOk {
     pub pair: LanguagePair,
 }
 
-/// Validate one invocation. On every path `capture_started` stays false.
+/// Validate one invocation. On the error path `capture_started` stays false.
 pub fn preflight(session: &mut Session, req: &RunRequest<'_>) -> Result<PreflightOk, ErrorCode> {
     let result = (|| {
         if req.sources.is_empty() {
@@ -116,12 +122,71 @@ pub fn preflight(session: &mut Session, req: &RunRequest<'_>) -> Result<Prefligh
     result
 }
 
-/// There is no capture backend in this milestone.
-pub fn start_capture(session: &mut Session) -> Result<(), ErrorCode> {
-    session.capture_started = false;
-    Err(ErrorCode::CaptureNotAvailable)
+/// Open the selected capture backend for the M0 distribution spike.
+///
+/// Real device/tap opens require `TACO_CAPTURE_SPIKE=1` so default `cargo test`
+/// never prompts TCC. Without that env, this returns `CaptureNotAvailable`.
+pub fn start_capture(
+    session: &mut Session,
+    preflight: &PreflightOk,
+) -> Result<(), ErrorCode> {
+    if std::env::var_os("TACO_CAPTURE_SPIKE").is_none() {
+        session.capture_started = false;
+        return Err(ErrorCode::CaptureNotAvailable);
+    }
+    if !platform_supported() {
+        session.capture_started = false;
+        return Err(ErrorCode::PlatformUnsupported);
+    }
+
+    session.apply(Edge::Start)?;
+    let outcome = match &preflight.selector {
+        SourceSelector::Default | SourceSelector::Input { .. } => open_microphone_spike(),
+        SourceSelector::System => map_tap(capture::open_system_tap()),
+        SourceSelector::App { bundle_id } => map_tap(capture::open_bundle_tap(bundle_id)),
+        SourceSelector::Pid { pid } => map_tap(capture::open_pid_tap(*pid)),
+    };
+
+    match outcome {
+        Ok(()) => {
+            session.apply(Edge::Ready)?;
+            let started = true;
+            session.capture_started = started;
+            session.apply(Edge::Stop)?;
+            session.apply(Edge::Joined)?;
+            Ok(())
+        }
+        Err(code) => {
+            let _ = session.apply(Edge::Fail);
+            session.capture_started = false;
+            Err(code)
+        }
+    }
+}
+
+fn open_microphone_spike() -> Result<(), ErrorCode> {
+    let ring = Arc::new(CaptureRing::allocate(48_000, 1, 4)?);
+    let mic = capture::open_default_microphone(Arc::clone(&ring))
+        .map_err(|_| ErrorCode::CaptureNotAvailable)?;
+    // Keep the stream briefly so TCC can attribute the process, then drop for cleanup.
+    thread::sleep(Duration::from_millis(750));
+    drop(mic);
+    let _ = ring.lost();
+    Ok(())
+}
+
+fn map_tap<T>(result: Result<T, i32>) -> Result<(), ErrorCode> {
+    match result {
+        Ok(_) => Ok(()),
+        Err(_) => Err(ErrorCode::CaptureNotAvailable),
+    }
 }
 
 pub fn platform_supported() -> bool {
     cfg!(all(target_os = "macos", target_arch = "aarch64"))
+}
+
+/// True when the operator explicitly enabled the capture spike.
+pub fn capture_spike_enabled() -> bool {
+    std::env::var_os("TACO_CAPTURE_SPIKE").is_some()
 }

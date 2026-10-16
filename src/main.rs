@@ -147,7 +147,7 @@ fn dispatch(cli: Cli) -> Result<(), i32> {
                 ui: &ui,
             };
             match session::preflight(&mut session, &req) {
-                Ok(_) => refuse(session::start_capture(&mut session)),
+                Ok(ok) => refuse(session::start_capture(&mut session, &ok)),
                 Err(code) => refuse(Err(code)),
             }
         }
