@@ -128,6 +128,8 @@ pub fn preflight(session: &mut Session, req: &RunRequest<'_>) -> Result<Prefligh
 /// `cargo test` never prompts TCC. Without that env, this returns
 /// `CaptureNotAvailable` and does not call the microphone or the process tap.
 /// `system`, `app:`, and `pid:` use the wired CoreAudio tap on that same gate.
+/// The microphone open stops waiting after `TACO_CAPTURE_SPIKE_OPEN_MS`
+/// (u64 millis, default `180_000`) and returns `CaptureNotAvailable`.
 /// After a microphone open returns `Ok`, the stream is held for
 /// `TACO_CAPTURE_SPIKE_HOLD_MS` (u64 millis, default `1_800_000`).
 pub fn start_capture(session: &mut Session, preflight: &PreflightOk) -> Result<(), ErrorCode> {

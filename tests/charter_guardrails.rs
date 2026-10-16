@@ -539,6 +539,44 @@ fn microphone_spike_hold_follows_open_ok() {
     assert!(!note.contains("- [x]") && !note.contains("- [X]"));
 }
 
+#[test]
+fn microphone_spike_open_timeout_bounds_cpal_wait() {
+    let src = read("src/capture/microphone.rs");
+    assert!(src.contains("TACO_CAPTURE_SPIKE_OPEN_MS"));
+    assert!(src.contains("unwrap_or(180_000)"));
+    assert!(src.contains("recv_timeout"));
+    assert!(!src.contains("unsafe "), "open timeout stays in safe Rust");
+    let timeout = src
+        .find("RecvTimeoutError::Timeout")
+        .expect("timeout arm");
+    let arm = &src[timeout..];
+    let arm = &arm[..arm.find("\nfn ").unwrap_or(arm.len())];
+    assert!(
+        !arm.contains("worker.join()"),
+        "timeout must not join the CoreAudio wait"
+    );
+    assert!(arm.contains("drop(worker)"));
+
+    let session = read("src/session.rs");
+    assert!(session.contains("TACO_CAPTURE_SPIKE"));
+    assert!(session.contains("TACO_CAPTURE_SPIKE_OPEN_MS"));
+    assert!(session.contains("TACO_CAPTURE_SPIKE_HOLD_MS"));
+    let body = fn_body(&session, "fn open_microphone_spike");
+    let opened = body.find("open_default_microphone").expect("open");
+    let held = body.find("spike_hold_ms()").expect("hold");
+    assert!(opened < held, "hold still runs after open returns Ok");
+
+    let note = read("docs/evidence/m0/mic-open-timeout.md");
+    assert!(note.contains("TACO_CAPTURE_SPIKE_OPEN_MS"));
+    assert!(note.contains("180000") || note.contains("180_000"));
+    assert!(note.contains("capture_not_available"));
+    assert!(note.contains("TACO_CAPTURE_SPIKE_HOLD_MS"));
+    assert!(note.contains("TACO_CAPTURE_SPIKE"));
+    assert!(note.contains("does not press Allow or Deny"));
+    assert!(note.contains("- [ ]"));
+    assert!(!note.contains("- [x]") && !note.contains("- [X]"));
+}
+
 fn fn_body<'a>(src: &'a str, name: &str) -> &'a str {
     let start = src.find(name).unwrap_or_else(|| panic!("missing {name}"));
     let rest = &src[start..];
