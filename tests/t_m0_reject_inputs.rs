@@ -180,21 +180,45 @@ fn t_m0_reject_inputs_valid_selector_does_not_capture() {
         ui: "cli",
     };
     // Digests are measured; preflight still does not start capture.
-    if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+    let ok = if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
         let ok = session::preflight(&mut session, &req).expect("pinned macOS preflight");
         assert_eq!(ok.selector, parse_selector("default").unwrap());
         assert!(!session.capture_started);
+        ok
     } else {
         let err = session::preflight(&mut session, &req).unwrap_err();
         assert_code(err, ErrorCode::PlatformUnsupported);
         assert_eq!(session.state, SessionState::Failed);
         assert!(!session.capture_started);
-    }
+        session::PreflightOk {
+            selector: parse_selector("default").unwrap(),
+            pair: parse_pair("en", "zh").unwrap(),
+        }
+    };
+    assert!(std::env::var_os("TACO_CAPTURE_SPIKE").is_none());
     assert_eq!(
-        session::start_capture(&mut session).unwrap_err(),
+        session::start_capture(&mut session, &ok).unwrap_err(),
         ErrorCode::CaptureNotAvailable
     );
     assert!(!session.capture_started);
+}
+
+/// Unset `TACO_CAPTURE_SPIKE` stays fail-closed. Linux never opens a device.
+#[test]
+fn t_m0_reject_inputs_spike_gate_unset_does_not_capture() {
+    assert!(std::env::var_os("TACO_CAPTURE_SPIKE").is_none());
+    assert!(!session::capture_spike_enabled());
+    let mut session = Session::new();
+    let ok = session::PreflightOk {
+        selector: parse_selector("default").unwrap(),
+        pair: parse_pair("en", "zh").unwrap(),
+    };
+    assert_eq!(
+        session::start_capture(&mut session, &ok).unwrap_err(),
+        ErrorCode::CaptureNotAvailable
+    );
+    assert!(!session.capture_started);
+    assert_eq!(session.state, SessionState::Preflight);
 }
 
 #[test]
