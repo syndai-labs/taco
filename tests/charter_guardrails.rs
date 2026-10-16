@@ -506,6 +506,76 @@ fn package_source_and_milestone_boxes() {
     }
 }
 
+#[test]
+fn ac1_cannot_flip_while_operator_timeout_partial_stands() {
+    let note = read("docs/evidence/m0/mic-operator-timeouts.md");
+    let partial_stands = note.contains("Status: **Partial**.");
+    let allow = named_tip_sha(&note, "Allow tip SHA:");
+    let deny = named_tip_sha(&note, "Deny tip SHA:");
+    if !partial_stands && allow && deny {
+        return;
+    }
+    let consequence = "Partial — operator Allow/Deny unproven; consequence AC1 open.";
+    for path in [
+        "docs/evidence/m0/mic-operator-timeouts.md",
+        "docs/roadmap/risks-and-decisions.md",
+        "docs/roadmap/m0-feasibility.md",
+    ] {
+        let text = read(path);
+        assert!(text.contains(consequence), "{path} drops the AC1 Partial");
+    }
+    for pid in ["65422", "71152", "76134", "82331", "89220"] {
+        assert!(note.contains(pid), "timeout note drops pid {pid}");
+    }
+    assert!(note.contains("TIMEOUT is not Don't Allow."));
+    assert!(note.contains("tccutil"));
+    assert!(note.contains("still denied"));
+    assert!(note.contains("not a click"));
+    let mut checked = Vec::new();
+    checked_m0_ac1(&root().join("docs"), &mut checked);
+    assert!(
+        checked.is_empty(),
+        "M0-AC1 checked while operator Allow/Deny is unproven: {checked:?}"
+    );
+}
+
+fn named_tip_sha(text: &str, label: &str) -> bool {
+    text.lines().any(|line| {
+        let Some((_, rest)) = line.split_once(label) else {
+            return false;
+        };
+        let token = rest
+            .trim()
+            .trim_matches('`')
+            .split_whitespace()
+            .next()
+            .unwrap_or("");
+        token.len() >= 7 && token.chars().all(|c| c.is_ascii_hexdigit())
+    })
+}
+
+fn checked_m0_ac1(dir: &Path, out: &mut Vec<String>) {
+    for entry in fs::read_dir(dir).unwrap().flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            checked_m0_ac1(&path, out);
+            continue;
+        }
+        if path.extension().and_then(|ext| ext.to_str()) != Some("md") {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        let flipped = text.lines().any(|line| {
+            line.contains("M0-AC1") && (line.contains("- [x]") || line.contains("- [X]"))
+        });
+        if flipped {
+            out.push(path.display().to_string());
+        }
+    }
+}
+
 fn src_text() -> String {
     let mut out = String::new();
     for entry in fs::read_dir(root().join("src")).unwrap() {

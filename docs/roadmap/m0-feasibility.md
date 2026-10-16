@@ -75,6 +75,10 @@ tests failing before the contract types satisfy them. Do not rename the IDs.
   intended CLI artifact, including allow/deny and cleanup. The external input category
   has a named device reserved for M2 qualification. Proposed minimum OS is confirmed
   or revised explicitly before any support promise is accepted.
+  [mic-operator-timeouts.md](../evidence/m0/mic-operator-timeouts.md) is Partial.
+  Repeated `OPEN_MS TIMEOUT` (pids 65422, 71152, 76134, 82331, 89220, and ongoing
+  Taco.app re-prompts) left `tccutil` denied. TIMEOUT is not Don't Allow.
+  Partial — operator Allow/Deny unproven; consequence AC1 open.
 - [ ] **M0-AC2:** The combined native spike performs ASR and translation with the exact
   pinned artifacts, in process, with observed Metal GPU execution. A subprocess CLI
   or a CPU-only `-ngl 0` run does not pass.
