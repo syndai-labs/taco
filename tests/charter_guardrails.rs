@@ -95,7 +95,11 @@ fn closed_vocabularies_and_four_sources() {
 
 #[test]
 fn session_stays_local_and_commits_are_immutable() {
-    assert!(!taco::session::platform_supported());
+    // macOS arm64 is the product host; other hosts stay unsupported.
+    assert_eq!(
+        taco::session::platform_supported(),
+        cfg!(all(target_os = "macos", target_arch = "aarch64"))
+    );
     assert!(!freeze::release_ready());
     assert!(!freeze::PINS_MEASURED);
     for pin in freeze::PINS {

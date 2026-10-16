@@ -41,10 +41,11 @@ fn macho_cmd(cmd: u32, cputype: u32, dylib: &str, trailer: &[u8]) -> Vec<u8> {
     file
 }
 
-const USAGE: &[u8] = b"NSMicrophoneUsageDescription NSAudioCaptureUsageDescription";
+const USAGE: &[u8] =
+    b"NSMicrophoneUsageDescription NSAudioCaptureUsageDescription __info_plist";
 
 #[test]
-fn t_m0_one_macho_host_binary_is_not_a_pass() {
+fn t_m0_one_macho_host_binary() {
     let path = Path::new(env!("CARGO_BIN_EXE_taco"));
     let bytes = fs::read(path).expect("read taco");
     assert!(bytes
@@ -54,14 +55,25 @@ fn t_m0_one_macho_host_binary_is_not_a_pass() {
         .windows(b"NSAudioCaptureUsageDescription".len())
         .any(|w| w == b"NSAudioCaptureUsageDescription"));
     let verdict = inspect_path(path);
-    assert!(
-        !verdict.is_pass(),
-        "must not claim Mach-O pass: {verdict:?}"
-    );
-    assert!(
-        matches!(verdict, Verdict::NotMachO { detail: "elf" }),
-        "this host binary is ELF, got {verdict:?}"
-    );
+    if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+        assert!(
+            verdict.is_pass(),
+            "macOS arm64 binary must pass Mach-O gate after plist bind: {verdict:?}"
+        );
+        assert!(
+            bytes.windows(b"__info_plist".len()).any(|w| w == b"__info_plist"),
+            "bound Info.plist section marker must appear in the binary"
+        );
+    } else {
+        assert!(
+            !verdict.is_pass(),
+            "non-macOS host must not claim Mach-O pass: {verdict:?}"
+        );
+        assert!(
+            matches!(verdict, Verdict::NotMachO { detail: "elf" }),
+            "this host binary is ELF, got {verdict:?}"
+        );
+    }
 }
 
 #[test]
