@@ -185,6 +185,8 @@ int run_asr(const char * path, whisper_context ** kept) {
 // the checkpoint: once the weight section is reached and abort is set, the next
 // 4-byte header field is 99, which whisper_model_load rejects. Returning 0 from
 // read does not fail the load; this function ignores that count.
+// The weight buffer already exists by then. The pinned whisper.cpp failure path
+// is patched to call whisper_free so that buffer leaves the Metal residency set.
 struct AbortRead {
     FILE * file = nullptr;
     std::atomic<int> * abort = nullptr;
@@ -649,5 +651,7 @@ int main(int argc, char ** argv) {
 
     free_mt(&session);
     llama_backend_free();
+    std::printf("teardown=returned\n");
+    std::fflush(stdout);
     return link_pass && cancel_pass ? 0 : 1;
 }

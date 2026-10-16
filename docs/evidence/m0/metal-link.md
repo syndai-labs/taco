@@ -6,7 +6,8 @@ One static Mach-O links whisper.cpp and llama.cpp on llama.cpp's ggml with
 Metal shaders embedded. A later run of that probe opened the three pinned
 files. Whisper small and Hy-MT2 loaded on MTL0. The pinned Silero ONNX was
 rejected by whisper.cpp's VAD loader. Llama and Whisper init/decode
-cancellation joined inside 2 s; process exit then asserted in Metal teardown.
+cancellation joined inside 2 s. A failed Whisper init now calls `whisper_free`,
+and process exit no longer asserts in Metal teardown.
 M0-AC2 and M0-AC3 stay open. This binary is not `taco`.
 
 ## Host
@@ -229,16 +230,47 @@ graph runs to that checkpoint.
 
 Init: `use gpu = 1`. The load prints `MTL0 total size = 487.01 MB` and then
 `invalid n_dims 99`. The context pointer is null. Join is 115 ms.
-`whisper_init_with_params_no_state` deletes that context without
-`whisper_free`, so the Metal buffers from the aborted load are not released.
-At process exit, `ggml_metal_device_free` asserts that residency-set count is
-0. The four joins had already been printed. `cancel_lifecycle=1` is those
-joins. It is not a released-ownership result, and it is not the Rust test.
+`whisper_init_with_params_no_state` in whisper.cpp `0c7be69` used `delete`
+on that context. `whisper_free` is what releases `model.buffers`. The probe
+build applies `native/patches/whisper-free-buffers-on-init-fail.patch` so the
+failure path calls `whisper_free`. The four joins above are from the run
+before that patch. Process exit on that run was 134:
+`GGML_ASSERT([rsets->data count] == 0)` in `ggml_metal_device_free`.
+`cancel_lifecycle=1` was those joins, not a released-ownership result.
+
+## Teardown after whisper_free (2026-10-17)
+
+Same probe, rebuilt with the patch. Joins stayed inside the reserve. Stdout
+ended with `teardown=returned` and the shell status was 1. Stderr has no
+`GGML_ASSERT` and no `ggml_abort`.
+
+```text
+vad=fail
+gpu_offload=1
+gpu_device=MTL0
+asr=ok use_gpu=1 segments=1 text_bytes=21
+whisper_cancel_decode=aborted rc=-8 hits=2 join_ms=177 reserve_ms=2000 within_reserve=1
+whisper_cancel_init=aborted join_ms=102 poisoned=1 reserve_ms=2000 within_reserve=1
+cancel_init=aborted join_ms=219 progress_milli=0 reserve_ms=2000 within_reserve=1
+mt_load=0 n_gpu_layers=-1 offloaded=33/33
+mt=ok text_bytes=34
+cancel_decode=aborted rc=2 steps=2 join_ms=10 reserve_ms=2000 within_reserve=1
+link_three=0 cancel_lifecycle=1 ac2=0 ac3=0
+result=incomplete
+teardown=returned
+```
+
+Exit status 1 is `result=incomplete`: the pinned ONNX still does not load, so
+this is not a three-model pass. The aborted Whisper init still prints
+`MTL0 total size = 487.01 MB` and then `invalid n_dims 99`. The context is
+null, and the Metal residency set is empty at process exit. That is buffer
+release inside the probe. It is not M0-AC3. `taco` does not link this engine,
+and `t_m0_cancel_lifecycle` still panics.
 
 ## What this does not accept
 
 - [ ] **M0-AC2:** Silero ONNX did not load. ASR and translation ran in the probe, not in `taco`.
-- [ ] **M0-AC3:** Whisper and llama init/decode joins fit in 2 s inside the probe. Exit then asserted in Metal teardown. The Rust test did not pass. The probe is not `taco`.
+- [ ] **M0-AC3:** Whisper and llama joins fit in 2 s, and the patched init failure releases the MTL0 buffer in the probe (exit 1, no residency-set assert). `taco` does not. The Rust test did not pass.
 - The `taco` binary from `cargo build` does not link these engines. `cargo test` does not build this probe.
 - `T-M0-LINK-THREE-MODELS` and `T-M0-CANCEL-LIFECYCLE` stay fail-closed.
 - A helper process, a sidecar dylib, and `-ngl 0` were not used, and they remain rejected.

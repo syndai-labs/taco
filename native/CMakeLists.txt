@@ -37,6 +37,21 @@ set(WHISPER_SDL2 OFF CACHE BOOL "" FORCE)
 set(WHISPER_CURL OFF CACHE BOOL "" FORCE)
 set(WHISPER_COREML OFF CACHE BOOL "" FORCE)
 
+# Pinned whisper.cpp deletes a failed init context without freeing backend
+# buffers. That leaves Metal residency sets alive until process exit.
+set(_whisper_cpp "${WHISPER_SRC}/src/whisper.cpp")
+file(READ "${_whisper_cpp}" _whisper_src)
+if(NOT _whisper_src MATCHES "taco: release Metal buffers")
+    execute_process(
+        COMMAND patch -p1 --forward --input=${CMAKE_CURRENT_SOURCE_DIR}/patches/whisper-free-buffers-on-init-fail.patch
+        WORKING_DIRECTORY "${WHISPER_SRC}"
+        RESULT_VARIABLE _whisper_patch_rc
+    )
+    if(NOT _whisper_patch_rc EQUAL 0)
+        message(FATAL_ERROR "whisper init-fail patch did not apply (${_whisper_patch_rc})")
+    endif()
+endif()
+
 # llama.cpp adds ggml. whisper.cpp skips its own ggml when that target exists.
 add_subdirectory("${LLAMA_SRC}" "${CMAKE_BINARY_DIR}/llama" EXCLUDE_FROM_ALL)
 add_subdirectory("${WHISPER_SRC}" "${CMAKE_BINARY_DIR}/whisper" EXCLUDE_FROM_ALL)

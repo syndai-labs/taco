@@ -1,0 +1,13 @@
+--- a/src/whisper.cpp
++++ b/src/whisper.cpp
+@@ -3846,7 +3846,9 @@
+     if (!model_loaded) {
+         loader->close(loader->context);
+         WHISPER_LOG_ERROR("%s: failed to load model\n", __func__);
+-        delete ctx;
++        // taco: release Metal buffers allocated before this failure.
++        // delete alone leaves ggml backend buffers in the residency set.
++        whisper_free(ctx);
+         return nullptr;
+     }
+ 
