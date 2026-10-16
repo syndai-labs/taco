@@ -95,6 +95,8 @@ pub const LICENSES: [LicenseRecord; 5] = [
 
 /// Notarized distribution artifact. `None`: no signed install exists.
 /// Filled `LICENSES` rows do not set this. Ad-hoc `codesign -s -` does not set this.
+/// 2026-10-17 measurement: no Developer ID Application identity.
+/// See `docs/evidence/m0/signed-install.md`.
 pub const SIGNED_INSTALL: Option<&str> = None;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

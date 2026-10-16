@@ -5,6 +5,7 @@ LICENSE file fetched for that subject. `notice` is the copyright line in that
 file. The permission paragraph and the Apache terms were not copied into the
 crate. An engine LICENSE is not a model license. No M0-AC checkbox is checked.
 This inventory does not clear distribution. `freeze::SIGNED_INSTALL` is `None`.
+The 2026-10-17 signing attempt is [signed-install.md](signed-install.md). It did not produce an install.
 
 Pins are the digests in [pin-measurement.md](pin-measurement.md) and the engine
 commits in [metal-link.md](metal-link.md). Fetches were on 2026-10-16.
