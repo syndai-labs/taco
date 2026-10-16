@@ -20,6 +20,8 @@
 #include <thread>
 #include <vector>
 
+int taco_vad_ort(const char * path);
+
 namespace {
 
 constexpr int kReserveMs = 2000;
@@ -520,7 +522,8 @@ int main(int argc, char ** argv) {
     }
 
     llama_log_set(log_cb, nullptr);
-    const int vad_rc = run_vad(argv[1]);
+    run_vad(argv[1]);
+    const int vad_rc = taco_vad_ort(argv[1]);
 
     llama_backend_init();
     const int gpu_offload = llama_supports_gpu_offload() ? 1 : 0;
