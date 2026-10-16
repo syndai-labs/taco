@@ -95,7 +95,11 @@ fn closed_vocabularies_and_four_sources() {
 
 #[test]
 fn session_stays_local_and_commits_are_immutable() {
-    assert!(!taco::session::platform_supported());
+    // macOS arm64 is the product host; other hosts stay unsupported.
+    assert_eq!(
+        taco::session::platform_supported(),
+        cfg!(all(target_os = "macos", target_arch = "aarch64"))
+    );
     assert!(!freeze::release_ready());
     assert!(!freeze::PINS_MEASURED);
     for pin in freeze::PINS {
@@ -407,6 +411,30 @@ fn package_source_and_milestone_boxes() {
     assert!(read("src/lib.rs").contains("forbid(unsafe_code)"));
     assert!(read("src/main.rs").contains("forbid(unsafe_code)"));
     assert!(!src.contains("process::exit"));
+
+    let plist = read("assets/Info.plist");
+    assert!(
+        plist.contains("CFBundleIdentifier") && plist.contains("ai.syndai.taco"),
+        "Info.plist must name CFBundleIdentifier ai.syndai.taco for codesign bind"
+    );
+    assert!(
+        plist.contains("CFBundleName"),
+        "Info.plist must name CFBundleName for codesign bind"
+    );
+    assert!(plist.contains("NSMicrophoneUsageDescription"));
+    assert!(plist.contains("NSAudioCaptureUsageDescription"));
+    assert!(taco::usage_keys_present());
+    assert!(read("build.rs").contains("sectcreate"));
+    assert!(read("build.rs").contains("__info_plist"));
+    let sign = read("scripts/sign-debug.sh");
+    assert!(
+        sign.contains("ai.syndai.taco") && sign.contains("codesign"),
+        "scripts/sign-debug.sh must re-sign with ai.syndai.taco so Info.plist binds"
+    );
+    assert!(
+        read("scripts/measure-pins.sh").contains("sha256"),
+        "scripts/measure-pins.sh must print measured digests without inventing them"
+    );
 
     for path in [
         "docs/roadmap/m0-feasibility.md",

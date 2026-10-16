@@ -104,11 +104,22 @@ fn parse_macho_64(bytes: &[u8]) -> Verdict {
         }
         offset += cmdsize;
     }
+    if !contains(bytes, b"CFBundleIdentifier") {
+        reasons.push("missing CFBundleIdentifier".into());
+    }
+    if !contains(bytes, b"CFBundleName") {
+        reasons.push("missing CFBundleName".into());
+    }
     if !contains(bytes, b"NSMicrophoneUsageDescription") {
         reasons.push("missing NSMicrophoneUsageDescription".into());
     }
     if !contains(bytes, b"NSAudioCaptureUsageDescription") {
         reasons.push("missing NSAudioCaptureUsageDescription".into());
+    }
+    // Distribution embeds the plist as __TEXT,__info_plist (see build.rs).
+    // Plain include_bytes! leaves codesign with Info.plist=not bound.
+    if !contains(bytes, b"__info_plist") {
+        reasons.push("missing __TEXT,__info_plist section marker".into());
     }
     if reasons.is_empty() {
         Verdict::Pass

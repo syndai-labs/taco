@@ -62,17 +62,17 @@ proposed mitigation was implemented; inspect whether the experiment actually pas
 
 ## M0 stop records (2026-10-16)
 
-The contract freeze is `828bd48`. Measurements below are from one Apple Silicon
-worker on that tree. Detail is in
-[macos-spike-results.md](../evidence/m0/macos-spike-results.md). None of these
-rows accept M0. Milestone checkboxes stay open. M1 and M5 stay blocked.
+The contract freeze is `828bd48`. Early measurements are in
+[macos-spike-results.md](../evidence/m0/macos-spike-results.md). The Info.plist
+bind follow-up is in [native-impl.md](../evidence/m0/native-impl.md) (`3602000`).
+None of these rows accept M0. Milestone checkboxes stay open. M1 and M5 stay blocked.
 
 Host: Apple M1 Pro, 32 GiB (34359738368 bytes), macOS 27.0.1 (26A434),
 `aarch64-apple-darwin`, rustc 1.99.0. Not C1 (16 GiB, macOS 14.2). Not a named C2.
 
 | ID | Decision | Owner | Evidence on this host | Rejected alternative | Consequence |
 | --- | --- | --- | --- | --- | --- |
-| R1 | Stop. Capture not reached. | macOS owner | `target/debug/taco` is one thin arm64 Mach-O linked only to `/usr/lib/libSystem.B.dylib`. `inspect_path` returned `Pass`; `t_m0_one_macho_host_binary_is_not_a_pass` failed with `must not claim Mach-O pass: Pass`. Linker signature is ad-hoc and `Info.plist=not bound`. An Apple Development re-sign (TeamIdentifier `3LQ94P5794`) still left the plist unbound. `taco run` for `default`, `system`, and `app:com.apple.Terminal` printed `error models_unpinned` and exited 1. No TCC prompt. `T-M0-SPIKE-SOURCES` script remains `verdict=not_run`. | Treat inspector `Pass`, an ELF binary, or a unit-test Mach-O fixture as the signed distribution spike. | Blocks M0 acceptance, M1, and M5. |
+| R1 | Stop. Capture not reached. Packaging bind is fixed; session still stops at unpinned models. | macOS owner | At `234c26a`, `scripts/sign-debug.sh` yields `Identifier=ai.syndai.taco` and `Info.plist entries=5` (linker-signed alone stays `Info.plist=not bound`; earlier Apple Development re-sign without CFBundleIdentifier also stayed unbound). Bound binary `taco run` for `default`, `system`, and `app:com.apple.Terminal` still prints `error models_unpinned` and exits 1. No TCC prompt. `T-M0-SPIKE-SOURCES` remains `verdict=not_run`. | Treat linker-signed unbound, inspector `Pass`, or `models_unpinned` as a capture/TCC result. | Blocks M0 acceptance, M1, and M5 until pins and real capture evidence land. |
 | R2 | Stop. Not run. Digests and the llama.cpp commit stay TBD. | native runtime owner | `taco models list` prints `sha256=TBD` for Silero, multilingual Whisper small, and Hy-MT2 1.8B GGUF. `PINS_MEASURED` is false. The Metal compiler is installed (32023.921, `air64-apple-darwin27.0.0`) and was not used. `T-M0-LINK-THREE-MODELS` did not execute; no in-process Metal load. | Subprocess `whisper-cli` / `llama-completion`, `-ngl 0`, a helper dylib, another family's GGUF, or the 1.25-bit and 2-bit repos. | Blocks M0 acceptance, M1, and M5. |
 | R3 | Stop. Not run. | audio owner | No incremental Silero runtime was linked. Forced-split behavior is a contract (`max_duration`, zero owned overlap), not a model result. | Batch `whisper_full` VAD, a hand-written model, or a user-installed ONNX dylib. | Blocks M0 acceptance and M2's real VAD. M1 stays blocked with the rest of M0. |
 | R4 | Stop. Not run. No quantization, instruction winner, or sampling arm is selected. | inference owner | `EXPERIMENT.ran` is false and every selected field is empty. No development-corpus comparison ran on this host. Baseline instruction remains the publisher English template; that is the ADR starting point, not a comparison result. Publisher temperature 0.7 is an arm, not the active sampler (`SELECTED_SAMPLING` is none). | Pick a quant or temperature without the development-corpus comparison. | Blocks M0 acceptance and M1's releasable bundle. |
