@@ -7,9 +7,13 @@ use std::process::Command;
 fn main() {
     println!("cargo:rerun-if-env-changed=TACO_LLAMA_SRC");
     println!("cargo:rerun-if-env-changed=TACO_WHISPER_SRC");
+    println!("cargo:rerun-if-env-changed=TACO_ORT_ROOT");
     println!("cargo:rerun-if-changed=../CMakeLists.txt");
     println!("cargo:rerun-if-changed=../taco_engines.cpp");
     println!("cargo:rerun-if-changed=../taco_engines.h");
+    println!("cargo:rerun-if-changed=../taco_vad_ort.cpp");
+    println!("cargo:rerun-if-changed=../taco_runtime.cpp");
+    println!("cargo:rerun-if-changed=../patches/whisper-free-buffers-on-init-fail.patch");
     println!("cargo:rustc-check-cfg=cfg(taco_engines_static)");
 
     if !apple_silicon() {
@@ -44,18 +48,22 @@ fn link(llama: &str, whisper: &str) {
     let out = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR")).join("cmake");
     fs::create_dir_all(&out).expect("cmake build dir");
 
-    run(
-        "cmake",
-        &[
-            "-S".to_string(),
-            source.to_str().expect("utf-8").to_string(),
-            "-B".to_string(),
-            out.to_str().expect("utf-8").to_string(),
-            "-DCMAKE_BUILD_TYPE=Release".to_string(),
-            format!("-DLLAMA_SRC={}", llama.display()),
-            format!("-DWHISPER_SRC={}", whisper.display()),
-        ],
-    );
+    let jobs = std::thread::available_parallelism()
+        .map(|n| n.get().to_string())
+        .unwrap_or_else(|_| "4".to_string());
+    let mut configure = vec![
+        "-S".to_string(),
+        source.to_str().expect("utf-8").to_string(),
+        "-B".to_string(),
+        out.to_str().expect("utf-8").to_string(),
+        "-DCMAKE_BUILD_TYPE=Release".to_string(),
+        format!("-DLLAMA_SRC={}", llama.display()),
+        format!("-DWHISPER_SRC={}", whisper.display()),
+    ];
+    if let Some(ort) = ort_root() {
+        configure.push(format!("-DORT_ROOT={}", ort.display()));
+    }
+    run("cmake", &configure);
     run(
         "cmake",
         &[
@@ -63,6 +71,8 @@ fn link(llama: &str, whisper: &str) {
             out.to_str().expect("utf-8").to_string(),
             "--config".to_string(),
             "Release".to_string(),
+            "--parallel".to_string(),
+            jobs,
         ],
     );
 
@@ -117,7 +127,69 @@ fn link(llama: &str, whisper: &str) {
     }
     println!("cargo:rustc-link-lib=c++");
     println!("cargo:rustc-link-lib=objc");
+    link_ort(&out);
     println!("cargo:rustc-cfg=taco_engines_static");
+}
+
+fn ort_root() -> Option<PathBuf> {
+    if let Ok(raw) = env::var("TACO_ORT_ROOT") {
+        let path = PathBuf::from(&raw);
+        if !path.is_dir() {
+            panic!("TACO_ORT_ROOT ({raw}) is not a directory");
+        }
+        return Some(path.canonicalize().unwrap_or(path));
+    }
+    let manifest = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("manifest"));
+    for candidate in [
+        manifest.join("../../.cache/m0-onnx"),
+        manifest.join("../../../taco-m0-metal/.cache/m0-onnx"),
+    ] {
+        let session = candidate.join("src/build/MacOS/Release/libonnxruntime_session.a");
+        if session.is_file() {
+            return Some(candidate.canonicalize().unwrap_or(candidate));
+        }
+    }
+    println!("cargo:warning=static ORT archives not found; VAD ORT stays out of this link");
+    None
+}
+
+fn link_ort(out: &Path) {
+    let list = out.join("ort-link.txt");
+    let text = match fs::read_to_string(&list) {
+        Ok(text) => text,
+        Err(_) => return,
+    };
+    if text.trim().is_empty() {
+        println!("cargo:warning=ort-link.txt is empty; VAD ORT stays out of this link");
+        return;
+    }
+    for line in text.lines() {
+        let Some((kind, path)) = line.split_once('\t') else {
+            continue;
+        };
+        let path = PathBuf::from(path);
+        match kind {
+            "normal" => {
+                let stem = stem_of(&path);
+                println!(
+                    "cargo:rustc-link-search=native={}",
+                    path.parent().expect("archive dir").display()
+                );
+                println!("cargo:rustc-link-lib=static={stem}");
+            }
+            "force" => {
+                // link-arg on this rlib does not reach the taco binary.
+                // whole-archive is the flag Cargo forwards, same as ggml.
+                let stem = stem_of(&path);
+                println!(
+                    "cargo:rustc-link-search=native={}",
+                    path.parent().expect("archive dir").display()
+                );
+                println!("cargo:rustc-link-lib=static:+whole-archive={stem}");
+            }
+            _ => panic!("bad ort-link kind {kind}"),
+        }
+    }
 }
 
 fn checkout(label: &str, raw: &str) -> PathBuf {

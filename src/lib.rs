@@ -3,7 +3,8 @@
 //! Milestone 0 freezes selectors, events, outcomes, errors, and stage traits.
 //! Later milestones fill those types in. They do not invent a second session path.
 //! This crate does not capture audio or claim a macOS qualification.
-//! Engine adapters are in-process stubs and do not load models.
+//! Engine adapters load only when a model directory is bound and the static
+//! engines are linked. An unbound call refuses.
 
 #![forbid(unsafe_code)]
 
