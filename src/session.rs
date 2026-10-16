@@ -130,6 +130,8 @@ pub fn bind_inference_dir(dir: &std::path::Path) {
 /// Open VAD, ASR, and MT in this process. Does not start capture.
 /// Refuses until `bind_inference_dir` and a static engine link are both present.
 pub fn open_inference() -> Result<(), ErrorCode> {
+    // The session path names every engine entry so dead_strip cannot drop them.
+    let _kept = std::hint::black_box(crate::engines::native_entrypoints());
     for role in crate::engines::ROLES {
         crate::engines::initialize(role)?;
     }

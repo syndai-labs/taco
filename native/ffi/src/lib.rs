@@ -65,6 +65,23 @@ pub fn close_role(role: i32) {
     close_raw(role);
 }
 
+/// Addresses of the product entry points.
+///
+/// The release link runs `-dead_strip`. Taking these addresses from the taco
+/// binary keeps infer, cancel, close, and prove in the Mach-O even when a
+/// given invocation does not call them.
+#[must_use]
+pub fn entrypoints() -> usize {
+    let slots = [
+        init_role as *const (),
+        infer_role as *const (),
+        cancel_role as *const (),
+        close_role as *const (),
+        prove as *const (),
+    ];
+    slots.iter().fold(0usize, |acc, slot| acc ^ (*slot as usize))
+}
+
 pub fn prove(vad: &Path, asr: &Path, mt: &Path, reserve_ms: i32) -> Result<Proof, i32> {
     let (Some(vad), Some(asr), Some(mt)) = (c_path(vad), c_path(asr), c_path(mt)) else {
         return Err(2);

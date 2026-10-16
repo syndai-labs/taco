@@ -115,6 +115,19 @@ fn linked_here() -> bool {
     cfg!(feature = "native") && platform_supported() && gpu_offload_linked()
 }
 
+/// Keep infer, cancel, and prove in the Mach-O. Not a model load.
+#[must_use]
+pub fn native_entrypoints() -> usize {
+    #[cfg(feature = "native")]
+    {
+        std::hint::black_box(taco_engines_ffi::entrypoints())
+    }
+    #[cfg(not(feature = "native"))]
+    {
+        0
+    }
+}
+
 pub fn initialize(role: EngineRole) -> Result<(), ErrorCode> {
     let Some(path) = bound_pin(role) else {
         return Err(block_reason());
