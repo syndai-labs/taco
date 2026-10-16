@@ -100,12 +100,34 @@ fn session_stays_local_and_commits_are_immutable() {
         taco::session::platform_supported(),
         cfg!(all(target_os = "macos", target_arch = "aarch64"))
     );
-    assert!(!freeze::release_ready());
-    assert!(!freeze::PINS_MEASURED);
-    for pin in freeze::PINS {
-        assert!(pin.sha256.is_none(), "{}", pin.role);
-        assert!(pin.filename.is_none(), "{}", pin.role);
-    }
+    assert!(freeze::PINS_MEASURED);
+    assert!(freeze::release_ready());
+    assert_eq!(
+        freeze::PINS.map(|pin| (pin.role, pin.filename, pin.sha256)),
+        [
+            (
+                "vad",
+                Some("silero_vad.onnx"),
+                Some("1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3"),
+            ),
+            (
+                "asr",
+                Some("ggml-small.bin"),
+                Some("1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b"),
+            ),
+            (
+                "mt",
+                Some("Hy-MT2-1.8B-Q4_K_M.gguf"),
+                Some("dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699"),
+            ),
+        ]
+    );
+    assert!(
+        read("docs/evidence/m0/pin-measurement.md").contains(
+            "dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699"
+        ),
+        "freeze digests must match the measured evidence file"
+    );
     assert_eq!(
         freeze::PINS.map(|pin| pin.family),
         ["silero", "whisper-small-multilingual", "hy-mt2-1.8b-gguf"]
