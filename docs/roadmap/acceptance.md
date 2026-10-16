@@ -62,12 +62,26 @@ OS, or a newer chip on 14.2, is unqualified until it has its own evidence.
 Results from C2 do not stand in for C1. The named C1 does not prove a 16 GiB
 machine or macOS 14.2.
 
+## Minimum OS floor
+
+Status: **Partial**. `OS_FLOOR_PARTIAL` stays true.
+
+The ADR 0002 proposal was macOS 14.2 on Apple Silicon. That build was not
+measured. The only OS build in the C1 record, and in the capture-wire and
+process-tap runs cited by
+[os-floor.md](../evidence/m0/os-floor.md), is macOS 27.0.1 (26A434).
+
+Revised floor: macOS 27.0.1 (26A434) on Apple Silicon. Builds older than
+26A434, including 14.2, are outside this floor until a run on that build
+exists. An operator allow and an operator deny on 26A434 are still missing, so
+this revision is not a support promise.
+
 | Dimension | Proposed starting point | Required evidence |
 | --- | --- | --- |
 | Models | Silero; multilingual Whisper small; Hy-MT2 1.8B GGUF from the main GGUF repository | Publisher revision, format, quantization, SHA-256, license, llama.cpp commit, Metal settings |
 | Language table | Closed. Proposed qualified pairs `en→zh` and `zh→en` | Manifest maps each user tag to the ASR id and the publisher’s full prompt language name |
 | Experimental pairs | None | An empty list is valid. Adding a pair is an M0 decision, not an implied model feature |
-| Terminal hosts | Apple Terminal, plus one named alternate | Named before M6. Unnamed “a modern terminal” is not evidence |
+| Terminal hosts | C1 presentation: Apple Terminal (`com.apple.Terminal`). Alternate TCC launch parent: launchd user agent exec of the signed `ai.syndai.taco` binary. Cursor.app (`com.todesktop.230313mzl4w4u92`) is not an acceptance host | The launchd path is named and not exercised. A second GUI terminal was not measured |
 | Corpus | Licensed or consented development set and a disjoint held-out set | Fixture hashes, speakers, timings, exclusions, reviewer names |
 
 At least two directions, with two source languages, are required. Identical
@@ -299,8 +313,10 @@ run. There is no provisional pass.
 Sixteen endurance cells: 4 source categories × 2 UI modes × 2 corners. Each
 cell is 5 unscored warmup minutes plus at least 60 measured minutes, one frozen
 direction, and the normal-load schedule. Each cell contains at least 200 timed
-natural utterances so its own latency quantiles are valid. C1 cells run in
-Apple Terminal. C2 cells run in the named alternate host.
+natural utterances so its own latency quantiles are valid. Presentation cells
+that run use Apple Terminal. C2 has no machine, so those cells are not run.
+The named alternate is a launchd user agent, not a GUI terminal and not C2.
+It has not been exercised. Host-swap sessions stay not run.
 
 Direction assignment, with d1 and d2 the ordered qualified pairs. This rotation
 puts both directions on every source category and every corner. Do not collapse a

@@ -557,6 +557,57 @@ fn c1_named_freeze_matches_measured_host() {
     );
 }
 
+#[test]
+fn os_floor_and_alternate_host_stay_partial() {
+    assert!(freeze::OS_FLOOR_PARTIAL);
+    assert!(!freeze::ALTERNATE_HOST_EXERCISED);
+    assert_eq!(freeze::OS_FLOOR, "macOS 27.0.1 (26A434)");
+    assert_eq!(freeze::OS_FLOOR, freeze::CORNERS[0].os_build.unwrap());
+    assert_eq!(freeze::ALTERNATE_TERMINAL_HOST, "launchd user agent");
+    assert!(freeze::CORNERS[1].os_build.is_none());
+    assert!(!freeze::CORNERS[0].qualified);
+    assert!(!freeze::CORNERS[1].qualified);
+
+    let acceptance = read("docs/roadmap/acceptance.md");
+    assert!(acceptance.contains("Status: **Partial**."));
+    assert!(acceptance.contains(freeze::OS_FLOOR));
+    assert!(acceptance.contains(freeze::ALTERNATE_TERMINAL_HOST));
+    assert!(acceptance.contains("com.todesktop.230313mzl4w4u92"));
+    assert!(acceptance.contains("was not measured"));
+    assert!(
+        acceptance.contains("not a support promise"),
+        "the revised floor must stay unqualified"
+    );
+    let c2_row = acceptance
+        .lines()
+        .find(|line| line.starts_with("| C2,"))
+        .expect("C2 row");
+    assert!(c2_row.contains("Open"), "{c2_row}");
+    assert!(!c2_row.contains("26A434"), "{c2_row}");
+
+    let evidence = read("docs/evidence/m0/os-floor.md");
+    assert!(evidence.contains("f40f2f5"));
+    assert!(evidence.contains("4c8dc27"));
+    assert!(evidence.contains("cd9a4c8"));
+    assert!(evidence.contains("Not exercised"));
+    assert!(evidence.contains("was not measured"));
+    assert!(evidence.contains("disclaim"));
+    assert!(!evidence.contains("- [x]"));
+    assert!(!evidence.contains("- [X]"));
+
+    let risks = read("docs/roadmap/risks-and-decisions.md");
+    assert!(risks.contains(freeze::ALTERNATE_TERMINAL_HOST));
+    assert!(risks.contains("OS_FLOOR_PARTIAL"));
+    assert!(!risks.contains("- [x]"));
+
+    let feasibility = read("docs/roadmap/m0-feasibility.md");
+    for line in feasibility.lines() {
+        if line.contains("**M0-AC") {
+            assert!(line.starts_with("- [ ]"), "M0-AC stays unchecked: {line}");
+        }
+    }
+}
+
 fn src_text() -> String {
     let mut out = String::new();
     for entry in fs::read_dir(root().join("src")).unwrap() {

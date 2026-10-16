@@ -7,7 +7,8 @@ This host is a development machine. It is not C1 and it is not a named C2.
 
 Corner naming after this spike is in [qualification-corners.md](qualification-corners.md).
 The "not C1" sentences in this file refuse the unmeasured 16 GiB / macOS 14.2 proposal.
-They are not the later C1 name.
+They are not the later C1 name. The minimum OS floor is in [os-floor.md](os-floor.md).
+This file does not confirm macOS 14.2.
 
 ## Host
 
