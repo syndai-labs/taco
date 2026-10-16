@@ -171,7 +171,43 @@ fn session_stays_local_and_commits_are_immutable() {
             "hy-mt2-1.8b-gguf"
         ]
     );
-    assert!(freeze::LICENSES.iter().all(|record| record.spdx.is_none()));
+    let lic = |subject: &str| {
+        *freeze::LICENSES
+            .iter()
+            .find(|record| record.subject == subject)
+            .unwrap_or_else(|| panic!("missing {subject}"))
+    };
+    let silero = lic("silero-vad-weights");
+    assert_eq!(silero.covers, "model");
+    assert_eq!(silero.spdx, Some("MIT"));
+    assert_eq!(
+        silero.notice,
+        Some("Copyright (c) 2020-present Silero Team")
+    );
+    let whisper_weights = lic("whisper-small-weights");
+    assert_eq!(whisper_weights.covers, "model");
+    assert!(whisper_weights.spdx.is_none());
+    assert!(whisper_weights.notice.is_none());
+    let hy = lic("hy-mt2-1.8b-gguf");
+    assert_eq!(hy.covers, "model");
+    assert_eq!(hy.spdx, Some("Apache-2.0"));
+    assert_eq!(
+        hy.notice,
+        Some("Copyright (C) 2026 Tencent. All rights reserved.")
+    );
+    let whisper_cpp = lic("whisper.cpp");
+    assert_eq!(whisper_cpp.covers, "engine");
+    assert_eq!(whisper_cpp.spdx, Some("MIT"));
+    assert_eq!(
+        whisper_cpp.notice,
+        Some("Copyright (c) 2023-2026 The ggml authors")
+    );
+    let llama = lic("llama.cpp");
+    assert_eq!(llama.covers, "engine");
+    assert_eq!(llama.spdx, Some("MIT"));
+    assert_eq!(llama.notice, whisper_cpp.notice);
+    assert_ne!(silero.notice, whisper_cpp.notice);
+    assert_ne!(hy.notice, llama.notice);
 
     let mut ledger = Ledger::default();
     ledger.commit_text(SegmentId(1), "Hello").unwrap();
