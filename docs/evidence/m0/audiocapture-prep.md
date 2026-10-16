@@ -21,10 +21,8 @@ At 01:55 KST pid 76134 was:
 already the same command from the same binary (still running while this note
 was written). Neither pid was signaled.
 
-`taco run --source default` is the microphone spike. The binary contains
-`TACO_CAPTURE_SPIKE_OPEN_MS`. The source beside it waits up to that many
-milliseconds (default 180000) and does not press Allow or Deny. A pid exit
-is not an Allow and it is not a Deny.
+`taco run --source default` is the microphone spike. It does not press
+Allow or Deny. A pid exit is not an Allow and it is not a Deny.
 
 Prior `system` / Chrome `app:` / `pid:` spikes in `process-tap.md` sent a
 `kTCCServiceMicrophone` preflight and no `kTCCServiceAudioCapture` line.
@@ -49,7 +47,7 @@ aggregate exists, and after the default-output check, it registers a no-op
 IO proc and calls `AudioDeviceStart` on the aggregate. The auto-start key
 stays 0 so that start does not wait for a tapped process to deliver audio.
 `AudioDeviceStart` returns before an operator answers, so the aggregate stays
-started for `TACO_CAPTURE_SPIKE_OPEN_MS` milliseconds (default 180000, values
+started for `TACO_CAPTURE_SPIKE_OPEN_MS` milliseconds (default 300000, values
 above 600000 or not a whole number use that default, `0` starts and stops
 without waiting). Then `AudioDeviceStop`, the IO proc is destroyed, and Rust
 `Drop` destroys the aggregate and the tap. Nothing in this path presses
@@ -177,7 +175,7 @@ TACO_CAPTURE_SPIKE=1 ./target/debug/taco run --source pid:PID --from en --to zh
 ```
 
 These commands call `AudioDeviceStart` and hold the aggregate for
-`TACO_CAPTURE_SPIKE_OPEN_MS` (default 180000) before teardown. A dialog is
+`TACO_CAPTURE_SPIKE_OPEN_MS` (default 300000) before teardown. A dialog is
 possible and is not recorded yet. If the process exits with no
 `kTCCServiceAudioCapture` prompting line, record that and stop. That exit
 is not Allow and not Deny. The tool does not press a button. If a dialog

@@ -27,6 +27,8 @@ fn t_m0_spike_tap_starts_aggregate_without_checking_ac1() {
         "{open}"
     );
     assert!(src.contains("TACO_CAPTURE_SPIKE_OPEN_MS"));
+    assert!(src.contains("return 300000;"));
+    assert!(!src.contains("180000") && !src.contains("180_000"), "{src}");
     let note = fs::read_to_string(root.join("docs/evidence/m0/audiocapture-prep.md")).unwrap();
     assert!(note.contains("- [ ] **M0-AC1:**"));
     assert!(!note.contains("- [x] **M0-AC1:**"));

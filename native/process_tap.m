@@ -155,12 +155,12 @@ static int find_one_bundle(const char *bundle_id, AudioObjectID *out_proc) {
 static int spike_open_ms(void) {
     const char *env = getenv("TACO_CAPTURE_SPIKE_OPEN_MS");
     if (env == NULL || env[0] == '\0') {
-        return 180000;
+        return 300000;
     }
     char *end = NULL;
     long value = strtol(env, &end, 10);
     if (end == env || *end != '\0' || value < 0 || value > 600000L) {
-        return 180000;
+        return 300000;
     }
     return (int)value;
 }
