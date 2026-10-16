@@ -124,12 +124,11 @@ pub fn preflight(session: &mut Session, req: &RunRequest<'_>) -> Result<Prefligh
 
 /// Open the selected capture backend for the M0 distribution spike.
 ///
-/// Real device/tap opens require `TACO_CAPTURE_SPIKE=1` so default `cargo test`
-/// never prompts TCC. Without that env, this returns `CaptureNotAvailable`.
-pub fn start_capture(
-    session: &mut Session,
-    preflight: &PreflightOk,
-) -> Result<(), ErrorCode> {
+/// Real device and tap opens require `TACO_CAPTURE_SPIKE=1` so default
+/// `cargo test` never prompts TCC. Without that env, this returns
+/// `CaptureNotAvailable` and does not call the microphone or the process tap.
+/// `system`, `app:`, and `pid:` use the wired CoreAudio tap on that same gate.
+pub fn start_capture(session: &mut Session, preflight: &PreflightOk) -> Result<(), ErrorCode> {
     if std::env::var_os("TACO_CAPTURE_SPIKE").is_none() {
         session.capture_started = false;
         return Err(ErrorCode::CaptureNotAvailable);

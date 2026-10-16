@@ -203,6 +203,57 @@ fn t_m0_reject_inputs_valid_selector_does_not_capture() {
     assert!(!session.capture_started);
 }
 
+/// System, app, and pid stay fail-closed without the spike env. No tap open.
+#[test]
+fn t_m0_reject_inputs_tap_selectors_stay_closed_without_spike() {
+    assert!(std::env::var_os("TACO_CAPTURE_SPIKE").is_none());
+    assert!(!session::capture_spike_enabled());
+    let calls = taco::capture::backend_calls();
+    let rings = taco::capture::rings_allocated();
+    for raw in ["system", "app:com.apple.Safari", "pid:42"] {
+        let mut session = Session::new();
+        let ok = session::PreflightOk {
+            selector: parse_selector(raw).unwrap(),
+            pair: parse_pair("en", "zh").unwrap(),
+        };
+        assert_eq!(
+            session::start_capture(&mut session, &ok).unwrap_err(),
+            ErrorCode::CaptureNotAvailable
+        );
+        assert!(!session.capture_started);
+        assert_eq!(session.state, SessionState::Preflight);
+    }
+    assert!(taco::capture::open_system_tap().is_err());
+    assert!(taco::capture::open_bundle_tap("com.apple.Safari").is_err());
+    assert!(taco::capture::open_pid_tap(42).is_err());
+    assert_eq!(taco::capture::backend_calls(), calls);
+    assert_eq!(taco::capture::rings_allocated(), rings);
+    if !cfg!(target_os = "macos") {
+        assert!(!taco::capture::spike_linked());
+    }
+}
+
+/// Spike set on a non-product host still does not open a device.
+#[test]
+fn t_m0_reject_inputs_tap_spike_off_host_does_not_open() {
+    if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+        return;
+    }
+    for source in ["system", "app:com.apple.Safari", "pid:42"] {
+        let output = taco_bin()
+            .args(["run", "--source", source, "--from", "en", "--to", "zh"])
+            .env("TACO_CAPTURE_SPIKE", "1")
+            .output()
+            .expect("spawn taco");
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("platform_unsupported"),
+            "{source}: {stderr}"
+        );
+        assert_ne!(output.status.code(), Some(0));
+    }
+}
+
 /// Unset `TACO_CAPTURE_SPIKE` stays fail-closed. Linux never opens a device.
 #[test]
 fn t_m0_reject_inputs_spike_gate_unset_does_not_capture() {

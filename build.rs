@@ -3,7 +3,6 @@ use std::path::PathBuf;
 
 fn main() {
     println!("cargo:rerun-if-changed=assets/Info.plist");
-    println!("cargo:rerun-if-changed=native/process_tap.m");
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
     if target_os != "macos" {
         return;
@@ -25,13 +24,4 @@ fn main() {
         println!("cargo:rustc-link-arg={arg}");
     }
     println!("cargo:rustc-link-arg={}", plist.display());
-
-    // Compiles the process-tap spike. Rust does not call into it.
-    cc::Build::new()
-        .file("native/process_tap.m")
-        .flag("-fobjc-arc")
-        .compile("taco_process_tap");
-    println!("cargo:rustc-link-lib=framework=Foundation");
-    println!("cargo:rustc-link-lib=framework=CoreFoundation");
-    println!("cargo:rustc-link-lib=framework=CoreAudio");
 }

@@ -1,7 +1,7 @@
 //! Microphone and process-tap spike.
 //!
-//! Preflight does not call these functions. Process-tap FFI stays in
-//! `native/process_tap.m` and is not invoked from Rust.
+//! Session start is the only caller. Tap FFI is `native/process_tap.m`,
+//! reached through `taco-tap` when `TACO_CAPTURE_SPIKE` is set on macOS.
 
 mod microphone;
 mod process_tap;
@@ -23,10 +23,16 @@ pub(crate) fn note_backend_call() {
     BACKEND_CALLS.fetch_add(1, Ordering::SeqCst);
 }
 
-/// Safe Rust does not call `taco_spike_linked`. This stays false and does not
-/// open a tap or claim a TCC grant.
+/// True when the macOS tap object is linked. Does not create a tap.
 pub fn spike_linked() -> bool {
-    false
+    #[cfg(target_os = "macos")]
+    {
+        taco_tap::linked()
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        false
+    }
 }
 
 /// Keeps the spike functions in the binary without calling them.

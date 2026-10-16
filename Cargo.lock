@@ -758,9 +758,16 @@ dependencies = [
 name = "taco"
 version = "0.1.0-m0"
 dependencies = [
- "cc",
  "clap",
  "cpal",
+ "taco-tap",
+]
+
+[[package]]
+name = "taco-tap"
+version = "0.1.0-m0"
+dependencies = [
+ "cc",
 ]
 
 [[package]]

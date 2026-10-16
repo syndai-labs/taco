@@ -60,7 +60,9 @@ fn t_m0_one_macho_host_binary() {
             "macOS arm64 binary must pass Mach-O gate after plist bind: {verdict:?}"
         );
         assert!(
-            bytes.windows(b"__info_plist".len()).any(|w| w == b"__info_plist"),
+            bytes
+                .windows(b"__info_plist".len())
+                .any(|w| w == b"__info_plist"),
             "bound Info.plist section marker must appear in the binary"
         );
     } else {
@@ -88,7 +90,10 @@ fn t_m0_one_macho_inspector_rejects_bad_artifacts() {
     let lazy = macho_cmd(0x20, 0x0100_000C, "/usr/local/lib/libfoo.dylib", USAGE);
     assert!(!inspect_bytes(&lazy).is_pass(), "lazy non-system dylib");
     let lazy_system = macho_cmd(0x20, 0x0100_000C, "/usr/lib/libSystem.B.dylib", USAGE);
-    assert!(inspect_bytes(&lazy_system).is_pass(), "system lazy dylib stays");
+    assert!(
+        inspect_bytes(&lazy_system).is_pass(),
+        "system lazy dylib stays"
+    );
     let missing = macho(0x0100_000C, "/usr/lib/libSystem.B.dylib", b"");
     assert!(!inspect_bytes(&missing).is_pass());
     let intel = macho(0x0100_0007, "/usr/lib/libSystem.B.dylib", USAGE);
