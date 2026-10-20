@@ -10,3 +10,5 @@ One hundred `session::prove_native` cycles in one process (pid 29510) on the sam
 - [ ] **M0-AC3:** Each prove set `teardown=1`. Resident footprint did not return to the cycle-1 teardown. The engine printed `ac3=0`.
 
 PR #49 tip `37ff031` ([engines-residency-retry.md](engines-residency-retry.md)) is a stronger Stop on the same host. It does not drop `a0e1614`. Cycle 2 stayed 94699688 bytes above cycle 1 after the weight buffer was freed. Boxes stay unchecked.
+
+PR #55 tip `0829a70` ([engines-residency-rootcause.md](engines-residency-rootcause.md)) names the holder as the process-lifetime Metal device in `ggml_backend_metal_reg`. No new Mac run. No purge. It does not drop `a0e1614`. Boxes stay unchecked.
