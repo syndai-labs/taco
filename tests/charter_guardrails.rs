@@ -1543,10 +1543,18 @@ fn m0_cleanup_hex_without_destroy_refuses_ac1() {
     assert!(!cleanup_destroy_traced(&stripped));
     assert_checked_ac1_fails(&mic_hex, &audio_hex, &stripped);
 
-    let after_none = destroy_record_yes(&fill(
+    let after_prose = destroy_record_yes(&fill(
         &fill(&fill(&tap, "Allow tip SHA:"), "Deny tip SHA:"),
         "Cleanup tip SHA:",
     ));
+    assert!(!cleanup_destroy_traced(&after_prose));
+    assert_eq!(one_tip(&after_prose, "After-pair tip SHA:"), "none");
+    assert!(!ac1_tip_shas_ready(&mic_hex, &audio_hex, &after_prose));
+    assert_checked_ac1_fails(&mic_hex, &audio_hex, &after_prose);
+
+    let after_none = format!(
+        "{after_prose}\n> AudioHardwareDestroyAggregateDevice\n> AudioHardwareDestroyProcessTap\n"
+    );
     assert!(cleanup_destroy_traced(&after_none));
     assert_eq!(one_tip(&after_none, "After-pair tip SHA:"), "none");
     assert!(!ac1_tip_shas_ready(&mic_hex, &audio_hex, &after_none));
