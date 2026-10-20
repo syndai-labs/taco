@@ -588,6 +588,13 @@ fn inference_adapters_refuse_in_process() {
     assert!(stop.contains("M0-AC2 stays unchecked"));
     assert!(!stop.contains("- [x]"));
     assert!(!stop.contains("- [X]"));
+    let pin_stop = read("docs/evidence/m0/vad-silero-pin-stop.md");
+    assert!(pin_stop.contains("1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3"));
+    assert!(pin_stop.contains("The VAD pin does not change"));
+    assert!(pin_stop.contains("LSTM"));
+    assert!(pin_stop.contains("M0-AC2 stays unchecked"));
+    assert!(!pin_stop.contains("- [x]"));
+    assert!(!pin_stop.contains("- [X]"));
     assert!(!read("Cargo.toml").contains("cdylib"));
     assert!(!read("Cargo.toml").contains("crate-type"));
     assert!(src_text().contains("fn initialize"));
