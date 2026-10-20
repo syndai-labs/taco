@@ -9,6 +9,10 @@ out=${1:?evidence path}
   echo "id=T-M0-SPIKE-SOURCES"
   echo "verdict=not_run"
   echo "reason=no signed-artifact allow/deny/cleanup was executed"
+  echo "process_tap=taco_run"
+  echo "linux_coreaudio=refused"
+  echo "allow_tip=none"
+  echo "deny_tip=none"
   echo "blocks=M0-AC1,M1,M5"
 } > "$out"
 exit 2

@@ -1039,6 +1039,189 @@ fn checked_m0_ac1(dir: &Path, out: &mut Vec<String>) {
     }
 }
 
+#[test]
+fn process_tap_product_path_refuses_linux_success() {
+    let consequence =
+        "Partial — process taps are on taco run; Mac CoreAudio and operator Allow/Deny stay open; Linux tap success is Stop.";
+    for path in [
+        "docs/evidence/m0/process-tap-product.md",
+        "docs/roadmap/risks-and-decisions.md",
+        "docs/roadmap/m0-feasibility.md",
+    ] {
+        let text = read(path);
+        assert!(text.contains(consequence), "{path} drops the process-tap Partial");
+        assert!(text.contains("cd9a4c8"), "{path} drops the #11 tip");
+        assert!(text.contains("- [ ]"), "{path} drops the open box");
+        assert!(!text.contains("- [x]") && !text.contains("- [X]"), "{path}");
+    }
+    let note = read("docs/evidence/m0/process-tap-product.md");
+    assert!(note.contains("Status: **Partial**."));
+    assert!(note.contains("a1c5c32"));
+    assert!(note.contains("session::start_capture"));
+    assert!(note.contains("open_system_tap"));
+    assert!(note.contains("open_bundle_tap"));
+    assert!(note.contains("open_pid_tap"));
+    assert!(note.contains("AudioHardwareCreateProcessTap"));
+    assert!(note.contains("app:com.google.Chrome"));
+    assert!(note.contains("pid:688"));
+    assert!(note.contains("Allow tip SHA: none"));
+    assert!(note.contains("Deny tip SHA: none"));
+    assert!(note.contains("M0-AC1 stays unchecked"));
+    assert!(note.contains("platform_unsupported"));
+    assert!(read("docs/roadmap/m0-feasibility.md").contains("- [ ] **M0-AC1:**"));
+
+    let session_src = read("src/session.rs");
+    let start = fn_body(&session_src, "pub fn start_capture");
+    let gate = start.find("platform_supported()").expect("platform gate");
+    let system = start.find("open_system_tap()").expect("system tap");
+    let bundle = start.find("open_bundle_tap(").expect("app tap");
+    let pid = start.find("open_pid_tap(").expect("pid tap");
+    assert!(
+        gate < system && system < bundle && bundle < pid,
+        "platform gate must precede the product tap dispatch"
+    );
+    let main = read("src/main.rs");
+    let run = main.find("Commands::Run").expect("taco run");
+    let call = main.find("session::start_capture").expect("product capture");
+    assert!(run < call, "taco run must call start_capture");
+
+    let tap = read("src/capture/process_tap.rs");
+    assert!(tap.contains("Which::System | Which::Pid(_) | Which::Bundle(_) => Err(NOT_WIRED)"));
+    let macos_cfg = tap.find("#[cfg(target_os = \"macos\")]").expect("macos cfg");
+    let macos_ok = tap.find("Ok(ProcessTap { inner })").expect("macos open");
+    assert!(macos_cfg < macos_ok, "tap Ok stays inside the macOS cfg");
+    let build = read("native/tap/build.rs");
+    let early = build.find("!= \"macos\"").expect("os gate");
+    let compile = build.find("cc::Build").expect("compile");
+    assert!(early < compile, "non-macOS must return before compiling the tap");
+    assert!(build[early..compile].contains("return;"));
+    assert!(read("native/process_tap.m").contains("AudioHardwareCreateProcessTap"));
+    assert!(read("src/lib.rs").contains("forbid(unsafe_code)"));
+
+    let script = read("scripts/qual/T-M0-SPIKE-SOURCES");
+    assert!(script.contains("echo \"verdict=not_run\""));
+    assert!(!script.contains("echo \"verdict=pass\""));
+    assert!(script.contains("echo \"linux_coreaudio=refused\""));
+    assert!(script.contains("echo \"process_tap=taco_run\""));
+    assert!(script.contains("echo \"allow_tip=none\""));
+    assert!(script.contains("echo \"deny_tip=none\""));
+    let spike = spike_sources_evidence();
+    assert_eq!(spike.status, 2);
+    assert!(spike.text.contains("verdict=not_run"));
+    assert!(spike.text.contains("linux_coreaudio=refused"));
+    assert!(!spike.text.contains("verdict=pass"));
+
+    assert!(std::env::var_os("TACO_CAPTURE_SPIKE").is_none());
+    for raw in ["system", "app:com.apple.Safari", "pid:42"] {
+        let mut session = Session::new();
+        let ok = taco::session::PreflightOk {
+            selector: selector::parse_selector(raw).unwrap(),
+            pair: language::parse_pair("en", "zh").unwrap(),
+        };
+        assert_eq!(
+            taco::session::start_capture(&mut session, &ok).unwrap_err(),
+            taco::error::ErrorCode::CaptureNotAvailable,
+            "{raw}"
+        );
+        assert!(!session.capture_started);
+    }
+
+    if !cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+        assert!(!taco::session::platform_supported());
+        assert!(!taco::capture::spike_linked());
+        let before = taco::capture::backend_calls();
+        assert!(taco::capture::open_system_tap().is_err());
+        assert!(taco::capture::open_bundle_tap("com.apple.Safari").is_err());
+        assert!(taco::capture::open_pid_tap(42).is_err());
+        assert_eq!(taco::capture::backend_calls(), before);
+        for source in ["system", "app:com.apple.Safari", "pid:42"] {
+            for spike_on in [false, true] {
+                let output = taco_run(source, spike_on);
+                assert_eq!(
+                    output.status.code(),
+                    Some(1),
+                    "{source} spike={spike_on} status"
+                );
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                assert!(
+                    stderr.contains("platform_unsupported"),
+                    "{source} spike={spike_on}: {stderr}"
+                );
+                assert!(
+                    !stderr.contains("AudioHardwareCreateProcessTap"),
+                    "{stderr}"
+                );
+                assert!(String::from_utf8_lossy(&output.stdout).trim().is_empty());
+            }
+        }
+    }
+
+    let mut checked = Vec::new();
+    checked_m0_ac1(&root().join("docs"), &mut checked);
+    assert!(
+        checked.is_empty(),
+        "M0-AC1 checked while process-tap Allow/Deny is Mac-only: {checked:?}"
+    );
+}
+
+struct SpikeEvidence {
+    status: i32,
+    text: String,
+}
+
+fn spike_sources_evidence() -> SpikeEvidence {
+    let dir = std::env::temp_dir().join(format!("taco-tap-product-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+    let out = dir.join("evidence.txt");
+    let status = Command::new("sh")
+        .arg(root().join("scripts/qual/T-M0-SPIKE-SOURCES"))
+        .arg(&out)
+        .status()
+        .expect("T-M0-SPIKE-SOURCES");
+    let text = fs::read_to_string(&out).expect("spike evidence");
+    let _ = fs::remove_dir_all(&dir);
+    SpikeEvidence {
+        status: status.code().unwrap_or(0),
+        text,
+    }
+}
+
+fn taco_run(source: &str, spike: bool) -> std::process::Output {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_taco"));
+    cmd.args(["run", "--source", source, "--from", "en", "--to", "zh"]);
+    if spike {
+        cmd.env("TACO_CAPTURE_SPIKE", "1");
+    } else {
+        cmd.env_remove("TACO_CAPTURE_SPIKE");
+    }
+    cmd.output().expect("spawn taco")
+}
+
+fn checked_m0_ac1(dir: &Path, out: &mut Vec<String>) {
+    let mark_x = format!("- [{}]", "x");
+    let mark_upper = format!("- [{}]", "X");
+    for entry in fs::read_dir(dir).unwrap().flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            checked_m0_ac1(&path, out);
+            continue;
+        }
+        if path.extension().and_then(|ext| ext.to_str()) != Some("md") {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        let flipped = text.lines().any(|line| {
+            line.contains("M0-AC1") && (line.contains(&mark_x) || line.contains(&mark_upper))
+        });
+        if flipped {
+            out.push(path.display().to_string());
+        }
+    }
+}
+
 fn fn_body<'a>(src: &'a str, name: &str) -> &'a str {
     let start = src.find(name).unwrap_or_else(|| panic!("missing {name}"));
     let rest = &src[start..];

@@ -75,6 +75,11 @@ tests failing before the contract types satisfy them. Do not rename the IDs.
   intended CLI artifact, including allow/deny and cleanup. The external input category
   has a named device reserved for M2 qualification. Proposed minimum OS is confirmed
   or revised explicitly before any support promise is accepted.
+  [process-tap-product.md](../evidence/m0/process-tap-product.md) is Partial.
+  Product `taco run` dispatches `system`, `app:`, and `pid:` (PR #11 tip `cd9a4c8`,
+  ancestor of stack base `a1c5c32`). CoreAudio and operator Allow/Deny stay Mac-only.
+  Linux tap success is a Stop.
+  Partial — process taps are on taco run; Mac CoreAudio and operator Allow/Deny stay open; Linux tap success is Stop.
 - [ ] **M0-AC2:** The combined native spike performs ASR and translation with the exact
   pinned artifacts, in process, with observed Metal GPU execution. A subprocess CLI
   or a CPU-only `-ngl 0` run does not pass.
