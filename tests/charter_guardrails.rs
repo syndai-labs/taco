@@ -2085,6 +2085,74 @@ fn m0_ac2_ac3_partial_refuses_checked_boxes() {
     );
 }
 
+/// PR #54 tip `6a839de` is not an ancestor of prefer tip `fe08f47`.
+/// The body matches `m0_ac4_cannot_be_checked_while_gaps_stand` on that tip.
+#[test]
+fn m0_ac4_cannot_be_checked_while_gaps_stand() {
+    let signed_gap = freeze::SIGNED_INSTALL.is_none();
+    let c2_gap = freeze::C2_BLOCKED;
+    if !signed_gap && !c2_gap {
+        return;
+    }
+    let mut checked = Vec::new();
+    checked_m0_ac4(&root().join("docs"), &mut checked);
+    assert!(
+        checked.is_empty(),
+        "M0-AC4 checked while SIGNED_INSTALL=None or C2_BLOCKED stands: {checked:?}"
+    );
+    let block = "Charter accept is blocked: M0-AC4 cannot be checked while SIGNED_INSTALL=None or C2_BLOCKED stands.";
+    let launchd = "The launchd user-agent run does not close M0-AC4.";
+    for path in [
+        "docs/evidence/m0/ac4-partial.md",
+        "docs/roadmap/risks-and-decisions.md",
+        "docs/roadmap/acceptance.md",
+        "docs/roadmap/m0-feasibility.md",
+    ] {
+        let text = read(path);
+        assert!(text.contains("Partial"), "{path} drops the Partial status");
+        assert!(text.contains(block), "{path} drops the AC4 charter block");
+        assert!(
+            text.contains(launchd),
+            "{path} treats launchd as closing AC4"
+        );
+        assert!(
+            !text.lines().any(|line| {
+                line.contains("M0-AC4") && (line.contains("- [x]") || line.contains("- [X]"))
+            }),
+            "{path} checks M0-AC4"
+        );
+    }
+    let evidence = read("docs/evidence/m0/ac4-partial.md");
+    for sha in ["e7433c2", "8794303", "ad8d418", "0c880fb", "8ebd0fc"] {
+        assert!(evidence.contains(sha), "ac4-partial.md drops tip {sha}");
+    }
+    assert!(evidence.contains("SIGNED_INSTALL=None"));
+    assert!(evidence.contains("C2_BLOCKED"));
+    assert!(evidence.contains("27.0.1"));
+    assert!(evidence.contains("Signature=adhoc"));
+}
+
+fn checked_m0_ac4(dir: &Path, out: &mut Vec<String>) {
+    for entry in fs::read_dir(dir).unwrap().flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            checked_m0_ac4(&path, out);
+            continue;
+        }
+        if path.extension().and_then(|ext| ext.to_str()) != Some("md") {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        for (number, line) in text.lines().enumerate() {
+            if line.contains("M0-AC4") && (line.contains("- [x]") || line.contains("- [X]")) {
+                out.push(format!("{}:{}: {line}", path.display(), number + 1));
+            }
+        }
+    }
+}
+
 fn stop_sha_stands(path: &str, sha: &str) -> bool {
     match fs::read_to_string(root().join(path)) {
         Ok(text) if !text.is_empty() && !text.contains(sha) => false,

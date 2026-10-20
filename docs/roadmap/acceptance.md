@@ -54,6 +54,11 @@ These are two corners, not a full hardware-by-OS matrix. An M1 on the current
 OS, or a newer chip on 14.2, is unqualified until it has its own evidence.
 Results from C2 do not stand in for C1.
 
+Status: **Partial**. M0-AC4 stays unchecked. `C2_BLOCKED` is true. `SIGNED_INSTALL` is `None`.
+Charter accept is blocked: M0-AC4 cannot be checked while SIGNED_INSTALL=None or C2_BLOCKED stands.
+The launchd user-agent run does not close M0-AC4.
+Record: [ac4-partial.md](../evidence/m0/ac4-partial.md).
+
 | Dimension | Proposed starting point | Required evidence |
 | --- | --- | --- |
 | Models | Silero; multilingual Whisper small; Hy-MT2 1.8B GGUF from the main GGUF repository | Publisher revision, format, quantization, SHA-256, license, llama.cpp commit, Metal settings |
