@@ -21,7 +21,7 @@ Cleanup needs a separately traced destroy. The log has to quote both `AudioHardw
 | Lock | Tip | What stays |
 | --- | --- | --- |
 | #51 | `7c71d50` | TIMEOUT is not Deny. |
-| #62 | `8c24c99` | Owns `ac1_cannot_flip_while_operator_timeout_partial_stands`. Not an ancestor of this tip. Not copied. |
+| #62 | `8c24c99` | `mic-operator-timeouts.md` is vendored from #51 tip `7c71d50`. `ac1_cannot_flip_while_operator_timeout_partial_stands` asserts those TIMEOUT pids. #62 is not an ancestor of this tip. |
 | #81 | `ca9bc50` | Owns `ac1_cannot_flip_while_full_session_tip_shas_are_none`. |
 | #82 | `637459f` | Owns `process_tap_tips_refuse_ac1_flip_while_either_sha_is_none`. |
 | #87 | `a40fad1` | Those guards on the measure tip. Tip SHAs stay none. |

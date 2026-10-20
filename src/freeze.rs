@@ -107,6 +107,16 @@ pub const CORNERS: [Corner; 2] = [
     },
 ];
 
+/// Notarized distribution artifact. `None` until a measurement replaces the
+/// Stop. PR #38 tip `e7433c2` recorded no Developer ID. This tip does not
+/// vendor that evidence file and does not fill an install id.
+pub const SIGNED_INSTALL: Option<&str> = None;
+
+/// No second acceptance machine. PR #27 tip `ad8d418` recorded the gap.
+/// Stays true until a different Apple Silicon Mac is measured.
+/// This flag does not name a chip, a memory size, or an OS build.
+pub const C2_BLOCKED: bool = true;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CorpusSlot {
     pub name: &'static str,

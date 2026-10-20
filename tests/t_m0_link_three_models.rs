@@ -11,7 +11,7 @@ fn t_m0_link_three_models() {
          Do not record a CPU or subprocess result. See risks-and-decisions.md R2."
     );
     panic!(
-        "T-M0-LINK-THREE-MODELS not executed: pinned VAD, Whisper small, and Hy-MT2 \
-         digests are TBD and Metal GPU execution was not observed"
+        "T-M0-LINK-THREE-MODELS not executed: pinned digests are not a Metal pass; \
+         GPU execution was not observed"
     );
 }

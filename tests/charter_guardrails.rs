@@ -481,6 +481,12 @@ fn package_source_and_milestone_boxes() {
         format!("- [{}] **M0-AC", "X"),
         format!("- [{}] M0-AC", "x"),
         format!("- [{}] M0-AC", "X"),
+        format!("* [{}] **M0-AC", "x"),
+        format!("* [{}] **M0-AC", "X"),
+        format!("* [{}] M0-AC", "x"),
+        format!("* [{}] M0-AC", "X"),
+        format!("- [{}]**M0-AC", "x"),
+        format!("- [{}]**M0-AC", "X"),
     ] {
         assert!(!walk_contains(&root(), &mark), "checked M0-AC box: {mark}");
     }
@@ -519,6 +525,103 @@ fn package_source_and_milestone_boxes() {
             "{test} must keep the Linux block"
         );
     }
+}
+
+/// Corpora, pin evidence, and the CLI must not look qualified while M0 is open.
+#[test]
+fn pins_are_not_a_verify_pass_and_corpora_stay_unsealed() {
+    assert_eq!(
+        freeze::CORPORA.map(|slot| (slot.name, slot.natural_utterances, slot.sealed)),
+        [
+            ("development", 0, false),
+            ("held-out", 0, false),
+            ("critical", 0, false),
+        ]
+    );
+    assert!(!freeze::corpus_gate_met(taco::limits::limits()));
+    for caller in ["development", "held-out", "T-M7-HELDOUT-ONCE", ""] {
+        assert_eq!(
+            freeze::read_held_out_labels(caller),
+            Err(taco::error::ErrorCode::HeldOutClosed),
+            "{caller}"
+        );
+    }
+
+    let cargo = read("Cargo.toml");
+    assert_eq!(cargo.matches("[[bin]]").count(), 1, "one user-facing binary");
+    assert_eq!(cargo.matches("[lib]\n").count(), 1, "one library");
+    assert_eq!(
+        cargo.matches("name = \"taco\"").count(),
+        3,
+        "package, lib, and bin are all named taco"
+    );
+    assert!(!cargo.contains("taco-spike"));
+
+    let evidence = read("docs/evidence/m0/pin-measurement.md");
+    assert!(evidence.contains("No Metal load was run."));
+    assert!(evidence.contains("This machine is not C1 and it is not a named C2."));
+    for pin in freeze::PINS {
+        let digest = pin.sha256.expect("measured pin");
+        let filename = pin.filename.expect("measured pin");
+        assert_eq!(digest.len(), 64);
+        assert!(evidence.contains(digest), "{digest} missing from pin evidence");
+        assert!(
+            evidence.contains(filename),
+            "{filename} missing from pin evidence"
+        );
+    }
+    let ac_checked = evidence.lines().any(|line| {
+        line.contains("M0-AC") && (line.contains("- [x]") || line.contains("- [X]"))
+    });
+    assert!(
+        !ac_checked,
+        "pin-measurement.md checks an M0 acceptance box"
+    );
+
+    let bin = env!("CARGO_BIN_EXE_taco");
+    let list = Command::new(bin).args(["models", "list"]).output().unwrap();
+    assert!(list.status.success());
+    let listed = String::from_utf8_lossy(&list.stdout);
+    assert!(!listed.contains("TBD"), "{listed}");
+    for pin in freeze::PINS {
+        assert!(
+            listed.contains(pin.sha256.unwrap()),
+            "models list dropped {}",
+            pin.role
+        );
+        assert!(listed.contains(pin.filename.unwrap()));
+    }
+
+    let verify = Command::new(bin).args(["models", "verify"]).output().unwrap();
+    assert_eq!(verify.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&verify.stderr).contains("models_unpinned"));
+    let dir = std::env::temp_dir().join(format!("taco-verify-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+    let verify_dir = Command::new(bin)
+        .args(["models", "verify", "--model-dir"])
+        .arg(&dir)
+        .output()
+        .unwrap();
+    let _ = fs::remove_dir_all(&dir);
+    assert_eq!(verify_dir.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&verify_dir.stderr).contains("models_unpinned"));
+
+    let notices = Command::new(bin).arg("notices").output().unwrap();
+    assert!(notices.status.success());
+    let text = String::from_utf8_lossy(&notices.stdout);
+    assert!(text.contains("does not upload"));
+    assert!(text.contains("does not fetch or load"));
+    assert!(!text.contains("TBD"), "{text}");
+    assert!(!text.to_lowercase().contains("metal"), "{text}");
+
+    let link = read("tests/t_m0_link_three_models.rs");
+    assert!(link.contains("panic!"));
+    assert!(link.contains("not a Metal pass"));
+    assert!(
+        !link.contains("digests are TBD"),
+        "native test still claims the pins are unmeasured"
+    );
 }
 
 #[test]
@@ -1066,8 +1169,11 @@ fn process_tap_tips_refuse_ac1_flip_while_either_sha_is_none() {
 
     let allow = one_tip(&note, "Allow tip SHA:");
     let deny = one_tip(&note, "Deny tip SHA:");
+    let after_pair = one_tip(&note, "After-pair tip SHA:");
     assert_ne!(allow, "TIMEOUT", "TIMEOUT is not Allow");
     assert_ne!(deny, "TIMEOUT", "TIMEOUT is not Deny");
+    assert_eq!(after_pair, "none", "After-pair tip SHA");
+    assert!(!tip_token_is_sha(&after_pair), "After-pair tip SHA");
     let mut cleanup = Vec::new();
     for label in CLEANUP_LABELS {
         if let Some(token) = optional_tip(&note, label) {
@@ -1326,7 +1432,7 @@ fn assert_ac1_closed_for(mic: &str, audio: &str, tap: &str, checked: bool) {
     );
 }
 
-/// Early return only when every tip SHA is hex and the process-tap note traces destroy.
+/// Early return only when every tip SHA is hex, including After-pair, and the process-tap note traces destroy. Missing sheet is not Deny.
 fn ac1_tip_shas_ready(mic: &str, audio: &str, tap: &str) -> bool {
     named_tip_sha(mic, "Allow tip SHA:")
         && named_tip_sha(mic, "Deny tip SHA:")
@@ -1335,6 +1441,7 @@ fn ac1_tip_shas_ready(mic: &str, audio: &str, tap: &str) -> bool {
         && named_tip_sha(tap, "Allow tip SHA:")
         && named_tip_sha(tap, "Deny tip SHA:")
         && named_tip_sha(tap, "Cleanup tip SHA:")
+        && named_tip_sha(tap, "After-pair tip SHA:")
         && cleanup_destroy_traced(tap)
 }
 
@@ -1348,17 +1455,44 @@ fn process_tap_early_return_ok(
     !partial && allow_ok && deny_ok && cleanup_ok && cleanup_destroy_traced(note)
 }
 
-/// Record line `destroy_traced: yes` plus both destroy APIs named in the note.
+/// Record line `destroy_traced: yes`, plus each destroy API on its own
+/// log-quote (`>`) or traced-evidence (`log:` / `traced:`) line.
+/// A sentence that names the API does not count.
 fn cleanup_destroy_traced(note: &str) -> bool {
-    let yes = note.lines().any(|line| {
-        let t = line.trim().trim_matches('`');
-        match t.strip_prefix("destroy_traced:") {
-            Some(rest) => rest.trim().trim_matches('`') == "yes",
-            None => false,
-        }
-    });
-    yes && note.contains("AudioHardwareDestroyAggregateDevice")
-        && note.contains("AudioHardwareDestroyProcessTap")
+    let yes = note.lines().any(destroy_traced_yes_line);
+    yes && note
+        .lines()
+        .any(|line| destroy_evidence_line(line, "AudioHardwareDestroyAggregateDevice"))
+        && note
+            .lines()
+            .any(|line| destroy_evidence_line(line, "AudioHardwareDestroyProcessTap"))
+}
+
+fn destroy_traced_yes_line(line: &str) -> bool {
+    let t = line.trim().trim_matches('`');
+    match t.strip_prefix("destroy_traced:") {
+        Some(rest) => rest.trim().trim_matches('`') == "yes",
+        None => false,
+    }
+}
+
+fn destroy_evidence_line(line: &str, api: &str) -> bool {
+    let t = line.trim();
+    let Some(rest) = t
+        .strip_prefix('>')
+        .or_else(|| t.strip_prefix("log:"))
+        .or_else(|| t.strip_prefix("traced:"))
+    else {
+        return false;
+    };
+    let rest = ["log:", "traced:"]
+        .iter()
+        .find_map(|label| rest.trim().strip_prefix(label))
+        .unwrap_or(rest)
+        .trim()
+        .trim_matches('`')
+        .trim_matches('"');
+    rest == api
 }
 
 /// Mutates the process-tap note in memory. Disk stays `Cleanup tip SHA: none`.
@@ -1372,9 +1506,12 @@ fn m0_cleanup_hex_without_destroy_refuses_ac1() {
     let audio = read("docs/evidence/m0/audiocapture-measure.md");
     let tap = read(TAP);
     assert!(tap.contains("Cleanup tip SHA: none"));
+    assert!(tap.contains("After-pair tip SHA: none"));
+    assert!(tap.contains("Missing sheet is not Deny."));
     assert!(tap.contains("destroy_traced: no"));
     assert!(tap.contains(RULE));
     assert!(!named_tip_sha(&tap, "Cleanup tip SHA:"));
+    assert!(!named_tip_sha(&tap, "After-pair tip SHA:"));
     assert!(!cleanup_destroy_traced(&tap));
     assert!(!ac1_tip_shas_ready(&mic, &audio, &tap));
     assert_ac1_closed_until_tip_shas();
@@ -1384,8 +1521,11 @@ fn m0_cleanup_hex_without_destroy_refuses_ac1() {
     let mic_hex = fill(&fill(&mic, "Allow tip SHA:"), "Deny tip SHA:");
     let audio_hex = fill(&fill(&audio, "Allow tip SHA:"), "Deny tip SHA:");
     let tap_hex = fill(
-        &fill(&fill(&tap, "Allow tip SHA:"), "Deny tip SHA:"),
-        "Cleanup tip SHA:",
+        &fill(
+            &fill(&fill(&tap, "Allow tip SHA:"), "Deny tip SHA:"),
+            "Cleanup tip SHA:",
+        ),
+        "After-pair tip SHA:",
     );
     let open_box = format!("- [{}] **M0-AC1:**", " ");
     let checked_box = format!("- [{}] **M0-AC1:**", "x");
@@ -1403,9 +1543,86 @@ fn m0_cleanup_hex_without_destroy_refuses_ac1() {
     assert!(!cleanup_destroy_traced(&stripped));
     assert_checked_ac1_fails(&mic_hex, &audio_hex, &stripped);
 
+    let after_prose = destroy_record_yes(&fill(
+        &fill(&fill(&tap, "Allow tip SHA:"), "Deny tip SHA:"),
+        "Cleanup tip SHA:",
+    ));
+    assert!(!cleanup_destroy_traced(&after_prose));
+    assert_eq!(one_tip(&after_prose, "After-pair tip SHA:"), "none");
+    assert!(!ac1_tip_shas_ready(&mic_hex, &audio_hex, &after_prose));
+    assert_checked_ac1_fails(&mic_hex, &audio_hex, &after_prose);
+
+    let after_none = format!(
+        "{after_prose}\n> AudioHardwareDestroyAggregateDevice\n> AudioHardwareDestroyProcessTap\n"
+    );
+    assert!(cleanup_destroy_traced(&after_none));
+    assert_eq!(one_tip(&after_none, "After-pair tip SHA:"), "none");
+    assert!(!ac1_tip_shas_ready(&mic_hex, &audio_hex, &after_none));
+    assert_checked_ac1_fails(&mic_hex, &audio_hex, &after_none);
+
     let live = read(TAP);
     assert_eq!(live, tap);
     assert!(live.contains("Cleanup tip SHA: none"));
+    assert!(live.contains("After-pair tip SHA: none"));
+    assert!(!live.contains(SHA));
+    assert!(!live.contains("- [x]") && !live.contains("- [X]"));
+}
+
+/// In-memory `destroy_traced: yes` plus the standing instructional prose and a
+/// hex Cleanup tip. Checked M0-AC1 still refuses until each API is on its own
+/// log-quote or traced-evidence line. Disk stays `none` / `destroy_traced: no`.
+#[test]
+fn m0_cleanup_prose_destroy_names_without_evidence_refuses_ac1() {
+    const SHA: &str = "abcdef0123456789";
+    const TAP: &str = "docs/evidence/m0/process-tap-product.md";
+    let mic = read("docs/evidence/m0/mic-operator-resume.md");
+    let audio = read("docs/evidence/m0/audiocapture-measure.md");
+    let tap = read(TAP);
+    assert!(tap.contains("Cleanup tip SHA: none"));
+    assert!(tap.contains("destroy_traced: no"));
+    assert!(tap.contains("AudioHardwareDestroyAggregateDevice"));
+    assert!(tap.contains("AudioHardwareDestroyProcessTap"));
+    assert!(tap.contains("A sentence that names either destroy API is not a trace."));
+    assert!(!cleanup_destroy_traced(&tap));
+
+    let fill =
+        |text: &str, label: &str| text.replace(&format!("{label} none"), &format!("{label} {SHA}"));
+    let mic_hex = fill(&fill(&mic, "Allow tip SHA:"), "Deny tip SHA:");
+    let audio_hex = fill(&fill(&audio, "Allow tip SHA:"), "Deny tip SHA:");
+    let tap_hex = fill(
+        &fill(&fill(&tap, "Allow tip SHA:"), "Deny tip SHA:"),
+        "Cleanup tip SHA:",
+    );
+    let open_box = format!("- [{}] **M0-AC1:**", " ");
+    let checked_box = format!("- [{}] **M0-AC1:**", "x");
+    let checked = destroy_record_yes(&tap_hex).replace(&open_box, &checked_box);
+    assert_eq!(one_tip(&checked, "Cleanup tip SHA:"), SHA);
+    assert!(checked.contains("destroy_traced: yes"));
+    assert!(checked.contains(&checked_box));
+    assert!(checked.contains("AudioHardwareDestroyAggregateDevice"));
+    assert!(checked.contains("AudioHardwareDestroyProcessTap"));
+    assert!(!checked
+        .lines()
+        .any(|line| destroy_evidence_line(line, "AudioHardwareDestroyAggregateDevice")));
+    assert!(!checked
+        .lines()
+        .any(|line| destroy_evidence_line(line, "AudioHardwareDestroyProcessTap")));
+    assert!(!cleanup_destroy_traced(&checked));
+    assert_checked_ac1_fails(&mic_hex, &audio_hex, &checked);
+
+    let quoted = format!(
+        "{checked}\n> AudioHardwareDestroyAggregateDevice\n> AudioHardwareDestroyProcessTap\n"
+    );
+    assert!(cleanup_destroy_traced(&quoted));
+    let traced = format!(
+        "{checked}\ntraced: AudioHardwareDestroyAggregateDevice\ntraced: AudioHardwareDestroyProcessTap\n"
+    );
+    assert!(cleanup_destroy_traced(&traced));
+
+    let live = read(TAP);
+    assert_eq!(live, tap);
+    assert!(live.contains("Cleanup tip SHA: none"));
+    assert!(live.contains("destroy_traced: no"));
     assert!(!live.contains(SHA));
     assert!(!live.contains("- [x]") && !live.contains("- [X]"));
 }
@@ -1437,8 +1654,9 @@ fn named_tip_sha(text: &str, label: &str) -> bool {
         .any(|token| tip_token_is_sha(token))
 }
 
-/// Commits already on this tip are not operator clicks. TIMEOUT and words fail
-/// the hex check. Uppercase hex does not count.
+/// Commits already on this tip, Stop SHAs, and the hold constant are not
+/// operator clicks. TIMEOUT and words fail the hex check. Uppercase hex does
+/// not count.
 fn tip_token_is_sha(token: &str) -> bool {
     let lower = token.to_ascii_lowercase();
     const NOT_OPERATOR: &[&str] = &[
@@ -1456,6 +1674,52 @@ fn tip_token_is_sha(token: &str) -> bool {
         "fb48acce1b29465077c5ec84c801322592f30048",
         "cd61eaf",
         "cd61eaf2ade626e9acd2a14f3ca9ace4a321f2cb",
+        "1800000",
+        "d194012",
+        "d194012abbbc86dbe4bf8ca83336308be8092d88",
+        "a0e1614",
+        "a0e16148368a80cb1de0fc12c4a438374c6cd109",
+        "0829a70",
+        "88eda06",
+        "aab661c",
+        "232ea78",
+        "2ff5c4f",
+        "e06ea0e",
+        "30fd669",
+        "37ff031",
+        "37ff031d82e87227a870c027c55aaeaaabaa0e6f",
+        "a8e2eca",
+        "a8e2eca555a7464ffa5d0453b504a2458b673501",
+        "c9a6f6f",
+        "ed9ee10",
+        "04dda65",
+        "f16f0bb",
+        "2d9679f",
+        "2d9679f1cf1d1b083536a91c81ff256756e69cd5",
+        "7f98ab1",
+        "7f98ab125f45804a926e928a970e5074bddbe0fe",
+        "e2ec751",
+        "e2ec7518c0fb583d6ddc2dbd54eb892febe33d11",
+        "2766f79",
+        "2766f79021c52051e8661b993c072327e9761cb6",
+        "a40fad1",
+        "a40fad173091a605417766e2a28433548a0481f6",
+        "652614b",
+        "fe08f47",
+        "fe08f47484d903fe33a8fa76635fd5e9e9dc4b8e",
+        "8c24c99",
+        "ca9bc50",
+        "637459f",
+        "7fb5006",
+        "7fb500699777d1cecbe17ec4ac11c054b1942bd6",
+        "fdc201f",
+        "fdc201fa3538b3222db531a8c3df66a830efe668",
+        "ce5690f",
+        "ce5690f66809ac2fe152016f643cb04e1868c399",
+        "2e0b898",
+        "2e0b898df8b6d4774d9eb968b20660f3118bce6f",
+        "7e8f3c5",
+        "7e8f3c56995131289bb84f2c52f6787c2dd161fd",
     ];
     if NOT_OPERATOR.contains(&lower.as_str()) {
         return false;
@@ -1529,26 +1793,15 @@ fn harness_field(text: &str, key: &str) -> Option<String> {
     found
 }
 
+const M0_AC_IDS: [&str; 6] = ["M0-AC1", "M0-AC2", "M0-AC3", "M0-AC4", "M0-AC5", "M0-AC6"];
+
+/// Any `[x]` or `[X]` on a line that names M0-AC1 through M0-AC6.
+fn line_checks_m0_ac(line: &str) -> bool {
+    (line.contains("[x]") || line.contains("[X]")) && M0_AC_IDS.iter().any(|id| line.contains(id))
+}
+
 fn checked_m0_ac1(dir: &Path, out: &mut Vec<String>) {
-    for entry in fs::read_dir(dir).unwrap().flatten() {
-        let path = entry.path();
-        if path.is_dir() {
-            checked_m0_ac1(&path, out);
-            continue;
-        }
-        if path.extension().and_then(|ext| ext.to_str()) != Some("md") {
-            continue;
-        }
-        let Ok(text) = fs::read_to_string(&path) else {
-            continue;
-        };
-        let flipped = text.lines().any(|line| {
-            line.contains("M0-AC1") && (line.contains("- [x]") || line.contains("- [X]"))
-        });
-        if flipped {
-            out.push(path.display().to_string());
-        }
-    }
+    collect_checked_m0_ac(dir, out);
 }
 
 /// Process-tap Allow, Deny, and Cleanup stay `none` until a Mac operator run.
@@ -1560,6 +1813,8 @@ fn process_tap_measure_keeps_tip_shas_none() {
     assert!(note.contains("Allow tip SHA: none"));
     assert!(note.contains("Deny tip SHA: none"));
     assert!(note.contains("Cleanup tip SHA: none"));
+    assert!(note.contains("After-pair tip SHA: none"));
+    assert!(note.contains("Missing sheet is not Deny."));
     assert!(note.contains("Drop is not a Cleanup tip SHA."));
     assert!(note.contains("TIMEOUT is not Deny."));
     assert!(note.contains("open_ms: 300000"));
@@ -1569,6 +1824,7 @@ fn process_tap_measure_keeps_tip_shas_none() {
     assert!(!named_tip_sha(&note, "Allow tip SHA:"));
     assert!(!named_tip_sha(&note, "Deny tip SHA:"));
     assert!(!named_tip_sha(&note, "Cleanup tip SHA:"));
+    assert!(!named_tip_sha(&note, "After-pair tip SHA:"));
     assert!(note.contains("- [ ]"));
     assert!(!note.contains("- [x]") && !note.contains("- [X]"));
     assert_ac1_closed_until_tip_shas();
@@ -1916,12 +2172,81 @@ fn m0_ac1_partial_refuses_checked_boxes() {
     );
 }
 
+/// #51 tip `7c71d50` timeout pids, vendored in `mic-operator-timeouts.md`.
+/// TIMEOUT is not Deny. Does not replace the #77 consequence in the roadmap.
+#[test]
+fn ac1_cannot_flip_while_operator_timeout_partial_stands() {
+    let note = read("docs/evidence/m0/mic-operator-timeouts.md");
+    assert!(
+        note.contains("TIMEOUT is not Don't Allow."),
+        "TIMEOUT must not be recorded as Deny"
+    );
+    assert!(
+        note.contains("not an operator Deny"),
+        "a pair-query denied with no service row is not Deny"
+    );
+    for pid in ["39380", "54200", "65422", "71152", "76134", "82331", "89220"] {
+        assert!(note.contains(pid), "timeout note drops pid {pid}");
+    }
+    for pid in ["65422", "71152", "76134", "82331", "89220"] {
+        assert!(
+            note.contains(&format!("| {pid} | `OPEN_MS TIMEOUT` |")),
+            "pid {pid} is not an OPEN_MS TIMEOUT row"
+        );
+    }
+    assert_eq!(one_tip(&note, "Allow tip SHA:"), "none");
+    assert_eq!(one_tip(&note, "Deny tip SHA:"), "none");
+    assert!(!named_tip_sha(&note, "Allow tip SHA:"));
+    assert!(!named_tip_sha(&note, "Deny tip SHA:"));
+    assert!(note.contains("- [ ]"));
+    assert!(!note.contains("- [x]") && !note.contains("- [X]"));
+    let consequence =
+        "Partial — mic and AudioCapture Allow/Deny tip SHAs are none; consequence AC1 open.";
+    for path in [
+        "docs/roadmap/risks-and-decisions.md",
+        "docs/roadmap/m0-feasibility.md",
+    ] {
+        assert!(
+            read(path).contains(consequence),
+            "{path} dropped the #77 consequence"
+        );
+    }
+    let mut checked = Vec::new();
+    checked_m0_ac1(&root().join("docs"), &mut checked);
+    assert!(
+        checked.is_empty(),
+        "M0-AC1 checked while operator TIMEOUT pids stand: {checked:?}"
+    );
+}
+
 /// Copied from #76 tip `2d9679f`. That tip is not an ancestor of this measure tip.
-/// The function body is unchanged. The Partial note cites it and does not replace it.
+/// The Partial note cites it and does not replace it. The two Stop notes must exist.
 #[test]
 fn ac2_ac3_cannot_flip_while_stop_shas_stand() {
-    let vad_stands = stop_sha_stands("docs/evidence/m0/vad-metal-ep.md", "d194012");
-    let residency_stands = stop_sha_stands("docs/evidence/m0/engines-residency.md", "a0e1614");
+    let vad_path = "docs/evidence/m0/vad-metal-ep.md";
+    let residency_path = "docs/evidence/m0/engines-residency.md";
+    assert!(
+        root().join(vad_path).is_file(),
+        "{vad_path} must exist so the Stop text is real"
+    );
+    assert!(
+        root().join(residency_path).is_file(),
+        "{residency_path} must exist so the Stop text is real"
+    );
+    let vad = read(vad_path);
+    let residency = read(residency_path);
+    assert!(vad.contains("d194012"), "{vad_path} drops Stop tip d194012");
+    assert!(
+        residency.contains("a0e1614"),
+        "{residency_path} drops Stop tip a0e1614"
+    );
+    assert!(!vad.contains("ac2=1"), "{vad_path} claims ac2=1");
+    assert!(
+        !residency.contains("ac2=1"),
+        "{residency_path} claims ac2=1"
+    );
+    let vad_stands = stop_sha_stands(vad_path, "d194012");
+    let residency_stands = stop_sha_stands(residency_path, "a0e1614");
     let metal_device_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "0829a70");
     let coreml_subgraph_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "88eda06");
     let silero_pin_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "aab661c");
@@ -2085,18 +2410,58 @@ fn m0_ac2_ac3_partial_refuses_checked_boxes() {
     );
 }
 
-fn stop_sha_stands(path: &str, sha: &str) -> bool {
-    match fs::read_to_string(root().join(path)) {
-        Ok(text) if !text.is_empty() && !text.contains(sha) => false,
-        _ => true,
+/// PR #54 tip `6a839de` is not an ancestor of prefer tip `fe08f47`.
+/// The body matches `m0_ac4_cannot_be_checked_while_gaps_stand` on that tip.
+#[test]
+fn m0_ac4_cannot_be_checked_while_gaps_stand() {
+    let signed_gap = freeze::SIGNED_INSTALL.is_none();
+    let c2_gap = freeze::C2_BLOCKED;
+    if !signed_gap && !c2_gap {
+        return;
     }
+    let mut checked = Vec::new();
+    checked_m0_ac4(&root().join("docs"), &mut checked);
+    assert!(
+        checked.is_empty(),
+        "M0-AC4 checked while SIGNED_INSTALL=None or C2_BLOCKED stands: {checked:?}"
+    );
+    let block = "Charter accept is blocked: M0-AC4 cannot be checked while SIGNED_INSTALL=None or C2_BLOCKED stands.";
+    let launchd = "The launchd user-agent run does not close M0-AC4.";
+    for path in [
+        "docs/evidence/m0/ac4-partial.md",
+        "docs/roadmap/risks-and-decisions.md",
+        "docs/roadmap/acceptance.md",
+        "docs/roadmap/m0-feasibility.md",
+    ] {
+        let text = read(path);
+        assert!(text.contains("Partial"), "{path} drops the Partial status");
+        assert!(text.contains(block), "{path} drops the AC4 charter block");
+        assert!(
+            text.contains(launchd),
+            "{path} treats launchd as closing AC4"
+        );
+        assert!(
+            !text.lines().any(|line| {
+                line.contains("M0-AC4") && (line.contains("- [x]") || line.contains("- [X]"))
+            }),
+            "{path} checks M0-AC4"
+        );
+    }
+    let evidence = read("docs/evidence/m0/ac4-partial.md");
+    for sha in ["e7433c2", "8794303", "ad8d418", "0c880fb", "8ebd0fc"] {
+        assert!(evidence.contains(sha), "ac4-partial.md drops tip {sha}");
+    }
+    assert!(evidence.contains("SIGNED_INSTALL=None"));
+    assert!(evidence.contains("C2_BLOCKED"));
+    assert!(evidence.contains("27.0.1"));
+    assert!(evidence.contains("Signature=adhoc"));
 }
 
-fn checked_ac_boxes(dir: &Path, out: &mut Vec<String>) {
+fn checked_m0_ac4(dir: &Path, out: &mut Vec<String>) {
     for entry in fs::read_dir(dir).unwrap().flatten() {
         let path = entry.path();
         if path.is_dir() {
-            checked_ac_boxes(&path, out);
+            checked_m0_ac4(&path, out);
             continue;
         }
         if path.extension().and_then(|ext| ext.to_str()) != Some("md") {
@@ -2105,15 +2470,121 @@ fn checked_ac_boxes(dir: &Path, out: &mut Vec<String>) {
         let Ok(text) = fs::read_to_string(&path) else {
             continue;
         };
-        for id in ["M0-AC2", "M0-AC3"] {
-            let flipped = text.lines().any(|line| {
-                line.contains(id) && (line.contains("- [x]") || line.contains("- [X]"))
-            });
-            if flipped {
+        for (number, line) in text.lines().enumerate() {
+            if line.contains("M0-AC4") && (line.contains("- [x]") || line.contains("- [X]")) {
+                out.push(format!("{}:{}: {line}", path.display(), number + 1));
+            }
+        }
+    }
+}
+
+fn stop_sha_stands(path: &str, sha: &str) -> bool {
+    match fs::read_to_string(root().join(path)) {
+        Ok(text) if !text.is_empty() && !text.contains(sha) => false,
+        _ => true,
+    }
+}
+
+fn checked_ac_boxes(dir: &Path, out: &mut Vec<String>) {
+    collect_checked_m0_ac(dir, out);
+}
+
+fn collect_checked_m0_ac(dir: &Path, out: &mut Vec<String>) {
+    for entry in fs::read_dir(dir).unwrap().flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            collect_checked_m0_ac(&path, out);
+            continue;
+        }
+        if path.extension().and_then(|ext| ext.to_str()) != Some("md") {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        for id in M0_AC_IDS {
+            if text.lines().any(|line| line_checks_m0_ac(line) && line.contains(id)) {
                 out.push(format!("{} {id}", path.display()));
             }
         }
     }
+}
+
+/// Star and cramped checked marks on an M0-AC line count. Disk boxes stay open.
+#[test]
+fn m0_checked_box_variants_refuse() {
+    let mic = read("docs/evidence/m0/mic-operator-resume.md");
+    let audio = read("docs/evidence/m0/audiocapture-measure.md");
+    let tap = read("docs/evidence/m0/process-tap-product.md");
+    assert_eq!(one_tip(&tap, "Allow tip SHA:"), "none");
+    assert_eq!(one_tip(&tap, "Deny tip SHA:"), "none");
+    assert_eq!(one_tip(&tap, "Cleanup tip SHA:"), "none");
+    assert!(!ac1_tip_shas_ready(&mic, &audio, &tap));
+    for n in 1..=6 {
+        let id = format!("M0-AC{n}");
+        for line in [
+            format!("* [{}] **{id}:**", "x"),
+            format!("* [{}] **{id}:**", "X"),
+            format!("- [{}]**{id}:**", "x"),
+            format!("- [{}]**{id}:**", "X"),
+        ] {
+            assert!(line_checks_m0_ac(&line), "{line}");
+        }
+        assert!(!line_checks_m0_ac(&format!("- [ ] **{id}:**")));
+        assert!(!line_checks_m0_ac(&format!("* [ ] **{id}:**")));
+    }
+    assert_checked_ac1_fails(&mic, &audio, &tap);
+    let mut checked = Vec::new();
+    checked_m0_ac1(&root().join("docs"), &mut checked);
+    assert!(checked.is_empty(), "M0-AC checked on disk: {checked:?}");
+    checked.clear();
+    checked_ac_boxes(&root().join("docs"), &mut checked);
+    assert!(checked.is_empty(), "M0-AC checked on disk: {checked:?}");
+}
+
+/// Hold constant, Stop SHAs, and stack tips are not operator clicks.
+#[test]
+fn tip_sha_denylist_rejects_non_clicks() {
+    for token in [
+        "1800000",
+        "d194012",
+        "a0e1614",
+        "0829a70",
+        "88eda06",
+        "aab661c",
+        "232ea78",
+        "2ff5c4f",
+        "e06ea0e",
+        "30fd669",
+        "37ff031",
+        "a8e2eca",
+        "c9a6f6f",
+        "ed9ee10",
+        "04dda65",
+        "f16f0bb",
+        "2d9679f",
+        "7f98ab1",
+        "e2ec751",
+        "2766f79",
+        "a40fad1",
+        "652614b",
+        "fe08f47",
+        "8c24c99",
+        "ca9bc50",
+        "637459f",
+        "7fb5006",
+        "fdc201f",
+        "ce5690f",
+        "2e0b898",
+        "7e8f3c5",
+    ] {
+        assert!(!tip_token_is_sha(token), "{token}");
+        let line = format!("Allow tip SHA: {token}");
+        assert!(!named_tip_sha(&line, "Allow tip SHA:"), "{token}");
+    }
+    let stand_in = "abcdef0123456789";
+    assert!(tip_token_is_sha(stand_in));
+    assert!(!walk_contains(&root().join("docs"), stand_in));
 }
 
 struct SpikeEvidence {

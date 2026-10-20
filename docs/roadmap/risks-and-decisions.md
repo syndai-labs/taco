@@ -66,6 +66,14 @@ The contract freeze is `828bd48`. Early measurements are in
 [macos-spike-results.md](../evidence/m0/macos-spike-results.md). The Info.plist
 bind follow-up is in [native-impl.md](../evidence/m0/native-impl.md) (`3602000`).
 None of these rows accept M0. Milestone checkboxes stay open. M1 and M5 stay blocked.
+The AC4 Partial freeze is [ac4-partial.md](../evidence/m0/ac4-partial.md).
+M0-AC4 stays unchecked. Partial is not an accept.
+Charter accept is blocked: M0-AC4 cannot be checked while SIGNED_INSTALL=None or C2_BLOCKED stands.
+The launchd user-agent run does not close M0-AC4.
+Cited gaps, not a new signed-install measurement and not a second machine: PR #38 tip `e7433c2`
+(`SIGNED_INSTALL=None`), PR #42 tip `8794303` (None guards), PR #27 tip `ad8d418`
+(`C2_BLOCKED`), PR #43 tip `0c880fb` (adhoc launchd), PR #19 tip `8ebd0fc` (OS floor
+Partial at macOS 27.0.1).
 
 Host: Apple M1 Pro, 32 GiB (34359738368 bytes), macOS 27.0.1 (26A434),
 `aarch64-apple-darwin`, rustc 1.99.0. Not C1 (16 GiB, macOS 14.2). Not a named C2.
@@ -81,7 +89,7 @@ Host: Apple M1 Pro, 32 GiB (34359738368 bytes), macOS 27.0.1 (26A434),
 | R7 | Closed table frozen: `en→zh` and `zh→en`. Experimental pairs empty. Quality is not qualified. | product/quality owner | `language::PAIRS` and the reject tests. No corpus was scored on this host. | Auto-detect, identical tags, or the publisher language inventory. | The table is binding. Adequacy gates stay blocked. M1 still waits on M0 acceptance. |
 | R8 | Proposed numbers are frozen in `fixtures/m0/limit-vectors.txt` and were not revised. Measurement was not run. | audio/runtime/quality owners | No latency, memory, or slope measurement on this host. `T-M0-LIMIT-VECTORS` still fails if the fixture drifts from acceptance.md. | Redefine `t_audio_end`, drop failures, or widen the slope past 1 MiB/min. | R8 stays open for a later measured revision. Quality gates stay blocked. |
 | R9 | Selector semantics frozen: a failed app selection does not become system capture. Helper attribution is unproven. | macOS owner | The 2026-10-16 `app:com.apple.Terminal` run exited `models_unpinned` before a tap. On this tip `taco run` reaches `session::start_capture` for `app:` and `pid:` ([process-tap-product.md](../evidence/m0/process-tap-product.md)). A HAL miss stays not-found and does not become a system tap. `SelectionFailurePolicy::StopDoNotBroaden`. `EXTERNAL_INPUT.display_name` is `syndai-iphone-02 Microphone` and `qualified_in_m0` is false. | Treat `models_unpinned` as an app-tap result, turn a HAL miss into a system tap, or name a device that was not reserved. | Blocks M5 and the M2 device reservation. |
-| R10 | Design frozen: the session takes verified local handles and has no fetch client. Inode proof is M1. | model owner | `taco run` refused with `models_unpinned`. `release_ready()` is false. Pins stay TBD. | A session URL or an HTTP client parameter. | M1 must prove the load boundary. M1 does not start before M0 is accepted. |
+| R10 | Design frozen: the session takes verified local handles and has no fetch client. Inode proof is M1. | model owner | Digests are in [pin-measurement.md](../evidence/m0/pin-measurement.md) (`5e9649c`). `PINS_MEASURED` and `release_ready()` are true. `fetch_models` still returns `fetch_refused_unpinned`. `models verify` stays `models_unpinned` and does not load a model directory. Inode or handle proof of the load boundary was not run. The earlier `models_unpinned` refusal on `taco run` predates those pins. | A session URL or an HTTP client parameter. | M1 must prove the load boundary. M1 does not start before M0 is accepted. |
 | R11 | License records exist per model and per engine. SPDX fields are unset. | release owner | No new license text was measured. `LICENSES` keeps model subjects distinct from whisper.cpp and llama.cpp. | Invent license text, or treat an engine license as the model license. | Blocks distribution of weights. |
 | R12 | Stop. Not run. | inference/quality owners | No serialized-vs-concurrent measurement. The installed Metal compiler was not a timing run. | A microbenchmark or a CPU timing presented as the joint gate. | Blocks M0 acceptance and M4's baseline. |
 | R14 | Corners, terminal hosts, and devices are not provisioned. | release/quality owners | This shell on macOS 27.0.1 is a measurement host, not a qualified corner. C2 OS build and the alternate terminal host are unnamed. No second terminal host was exercised. | An aggregate "works on this Mac" verdict. | Release cells stay not run. M1 and M5 stay blocked. |
