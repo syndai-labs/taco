@@ -8,3 +8,5 @@ One hundred `session::prove_native` cycles in one process (pid 29510) on the sam
 
 - [ ] **M0-AC2:** Pins loaded on MTL0 and Silero's provider was CPU. The footprint is over tolerance. The process is not `taco run`.
 - [ ] **M0-AC3:** Each prove set `teardown=1`. Resident footprint did not return to the cycle-1 teardown. The engine printed `ac3=0`.
+
+PR #49 tip `37ff031` ([engines-residency-retry.md](engines-residency-retry.md)) is a stronger Stop on the same host. It does not drop `a0e1614`. Cycle 2 stayed 94699688 bytes above cycle 1 after the weight buffer was freed. Boxes stay unchecked.
