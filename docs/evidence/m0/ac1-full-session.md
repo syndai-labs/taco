@@ -28,4 +28,6 @@ If a `taco run --source default` process is still up, the script does not start 
 
 Off macOS, `--arm` exits 2 and prints `platform_unsupported`. That is not a CoreAudio result.
 
+Flip guard cite: PR #77 tip `595dced` (`595dcedafa5e7f2dcc829670e41c462f8ca6dab1`). #77 owns `ac1_cannot_flip_while_tip_shas_are_none`. This tip does not record a Mac click. Partial — mic and AudioCapture Allow/Deny tip SHAs are none; consequence AC1 open.
+
 - [ ] **M0-AC1:** microphone, system, and app tap Allow and Deny from Taco.app, plus a separately traced process-tap cleanup

@@ -92,6 +92,8 @@ PR #11 tip `cd9a4c8` is an ancestor of stack base `a1c5c32`. Product-path freeze
 
 Partial — process taps are on taco run; Mac CoreAudio and operator Allow/Deny stay open; Linux tap success is Stop.
 
+[ac1-full-session.md](../evidence/m0/ac1-full-session.md) cites PR #77 tip `595dced` (`595dcedafa5e7f2dcc829670e41c462f8ca6dab1`). Microphone Allow/Deny tip SHAs in [mic-operator-resume.md](../evidence/m0/mic-operator-resume.md) and AudioCapture Allow/Deny tip SHAs in [audiocapture-measure.md](../evidence/m0/audiocapture-measure.md) are none. TIMEOUT is not Deny. Partial — mic and AudioCapture Allow/Deny tip SHAs are none; consequence AC1 open. This note does not record a Mac click.
+
 ## Acceptance criteria
 
 - [ ] Every M0 decision has a concrete resolution before dependent milestone exit.
