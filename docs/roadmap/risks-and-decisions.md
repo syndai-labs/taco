@@ -154,6 +154,14 @@ Milestone checkboxes stay unchecked. M1 and M5 stay blocked.
 
 Charter accept is blocked: M0-AC2 and M0-AC3 cannot be checked while the CPU VAD Stop at `d194012` and the residency Stop at `a0e1614` stand. A charter waiver records weight Partial on R2, R3, and R5. Partial is not an accept. Checking either box requires [vad-metal-ep.md](../evidence/m0/vad-metal-ep.md) to drop `d194012` and [engines-residency.md](../evidence/m0/engines-residency.md) to drop `a0e1614`. R2 and R3 name the CPU VAD Stop. R5 names the residency Stop. Newer Stops still stand: #55 tip `0829a70` (residual phys_footprint is the process-lifetime Metal device in `ggml_backend_metal_reg`) and #57 tip `88eda06` (`EnableOnSubgraphs`; ORT 1.31 `GetOpBuilders` lacks `LSTM` and `If`; `device=` stays `cpu`). Prior Stops stay cited: #49 tip `37ff031` and #41 tip `a8e2eca`. This branch does not replay those Mac runs and adds no Metal measurement.
 
+[mic-operator-timeouts.md](../evidence/m0/mic-operator-timeouts.md) records PR #51 tip `7c71d50`. TIMEOUT is not Don't Allow. Allow tip SHA: none. Deny tip SHA: none. Partial — operator Allow/Deny unproven; consequence AC1 open.
+
+[ac4-partial.md](../evidence/m0/ac4-partial.md) records PR #54 tip `6a839de`. `SIGNED_INSTALL` stays `None`. `C2_BLOCKED` stays true. Charter accept is blocked: M0-AC4 cannot be checked while SIGNED_INSTALL=None or C2_BLOCKED stands. The launchd user-agent run does not close M0-AC4.
+
+PR #50 tip `fdc201f` locks unset `TACO_CAPTURE_SPIKE_OPEN_MS` at `300000` and `TACO_CAPTURE_SPIKE_HOLD_MS` at `1_800_000`. This branch does not replay `src/capture/microphone.rs`.
+
+M0-AC5 and M0-AC6 stay unchecked while the AC1 Partial and the AC4 Partial stand.
+
 Host for the cited Mac runs: Apple M1 Pro, 32 GiB (34359738368 bytes), macOS
 27.0.1 (26A434), `aarch64-apple-darwin`, rustc 1.99.0. PR #19 tip `8ebd0fc`
 names that build as a Partial OS floor, not a support promise. C2 stays open.

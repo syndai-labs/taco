@@ -65,6 +65,11 @@ Pro host. `proves_c1` stays false. It is not C2. PR #30 tip `e2ec751`
 ([taco-run-prove.md](../evidence/m0/taco-run-prove.md)) is an ad-hoc signed
 `taco run` on that host, not a second machine. PR #37 tip `d194012` and PR #38 tip `e7433c2` do not name C2.
 
+Status: **Partial**. M0-AC4 stays unchecked. `C2_BLOCKED` is true. `SIGNED_INSTALL` is `None`.
+Charter accept is blocked: M0-AC4 cannot be checked while SIGNED_INSTALL=None or C2_BLOCKED stands.
+The launchd user-agent run does not close M0-AC4.
+Record: [ac4-partial.md](../evidence/m0/ac4-partial.md). PR #54 tip `6a839de`.
+
 | Dimension | Proposed starting point | Required evidence |
 | --- | --- | --- |
 | Models | Silero; multilingual Whisper small; Hy-MT2 1.8B GGUF from the main GGUF repository | Publisher revision, format, quantization, SHA-256, license, llama.cpp commit, Metal settings |
