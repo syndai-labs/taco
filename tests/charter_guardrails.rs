@@ -1813,6 +1813,206 @@ fn m0_ac1_partial_refuses_checked_boxes() {
     );
 }
 
+/// Copied from #76 tip `2d9679f`. That tip is not an ancestor of this measure tip.
+/// The function body is unchanged. The Partial note cites it and does not replace it.
+#[test]
+fn ac2_ac3_cannot_flip_while_stop_shas_stand() {
+    let vad_stands = stop_sha_stands("docs/evidence/m0/vad-metal-ep.md", "d194012");
+    let residency_stands = stop_sha_stands("docs/evidence/m0/engines-residency.md", "a0e1614");
+    let metal_device_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "0829a70");
+    let coreml_subgraph_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "88eda06");
+    let silero_pin_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "aab661c");
+    let metal_teardown_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "232ea78");
+    let silero_only_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "2ff5c4f");
+    let metal_refcount_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "e06ea0e");
+    let metal_subprocess_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "30fd669");
+    assert!(
+        metal_device_stands,
+        "Stop tip 0829a70 must stand in docs/evidence/m0/ac2-ac3-open.md"
+    );
+    assert!(
+        coreml_subgraph_stands,
+        "Stop tip 88eda06 must stand in docs/evidence/m0/ac2-ac3-open.md"
+    );
+    assert!(
+        silero_pin_stands,
+        "Stop tip aab661c must stand in docs/evidence/m0/ac2-ac3-open.md"
+    );
+    assert!(
+        metal_teardown_stands,
+        "Stop tip 232ea78 must stand in docs/evidence/m0/ac2-ac3-open.md"
+    );
+    assert!(
+        silero_only_stands,
+        "Stop tip 2ff5c4f must stand in docs/evidence/m0/ac2-ac3-open.md"
+    );
+    assert!(
+        metal_refcount_stands,
+        "Stop tip e06ea0e must stand in docs/evidence/m0/ac2-ac3-open.md"
+    );
+    assert!(
+        metal_subprocess_stands,
+        "Stop tip 30fd669 must stand in docs/evidence/m0/ac2-ac3-open.md"
+    );
+    if !vad_stands
+        && !residency_stands
+        && !metal_device_stands
+        && !coreml_subgraph_stands
+        && !silero_pin_stands
+        && !metal_teardown_stands
+        && !silero_only_stands
+        && !metal_refcount_stands
+        && !metal_subprocess_stands
+    {
+        return;
+    }
+    let mut checked = Vec::new();
+    checked_ac_boxes(&root().join("docs"), &mut checked);
+    assert!(
+        checked.is_empty(),
+        "M0-AC2 or M0-AC3 checked while Stop tip SHAs stand: {checked:?}"
+    );
+    for flag in ["ac2=1", "ac3=1"] {
+        for dir in ["docs", "src"] {
+            assert!(
+                !walk_contains(&root().join(dir), flag),
+                "{flag} claimed under {dir} while Stop tip SHAs stand"
+            );
+        }
+    }
+    let block = "Charter accept is blocked: M0-AC2 and M0-AC3 cannot be checked while the CPU VAD Stop at `d194012`";
+    let waiver = "A charter waiver records weight Partial on R2, R3, and R5.";
+    for path in [
+        "docs/roadmap/risks-and-decisions.md",
+        "docs/roadmap/m0-feasibility.md",
+        "docs/evidence/m0/ac2-ac3-open.md",
+    ] {
+        let text = read(path);
+        assert!(text.contains(block), "{path} drops the Stop consequence");
+        assert!(
+            text.contains("residency Stop at `a0e1614`"),
+            "{path} drops the residency Stop"
+        );
+        assert!(
+            text.contains(waiver),
+            "{path} drops the Partial waiver weight"
+        );
+        for (sha, why) in [
+            ("0829a70", "Metal-device Stop"),
+            ("88eda06", "CoreML subgraph Stop"),
+            ("37ff031", "#49 residency retry Stop"),
+            ("a8e2eca", "#41 consequence freeze"),
+            ("ggml_backend_metal_reg", "Metal-device holder"),
+            ("EnableOnSubgraphs", "CoreML subgraph lever"),
+            ("GetOpBuilders", "ORT 1.31 op-builder gap"),
+            ("LSTM", "missing LSTM builder"),
+            ("aab661c", "Silero pin Stay Stop"),
+            ("232ea78", "#63 Metal teardown Stop"),
+            (
+                "no published Silero ONNX is CoreML-acceptable under ORT 1.31",
+                "no CoreML-friendly ONNX",
+            ),
+            ("the Silero pin stays", "Silero pin Stay"),
+            ("use-after-free", "unsafe Metal device teardown"),
+            ("c9a6f6f", "#64 ORT upgrade Stop"),
+            ("an ORT upgrade is out of M0", "ORT upgrade stays out of M0"),
+            ("2ff5c4f", "#69 Silero-only Stop"),
+            ("e06ea0e", "#70 Metal refcount Stop"),
+            (
+                "charter forbids an alternate VAD pin",
+                "no alternate VAD pin",
+            ),
+            ("Silero-only", "VAD stays Silero"),
+            (
+                "still a use-after-free on prove cycle 2",
+                "refcount free is still UAF",
+            ),
+            ("30fd669", "#74 Metal subprocess Stop"),
+            (
+                "metal_subprocess_stop_cites_55_63_and_70",
+                "#74 owns its guard",
+            ),
+            ("violates single Mach-O", "helper leaves single Mach-O"),
+            ("in-process Metal", "helper leaves in-process Metal"),
+            ("LINK-THREE", "helper leaves LINK-THREE"),
+            ("does not close residency", "helper does not close residency"),
+        ] {
+            assert!(text.contains(sha), "{path} drops {why} `{sha}`");
+        }
+    }
+}
+
+#[test]
+fn m0_ac2_ac3_partial_refuses_checked_boxes() {
+    let guard = read("tests/charter_guardrails.rs");
+    assert!(
+        guard.contains("fn ac2_ac3_cannot_flip_while_stop_shas_stand"),
+        "#76 owns ac2_ac3_cannot_flip_while_stop_shas_stand"
+    );
+    assert!(
+        guard.contains("Stop tip 30fd669 must stand in docs/evidence/m0/ac2-ac3-open.md"),
+        "#76 consequence5 Metal subprocess lock was dropped"
+    );
+    let note = read("docs/evidence/m0/ac2-ac3-partial.md");
+    assert!(
+        note.contains("Status: Partial"),
+        "ac2-ac3-partial.md drops Status: Partial"
+    );
+    for phrase in [
+        "M0-AC2 and M0-AC3 stay unchecked",
+        "Partial is not an accept",
+        "ORT CoreML LSTM/If upgrade is out of M0",
+        "Metal device process-lifetime release is out of M0",
+        "ac2_ac3_cannot_flip_while_stop_shas_stand",
+    ] {
+        assert!(note.contains(phrase), "ac2-ac3-partial.md drops `{phrase}`");
+    }
+    for sha in [
+        "d194012", "88eda06", "aab661c", "c9a6f6f", "2ff5c4f", "a0e1614", "37ff031", "0829a70",
+        "232ea78", "e06ea0e", "30fd669", "a8e2eca", "ed9ee10", "04dda65", "f16f0bb", "2d9679f",
+        "7f98ab1", "e2ec751",
+    ] {
+        assert!(note.contains(sha), "ac2-ac3-partial.md drops tip {sha}");
+    }
+    let mut checked = Vec::new();
+    checked_ac_boxes(&root().join("docs"), &mut checked);
+    assert!(
+        checked.is_empty(),
+        "M0-AC2 or M0-AC3 checked while the Partial note and Stop SHAs stand: {checked:?}"
+    );
+}
+
+fn stop_sha_stands(path: &str, sha: &str) -> bool {
+    match fs::read_to_string(root().join(path)) {
+        Ok(text) if !text.is_empty() && !text.contains(sha) => false,
+        _ => true,
+    }
+}
+
+fn checked_ac_boxes(dir: &Path, out: &mut Vec<String>) {
+    for entry in fs::read_dir(dir).unwrap().flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            checked_ac_boxes(&path, out);
+            continue;
+        }
+        if path.extension().and_then(|ext| ext.to_str()) != Some("md") {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        for id in ["M0-AC2", "M0-AC3"] {
+            let flipped = text.lines().any(|line| {
+                line.contains(id) && (line.contains("- [x]") || line.contains("- [X]"))
+            });
+            if flipped {
+                out.push(format!("{} {id}", path.display()));
+            }
+        }
+    }
+}
+
 struct SpikeEvidence {
     status: i32,
     text: String,
