@@ -47,6 +47,8 @@ A Cleanup tip SHA is a git SHA of a Mac commit whose log quotes both destroy cal
 
 A hex Cleanup tip SHA without `destroy_traced: yes` refuses a checked M0-AC1. Missing either `AudioHardwareDestroyAggregateDevice` or `AudioHardwareDestroyProcessTap` refuses it too. Cleanup tip SHA stays `none` on this tip.
 
+A sentence that names either destroy API is not a trace. Each call counts only on its own log-quote line (`> AudioHardwareDestroyAggregateDevice`) or traced-evidence line (`traced: AudioHardwareDestroyProcessTap`).
+
 ## When to run
 
 Watcher does not click. `OPEN_MS` is `300000`. `HOLD_MS` is `1800000`. Both are pinned in the script. Inherited values are ignored. The tap window is `OPEN_MS`. `HOLD_MS` is passed so the Taco.app launch matches the mic harness. The tap does not read it.

@@ -1348,17 +1348,44 @@ fn process_tap_early_return_ok(
     !partial && allow_ok && deny_ok && cleanup_ok && cleanup_destroy_traced(note)
 }
 
-/// Record line `destroy_traced: yes` plus both destroy APIs named in the note.
+/// Record line `destroy_traced: yes`, plus each destroy API on its own
+/// log-quote (`>`) or traced-evidence (`log:` / `traced:`) line.
+/// A sentence that names the API does not count.
 fn cleanup_destroy_traced(note: &str) -> bool {
-    let yes = note.lines().any(|line| {
-        let t = line.trim().trim_matches('`');
-        match t.strip_prefix("destroy_traced:") {
-            Some(rest) => rest.trim().trim_matches('`') == "yes",
-            None => false,
-        }
-    });
-    yes && note.contains("AudioHardwareDestroyAggregateDevice")
-        && note.contains("AudioHardwareDestroyProcessTap")
+    let yes = note.lines().any(destroy_traced_yes_line);
+    yes && note
+        .lines()
+        .any(|line| destroy_evidence_line(line, "AudioHardwareDestroyAggregateDevice"))
+        && note
+            .lines()
+            .any(|line| destroy_evidence_line(line, "AudioHardwareDestroyProcessTap"))
+}
+
+fn destroy_traced_yes_line(line: &str) -> bool {
+    let t = line.trim().trim_matches('`');
+    match t.strip_prefix("destroy_traced:") {
+        Some(rest) => rest.trim().trim_matches('`') == "yes",
+        None => false,
+    }
+}
+
+fn destroy_evidence_line(line: &str, api: &str) -> bool {
+    let t = line.trim();
+    let Some(rest) = t
+        .strip_prefix('>')
+        .or_else(|| t.strip_prefix("log:"))
+        .or_else(|| t.strip_prefix("traced:"))
+    else {
+        return false;
+    };
+    let rest = ["log:", "traced:"]
+        .iter()
+        .find_map(|label| rest.trim().strip_prefix(label))
+        .unwrap_or(rest)
+        .trim()
+        .trim_matches('`')
+        .trim_matches('"');
+    rest == api
 }
 
 /// Mutates the process-tap note in memory. Disk stays `Cleanup tip SHA: none`.
@@ -1406,6 +1433,65 @@ fn m0_cleanup_hex_without_destroy_refuses_ac1() {
     let live = read(TAP);
     assert_eq!(live, tap);
     assert!(live.contains("Cleanup tip SHA: none"));
+    assert!(!live.contains(SHA));
+    assert!(!live.contains("- [x]") && !live.contains("- [X]"));
+}
+
+/// In-memory `destroy_traced: yes` plus the standing instructional prose and a
+/// hex Cleanup tip. Checked M0-AC1 still refuses until each API is on its own
+/// log-quote or traced-evidence line. Disk stays `none` / `destroy_traced: no`.
+#[test]
+fn m0_cleanup_prose_destroy_names_without_evidence_refuses_ac1() {
+    const SHA: &str = "abcdef0123456789";
+    const TAP: &str = "docs/evidence/m0/process-tap-product.md";
+    let mic = read("docs/evidence/m0/mic-operator-resume.md");
+    let audio = read("docs/evidence/m0/audiocapture-measure.md");
+    let tap = read(TAP);
+    assert!(tap.contains("Cleanup tip SHA: none"));
+    assert!(tap.contains("destroy_traced: no"));
+    assert!(tap.contains("AudioHardwareDestroyAggregateDevice"));
+    assert!(tap.contains("AudioHardwareDestroyProcessTap"));
+    assert!(tap.contains("A sentence that names either destroy API is not a trace."));
+    assert!(!cleanup_destroy_traced(&tap));
+
+    let fill =
+        |text: &str, label: &str| text.replace(&format!("{label} none"), &format!("{label} {SHA}"));
+    let mic_hex = fill(&fill(&mic, "Allow tip SHA:"), "Deny tip SHA:");
+    let audio_hex = fill(&fill(&audio, "Allow tip SHA:"), "Deny tip SHA:");
+    let tap_hex = fill(
+        &fill(&fill(&tap, "Allow tip SHA:"), "Deny tip SHA:"),
+        "Cleanup tip SHA:",
+    );
+    let open_box = format!("- [{}] **M0-AC1:**", " ");
+    let checked_box = format!("- [{}] **M0-AC1:**", "x");
+    let checked = destroy_record_yes(&tap_hex).replace(&open_box, &checked_box);
+    assert_eq!(one_tip(&checked, "Cleanup tip SHA:"), SHA);
+    assert!(checked.contains("destroy_traced: yes"));
+    assert!(checked.contains(&checked_box));
+    assert!(checked.contains("AudioHardwareDestroyAggregateDevice"));
+    assert!(checked.contains("AudioHardwareDestroyProcessTap"));
+    assert!(!checked
+        .lines()
+        .any(|line| destroy_evidence_line(line, "AudioHardwareDestroyAggregateDevice")));
+    assert!(!checked
+        .lines()
+        .any(|line| destroy_evidence_line(line, "AudioHardwareDestroyProcessTap")));
+    assert!(!cleanup_destroy_traced(&checked));
+    assert_checked_ac1_fails(&mic_hex, &audio_hex, &checked);
+
+    let quoted = format!(
+        "{checked}\n> AudioHardwareDestroyAggregateDevice\n> AudioHardwareDestroyProcessTap\n"
+    );
+    assert!(cleanup_destroy_traced(&quoted));
+    let traced = format!(
+        "{checked}\ntraced: AudioHardwareDestroyAggregateDevice\ntraced: AudioHardwareDestroyProcessTap\n"
+    );
+    assert!(cleanup_destroy_traced(&traced));
+
+    let live = read(TAP);
+    assert_eq!(live, tap);
+    assert!(live.contains("Cleanup tip SHA: none"));
+    assert!(live.contains("destroy_traced: no"));
     assert!(!live.contains(SHA));
     assert!(!live.contains("- [x]") && !live.contains("- [X]"));
 }
