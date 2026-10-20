@@ -93,4 +93,6 @@ PR #93 tip `359375e` does not change the AC2/AC3 Stop-SHA list. It does not clos
 
 PR #94 tip `fe08f47` joins #91 tip `79cb73d` onto #90 tip `7e8f3c5` and carries the #93 destroy-trace on that same tip. Status: Partial. It cites `ac2_ac3_cannot_flip_while_stop_shas_stand` and does not replace it. The guards on that tip include `m0_ac2_ac3_partial_refuses_checked_boxes` and `m0_cleanup_hex_without_destroy_refuses_ac1`. ORT CoreML `LSTM` and `If`, and a Metal device process-lifetime release, stay out of M0. This branch does not replay those guards and does not copy that note. Neither box above is a pass.
 
-PR #95 tip `0ee1065` is a redundant sibling of that cherry-pick. #94 tip `fe08f47` supersedes it. It does not close either box above.
+PR #95 tip `0ee1065` is a redundant sibling of that cherry-pick. Mac prefer tip is #94 `fe08f47`, not #95. It does not close either box above.
+
+PR #96 tip `008cacb` cites #92 through #94. Mac prefer tip is #94 `fe08f47`. Those cites do not check a box.
