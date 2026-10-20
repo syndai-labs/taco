@@ -37,3 +37,7 @@ PR #113 tip `7a5884e` cites #111 and #112 in the decision register. It does not 
 
 PR #114 tip `237347f` denies #111 tip `35155fc`, #113 tip `7a5884e`, fifteen residual fulls, and `3602000` as operator clicks. It does not change the AC2/AC3 Stop-SHA list and does not print `device=metal`. Mac prefer tip is #115 `8b82bbd`, not #114. This cite does not replace it. It does not copy `tip_sha_denylist_rejects_non_clicks` and does not add a Metal measurement. Neither box above is a pass.
 
+PR #115 tip `8b82bbd` denies #112 tip `d66894e`, #114 tip `237347f`, and parent `0f14be3` as operator clicks. It does not change the AC2/AC3 Stop-SHA list and does not print `device=metal`. Mac prefer tip is #115 `8b82bbd`. This cite does not replace it. It does not copy `tip_sha_denylist_rejects_non_clicks` or `tip_under_test_sha_is_denied_as_operator_click` and does not add a Metal measurement. Neither box above is a pass.
+
+PR #116 tip `7fe1985` cites #113 and #114 in the decision register. It does not change the AC2/AC3 Stop-SHA list and does not print `device=metal`. Mac prefer tip is #115 `8b82bbd`, not #114. This cite does not replace it. It does not copy `tip_sha_denylist_rejects_non_clicks` or `tip_under_test_sha_is_denied_as_operator_click` and does not add a Metal measurement. Neither box above is a pass.
+
