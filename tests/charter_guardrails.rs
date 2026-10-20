@@ -1172,8 +1172,6 @@ fn process_tap_tips_refuse_ac1_flip_while_either_sha_is_none() {
     let after_pair = one_tip(&note, "After-pair tip SHA:");
     assert_ne!(allow, "TIMEOUT", "TIMEOUT is not Allow");
     assert_ne!(deny, "TIMEOUT", "TIMEOUT is not Deny");
-    assert_eq!(after_pair, "none", "After-pair tip SHA");
-    assert!(!tip_token_is_sha(&after_pair), "After-pair tip SHA");
     let mut cleanup = Vec::new();
     for label in CLEANUP_LABELS {
         if let Some(token) = optional_tip(&note, label) {
@@ -1227,8 +1225,13 @@ fn process_tap_tips_refuse_ac1_flip_while_either_sha_is_none() {
     );
     assert_eq!(allow, "none", "Allow tip SHA");
     assert_eq!(deny, "none", "Deny tip SHA");
+    assert_eq!(after_pair, "none", "After-pair tip SHA");
     assert!(!allow_ok, "Allow tip counted while the lock stands");
     assert!(!deny_ok, "Deny tip counted while the lock stands");
+    assert!(
+        !tip_token_is_sha(&after_pair),
+        "After-pair tip counted while the lock stands"
+    );
     for (label, token) in &cleanup {
         assert_eq!(token, "none", "{label} is none and still blocks M0-AC1");
         assert!(!tip_token_is_sha(token), "{label}");
@@ -1452,7 +1455,60 @@ fn process_tap_early_return_ok(
     cleanup_ok: bool,
     note: &str,
 ) -> bool {
-    !partial && allow_ok && deny_ok && cleanup_ok && cleanup_destroy_traced(note)
+    !partial
+        && allow_ok
+        && deny_ok
+        && cleanup_ok
+        && named_tip_sha(note, "After-pair tip SHA:")
+        && cleanup_destroy_traced(note)
+}
+
+/// Hex Allow/Deny/Cleanup and both destroy quotes still refuse the status
+/// early return while After-pair is `none` and status is not Partial.
+/// Disk tip SHAs stay `none`. No M0-AC box is checked.
+#[test]
+fn process_tap_early_return_refuses_after_pair_none() {
+    const SHA: &str = "abcdef0123456789";
+    const TAP: &str = "docs/evidence/m0/process-tap-product.md";
+    let tap = read(TAP);
+    let fill =
+        |text: &str, label: &str| text.replace(&format!("{label} none"), &format!("{label} {SHA}"));
+    let flipped = destroy_record_yes(&fill(
+        &fill(&fill(&tap, "Allow tip SHA:"), "Deny tip SHA:"),
+        "Cleanup tip SHA:",
+    ))
+    .replace("Status: **Partial**.", "Status: **Done**.");
+    let note = format!(
+        "{flipped}\n> AudioHardwareDestroyAggregateDevice\n> AudioHardwareDestroyProcessTap\n"
+    );
+    let allow = one_tip(&note, "Allow tip SHA:");
+    let deny = one_tip(&note, "Deny tip SHA:");
+    let cleanup = one_tip(&note, "Cleanup tip SHA:");
+    let after_pair = one_tip(&note, "After-pair tip SHA:");
+    assert_eq!(allow, SHA);
+    assert_eq!(deny, SHA);
+    assert_eq!(cleanup, SHA);
+    assert_eq!(after_pair, "none");
+    assert!(cleanup_destroy_traced(&note));
+    assert!(!note.contains("- [x]") && !note.contains("- [X]"));
+    let partial = status_value(&note).starts_with("**Partial**.");
+    assert!(!partial, "status not Partial");
+    assert!(!process_tap_early_return_ok(
+        partial,
+        tip_token_is_sha(&allow),
+        tip_token_is_sha(&deny),
+        tip_token_is_sha(&cleanup),
+        &note,
+    ));
+
+    let live = read(TAP);
+    assert_eq!(live, tap);
+    assert!(live.contains("Allow tip SHA: none"));
+    assert!(live.contains("Deny tip SHA: none"));
+    assert!(live.contains("Cleanup tip SHA: none"));
+    assert!(live.contains("After-pair tip SHA: none"));
+    assert!(!live.contains(SHA));
+    assert!(!live.contains("- [x]") && !live.contains("- [X]"));
 }
 
 /// Record line `destroy_traced: yes`, plus each destroy API on its own
@@ -1720,6 +1776,43 @@ fn tip_token_is_sha(token: &str) -> bool {
         "2e0b898df8b6d4774d9eb968b20660f3118bce6f",
         "7e8f3c5",
         "7e8f3c56995131289bb84f2c52f6787c2dd161fd",
+        "6a839de",
+        "6a839deeeacbe2eff987844c9bb322c2ed3d7d6a",
+        "8794303",
+        "879430322fceb8a0bb15bc26c1b201d1b105a5c1",
+        "e7433c2",
+        "e7433c22f55ab9a94f24ee33c75147ecb35d7520",
+        "ad8d418",
+        "ad8d418610d22a8302c73f3cc8b990be1c1fd224",
+        "8ebd0fc",
+        "8ebd0fc31d7bfe25031ee6b73d259011202ec6f4",
+        "0c880fb",
+        "0c880fb8e0014c3e7ad8d6743fd6d950f0763f04",
+        "19303e8",
+        "c7e7c2e",
+        "81a2a54",
+        "d78e7f8",
+        "5e9649c",
+        "234c26a",
+        "36ccc74",
+        "4969bf6",
+        "828bd48",
+        "964e384",
+        "f9b08be",
+        "0972b2d",
+        "7ae6d98",
+        "f5494b4",
+        "f5494b495a73f30b63657ca71f8ee7589d2b2e34",
+        "9eb8087",
+        "9eb8087cea49f847b39d5649ff982a6d7e1d9487",
+        "b6dacfc",
+        "b6dacfce743c2d2422baaa7f89f19b5e35665989",
+        "225040e",
+        "225040ee40036549a850f506d17b57230f752009",
+        "2b68ea7",
+        "2b68ea788dccb754a57cf8088111e6dabb5e1c8b",
+        "8978055",
+        "8978055279bc168e52c7706dd584fcf33f5ef074",
     ];
     if NOT_OPERATOR.contains(&lower.as_str()) {
         return false;
@@ -2577,6 +2670,43 @@ fn tip_sha_denylist_rejects_non_clicks() {
         "ce5690f",
         "2e0b898",
         "7e8f3c5",
+        "6a839de",
+        "6a839deeeacbe2eff987844c9bb322c2ed3d7d6a",
+        "8794303",
+        "879430322fceb8a0bb15bc26c1b201d1b105a5c1",
+        "e7433c2",
+        "e7433c22f55ab9a94f24ee33c75147ecb35d7520",
+        "ad8d418",
+        "ad8d418610d22a8302c73f3cc8b990be1c1fd224",
+        "8ebd0fc",
+        "8ebd0fc31d7bfe25031ee6b73d259011202ec6f4",
+        "0c880fb",
+        "0c880fb8e0014c3e7ad8d6743fd6d950f0763f04",
+        "19303e8",
+        "c7e7c2e",
+        "81a2a54",
+        "d78e7f8",
+        "5e9649c",
+        "234c26a",
+        "36ccc74",
+        "4969bf6",
+        "828bd48",
+        "964e384",
+        "f9b08be",
+        "0972b2d",
+        "7ae6d98",
+        "f5494b4",
+        "f5494b495a73f30b63657ca71f8ee7589d2b2e34",
+        "9eb8087",
+        "9eb8087cea49f847b39d5649ff982a6d7e1d9487",
+        "b6dacfc",
+        "b6dacfce743c2d2422baaa7f89f19b5e35665989",
+        "225040e",
+        "225040ee40036549a850f506d17b57230f752009",
+        "2b68ea7",
+        "2b68ea788dccb754a57cf8088111e6dabb5e1c8b",
+        "8978055",
+        "8978055279bc168e52c7706dd584fcf33f5ef074",
     ] {
         assert!(!tip_token_is_sha(token), "{token}");
         let line = format!("Allow tip SHA: {token}");
