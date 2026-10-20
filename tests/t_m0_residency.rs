@@ -3,6 +3,8 @@
 //! Catalog metric: `task_vm_info.phys_footprint` after teardown, compared with
 //! `cycle_tolerance_bytes` from the limit vector. RSS, the graphics ledger, and
 //! malloc sizes are diagnostic. This file does not check M0-AC2 or M0-AC3.
+//! It does not release the process-lifetime Metal device. See
+//! `docs/evidence/m0/metal-device-teardown.md` (#55 `0829a70`, #59 `ed9ee10`).
 //! Unset `TACO_RESIDENCY_CYCLES` records nothing and does not load a model.
 
 use std::io::{stderr, Write};

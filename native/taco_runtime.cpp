@@ -746,6 +746,9 @@ extern "C" int taco_engines_prove(
 
     free_mt(&session);
     log_phase("after_free_mt");
+    // llama_backend_free() is ggml_quantize_free(). The MTLDevice from
+    // ggml_metal_device_get / ggml_backend_metal_reg (g_devices) lives until
+    // process exit. Freeing it here use-after-frees the next prove. #55 0829a70.
     llama_backend_free();
     log_phase("after_backend_free");
     out->teardown = 1;

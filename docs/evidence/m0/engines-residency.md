@@ -161,7 +161,10 @@ Still outside 33554432. The patch was reverted and is not in this tree.
 Consequence: repeated `prove_native` teardown is not a bounded-residency
 result. Do not treat this run as meeting `T-M0-LINK-THREE-MODELS` or the
 acceptance.md 100-cycle rule. Do not start M1 on a claim that engine teardown
-returns to the cycle-1 baseline.
+returns to the cycle-1 baseline. The pinned ggml has no safe device release;
+see [metal-device-teardown.md](metal-device-teardown.md). #55 tip `0829a70`
+names the holder. #59 tip `ed9ee10` locks the AC2/AC3 checkbox. Neither box
+below is a pass.
 
 ## Still open
 

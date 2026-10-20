@@ -28,18 +28,18 @@ Cycle 1 is the exception that names the same object. `after_whisper_free` retain
 
 ## Why there is no purge in this tree
 
-The purge that matches the holder is inside the pinned ggml, not in `taco_runtime.cpp`. Free the `ggml_metal_device` and null the static pointer in `ggml_backend_metal_reg` between prove cycles. `llama_backend_free` does not do that today.
+The holder is inside the pinned ggml, not in `taco_runtime.cpp`. [metal-device-teardown.md](metal-device-teardown.md) reads llama.cpp `2a667032dc788c3a071d538e0b572e45a3f12731`. `g_devices` and the `MTLDevice` from `ggml_metal_device_get` stay until process exit. `llama_backend_free` is `ggml_quantize_free()` and does not destroy `ggml_backend_metal_reg`.
 
-Calling `ggml_metal_device_free` from taco on the registry's live pointer is a use-after-free on the next `prove_native`. The llama checkout is `TACO_LLAMA_SRC`. It is not in this repo, so that patch cannot be applied or compiled here. A Linux stub that pretends to drop an `MTLBuffer` would not be that device.
+Calling `ggml_metal_device_free` from taco, or nulling only the registry pointer, is a use-after-free on the next `prove_native`. The buffer-type statics and `ggml_backend_registry::devices` still hold that device, and `ggml_metal_device_get`'s `unique_ptr` would free it again at exit. Whisper and llama backends in this process (`product::g_asr`, `product::g_mt`) would see the same freed device. This pin has no function that drops all of those owners together. A Linux stub that pretends to drop an `MTLBuffer` would not be that device.
 
-An autorelease-pool pop around prove/cancel is the wrong lever for this free path. `ggml_metal_buffer_free` uses `[buffer release]`, not `autorelease`. The #49 waits already covered in-flight command buffers.
+An autorelease-pool pop around prove/cancel is the wrong lever for this free path. `ggml_metal_buffer_free` uses `[buffer release]`, not `autorelease`. The #49 waits already covered in-flight command buffers. #59 tip `ed9ee10` already locks the AC2/AC3 checkbox while #55 tip `0829a70` stands. This tree does not add a second lock.
 
 ## Mac measurement still required
 
 Same machine as #32/#49 (M1 Pro, 34359738368 bytes, macOS 27.0.1 build 26A434). One process. Do not start a new process per cycle.
 
-1. At `before_load`, `after_whisper_free`, and `after_backend_free`, read `MTLCreateSystemDefaultDevice().currentAllocatedSize` next to `phys_footprint`.
-2. If `currentAllocatedSize` tracks the ~90 MiB cycle-2 step, patch the pinned ggml so the static `ggml_backend_metal_reg` device is nulled and freed at the end of `taco_engines_prove`, then rerun. Do not free the device while the registry still holds it.
+1. At `before_load`, `after_whisper_free`, and `after_backend_free`, read `MTLCreateSystemDefaultDevice().currentAllocatedSize` (and `recommendedMaxWorkingSetSize`) next to `phys_footprint`.
+2. If `currentAllocatedSize` tracks the ~90 MiB cycle-2 step, the retainer is the process-lifetime device named above. Do not null `ggml_backend_metal_reg` from taco and do not call `ggml_metal_device_free`. That sample does not make a free safe. The procedure is in [metal-device-teardown.md](metal-device-teardown.md).
 3. If `currentAllocatedSize` stays flat while `phys_footprint` grows, the system device is not the retainer. Interpose `mach_vm_map` / `vm_map` (the #49 probe only interposed `vm_allocate`) or take `vmmap -summary` at `after_whisper_free` and name the region of about 487014400 bytes.
 4. Eight cycles first. Continue to 100 only if cycle 8 is within 33554432 of cycle 1. `link_three` has to stay 1. The engine keeps printing `ac2=0` and `ac3=0`.
 
