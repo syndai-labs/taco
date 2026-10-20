@@ -8,8 +8,8 @@ Cited from `cursor/m0-ac23-honesty2-b19b` tip `7ae6d98` (PR #35). This branch do
 
 (c) Still blocks M0-AC2 and M0-AC3. #32 tip `a0e1614` is a Stop, not a fix. The 100-cycle `phys_footprint` delta is 252346632 bytes against a 33554432-byte tolerance. `whisper_free` retains the bytes. A Metal command-buffer flush missed the band (6-cycle delta 98812072) and was reverted. The earlier cite `0972b2d` recorded the same 100-cycle miss.
 
-- [ ] **M0-AC2:** CPU VAD is open. Prove from `taco run` does not close this box. #57 tip `88eda06` does not close it. #59 tip `ed9ee10` does not close it. #60 tip `aab661c` does not close it. #63 tip `232ea78` does not close it. #64 tip `c9a6f6f` does not close it. #65 tip `04dda65` does not close it. #69 tip `2ff5c4f` does not close it. #70 tip `e06ea0e` does not close it. #72 tip `f16f0bb` does not close it.
-- [ ] **M0-AC3:** The residency Stop at `a0e1614` is not a bounded teardown. #55 tip `0829a70` does not close it. #59 tip `ed9ee10` does not close it. #63 tip `232ea78` does not close it. #65 tip `04dda65` does not close it. #70 tip `e06ea0e` does not close it. #72 tip `f16f0bb` does not close it.
+- [ ] **M0-AC2:** CPU VAD is open. Prove from `taco run` does not close this box. #57 tip `88eda06` does not close it. #59 tip `ed9ee10` does not close it. #60 tip `aab661c` does not close it. #63 tip `232ea78` does not close it. #64 tip `c9a6f6f` does not close it. #65 tip `04dda65` does not close it. #69 tip `2ff5c4f` does not close it. #70 tip `e06ea0e` does not close it. #72 tip `f16f0bb` does not close it. #73 tip `789c026` does not close it. #74 tip `30fd669` does not close it. #76 tip `2d9679f` does not close it.
+- [ ] **M0-AC3:** The residency Stop at `a0e1614` is not a bounded teardown. #55 tip `0829a70` does not close it. #59 tip `ed9ee10` does not close it. #63 tip `232ea78` does not close it. #65 tip `04dda65` does not close it. #70 tip `e06ea0e` does not close it. #72 tip `f16f0bb` does not close it. #73 tip `789c026` does not close it. #74 tip `30fd669` does not close it. #76 tip `2d9679f` does not close it.
 
 PR #41 tip `a8e2eca` freezes that consequence. This branch does not replay the charter guard. No new Metal or macOS evidence.
 
@@ -48,3 +48,13 @@ PR #70 tip `e06ea0e` reads pinned llama.cpp `2a66703` again. A refcount cannot f
 PR #71 tip `b94e2bb` cites #67 tip `652614b`, #68 tip `a1c5c32`, #69 tip `2ff5c4f`, and #70 tip `e06ea0e`. Those cites do not check a box.
 
 PR #72 tip `f16f0bb` refreshes this consequence on top of #65 tip `04dda65`. The flip guard on that tip also locks #69 tip `2ff5c4f` and #70 tip `e06ea0e` into `ac2_ac3_cannot_flip_while_stop_shas_stand`. The locks at `0829a70` and `232ea78` stay. It cites `c9a6f6f` and does not copy `ort_coreml_upgrade_cannot_flip_ac2`. Checking either box above fails on that tip while `2ff5c4f` and `e06ea0e` stand. This branch does not replay that charter guard. No new Mac run. No Metal measurement. Neither box above is a pass.
+
+PR #73 tip `789c026` cites #71 tip `b94e2bb` and #72 tip `f16f0bb`. Those cites do not check a box.
+
+PR #74 tip `30fd669` is a Metal subprocess Stop stacked on #70 tip `e06ea0e`. A helper process violates single Mach-O, in-process Metal, and LINK-THREE. It cites #55 tip `0829a70`, #63 tip `232ea78`, and #70 tip `e06ea0e`. It does not drop them. No new Mac run. No purge. The guard on that tip is `metal_subprocess_stop_cites_55_63_and_70`. It does not read this note and does not replace `metal_refcount_stop_cites_63_and_55`. It is not `ac2_ac3_cannot_flip_while_stop_shas_stand`. The note on that tip is `docs/evidence/m0/metal-subprocess.md`. This branch does not copy it and does not replay that charter guard. Neither box above is a pass.
+
+PR #75 tip `dc1b9be` does not change the AC2/AC3 Stop-SHA list. It does not close either box above.
+
+PR #76 tip `2d9679f` refreshes this consequence on top of #72 tip `f16f0bb`. The flip guard on that tip also locks #74 tip `30fd669` into `ac2_ac3_cannot_flip_while_stop_shas_stand`. #74 owns `metal_subprocess_stop_cites_55_63_and_70`. That tip cites the Stop and does not copy that guard. The locks at `0829a70`, `232ea78`, `e06ea0e`, and `2ff5c4f` stay. Checking either box above fails on that tip while `30fd669` stands. This branch does not replay that charter guard. No new Mac run. No Metal measurement. Neither box above is a pass.
+
+PR #77 tip `595dced` does not change the AC2/AC3 Stop-SHA list. It does not close either box above.
