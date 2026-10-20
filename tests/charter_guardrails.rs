@@ -1749,6 +1749,70 @@ fn external_input_unqualified_refuses_ac1() {
     );
 }
 
+/// PR #88 tip `2766f79` stays Partial. Operator Allow, Deny, and Cleanup tip SHAs
+/// are still `none`. TIMEOUT is not Deny. This cites #87 and #51 and does not
+/// replace those guards.
+#[test]
+fn m0_ac1_partial_refuses_checked_boxes() {
+    let guard = read("tests/charter_guardrails.rs");
+    for name in [
+        "fn ac1_cannot_flip_while_full_session_tip_shas_are_none",
+        "fn process_tap_tips_refuse_ac1_flip_while_either_sha_is_none",
+        "fn external_input_unqualified_refuses_ac1",
+    ] {
+        assert!(guard.contains(name), "standing AC1 guard dropped: {name}");
+    }
+    let note = read("docs/evidence/m0/ac1-partial.md");
+    assert!(
+        note.contains("Status: Partial"),
+        "ac1-partial.md drops Status: Partial"
+    );
+    for phrase in [
+        "M0-AC1 stays unchecked",
+        "Partial is not an accept",
+        "A Mac operator session is still required",
+        "TIMEOUT is not Deny.",
+        "Cleanup needs a separately traced destroy",
+        "AudioHardwareDestroyAggregateDevice",
+        "AudioHardwareDestroyProcessTap",
+        "Exit 0 is not a Cleanup tip SHA",
+        "Drop is not a Cleanup tip SHA",
+        "does not invent an Allow tip SHA",
+        "ac1_cannot_flip_while_full_session_tip_shas_are_none",
+        "process_tap_tips_refuse_ac1_flip_while_either_sha_is_none",
+        "external_input_unqualified_refuses_ac1",
+        "ac1_cannot_flip_while_operator_timeout_partial_stands",
+        "`qualified_in_m0` stays false",
+    ] {
+        assert!(note.contains(phrase), "ac1-partial.md drops `{phrase}`");
+    }
+    for sha in [
+        "2766f79",
+        "2766f79021c52051e8661b993c072327e9761cb6",
+        "a40fad1",
+        "a40fad173091a605417766e2a28433548a0481f6",
+        "7c71d50",
+        "7c71d509b404de536bb4a10b60c254d382824403",
+        "8c24c99",
+        "ca9bc50",
+        "637459f",
+    ] {
+        assert!(note.contains(sha), "ac1-partial.md drops tip {sha}");
+    }
+    assert_eq!(one_tip(&note, "Allow tip SHA:"), "none");
+    assert_eq!(one_tip(&note, "Deny tip SHA:"), "none");
+    assert_eq!(one_tip(&note, "Cleanup tip SHA:"), "none");
+    for token in ["none", "TIMEOUT"] {
+        assert!(!tip_token_is_sha(token), "{token} is not an operator tip SHA");
+    }
+    let mut checked = Vec::new();
+    checked_m0_ac1(&root().join("docs"), &mut checked);
+    assert!(
+        checked.is_empty(),
+        "M0-AC1 checked while the Partial note stands and tip SHAs are none: {checked:?}"
+    );
+}
+
 struct SpikeEvidence {
     status: i32,
     text: String,
