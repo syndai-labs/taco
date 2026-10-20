@@ -159,7 +159,7 @@ Host for the cited Mac runs: Apple M1 Pro, 32 GiB (34359738368 bytes), macOS
 names that build as a Partial OS floor, not a support promise. C2 stays open.
 PR #30 tip `e2ec751` and PR #32 tip `0972b2d` used that same host. `proves_c1` stays false. Neither is C2. The #30 signature is ad-hoc. PR #37 tip `d194012` used that same host. It does not name C2. PR #38 tip `e7433c2` measured signing on macOS 27.0.1 (26A434). It does not name C2.
 
-#60 tip `aab661c` is a Stop: the Silero pin stays, and no published Silero ONNX is CoreML-acceptable under ORT 1.31 (other files still contain LSTM, or a top-level If whose branch fails the Pad and Slice checks). #63 tip `232ea78` deepens the #55 Metal-device Stop: pinned llama.cpp has no safe teardown of that process-lifetime device without a use-after-free. Checking M0-AC2 or M0-AC3 still fails while `aab661c` and `232ea78` stand. This note adds no Metal measurement.
+#60 tip `aab661c` is a Stop: the Silero pin stays, and no published Silero ONNX is CoreML-acceptable under ORT 1.31 (other files still contain LSTM, or a top-level If whose branch fails the Pad and Slice checks). #63 tip `232ea78` deepens the #55 Metal-device Stop: pinned llama.cpp has no safe teardown of that process-lifetime device without a use-after-free. #64 tip `c9a6f6f` is a complementary Stop: an ORT upgrade is out of M0, because `main` `GetOpBuilders` is still the v1.31.0 blob and still has no `LSTM` or `If`. This branch does not copy that guard. Checking M0-AC2 or M0-AC3 still fails while `aab661c` and `232ea78` stand. This note adds no Metal measurement.
 
 | ID | Decision | Owner | Evidence on this host | Rejected alternative | Consequence |
 | --- | --- | --- | --- | --- | --- |

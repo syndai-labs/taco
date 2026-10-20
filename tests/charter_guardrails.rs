@@ -587,6 +587,8 @@ fn ac2_ac3_cannot_flip_while_stop_shas_stand() {
             ),
             ("the Silero pin stays", "Silero pin Stay"),
             ("use-after-free", "unsafe Metal device teardown"),
+            ("c9a6f6f", "#64 ORT upgrade Stop"),
+            ("an ORT upgrade is out of M0", "ORT upgrade stays out of M0"),
         ] {
             assert!(text.contains(sha), "{path} drops {why} `{sha}`");
         }
