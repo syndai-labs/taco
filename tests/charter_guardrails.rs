@@ -1107,7 +1107,7 @@ fn process_tap_tips_refuse_ac1_flip_while_either_sha_is_none() {
     let allow_ok = tip_token_is_sha(&allow);
     let deny_ok = tip_token_is_sha(&deny);
     let cleanup_ok = cleanup.iter().all(|(_, token)| tip_token_is_sha(token));
-    if !partial && allow_ok && deny_ok && cleanup_ok {
+    if process_tap_early_return_ok(partial, allow_ok, deny_ok, cleanup_ok, &note) {
         return;
     }
 
@@ -1311,21 +1311,124 @@ fn assert_ac1_closed_until_tip_shas() {
     let mic = read("docs/evidence/m0/mic-operator-resume.md");
     let audio = read("docs/evidence/m0/audiocapture-measure.md");
     let tap = read("docs/evidence/m0/process-tap-product.md");
-    let mic_ready = named_tip_sha(&mic, "Allow tip SHA:") && named_tip_sha(&mic, "Deny tip SHA:");
-    let audio_ready =
-        named_tip_sha(&audio, "Allow tip SHA:") && named_tip_sha(&audio, "Deny tip SHA:");
-    let tap_ready = named_tip_sha(&tap, "Allow tip SHA:")
-        && named_tip_sha(&tap, "Deny tip SHA:")
-        && named_tip_sha(&tap, "Cleanup tip SHA:");
-    if mic_ready && audio_ready && tap_ready {
-        return;
-    }
     let mut checked = Vec::new();
     checked_m0_ac1(&root().join("docs"), &mut checked);
+    assert_ac1_closed_for(&mic, &audio, &tap, !checked.is_empty());
+}
+
+fn assert_ac1_closed_for(mic: &str, audio: &str, tap: &str, checked: bool) {
+    if ac1_tip_shas_ready(mic, audio, tap) {
+        return;
+    }
     assert!(
-        checked.is_empty(),
-        "M0-AC1 checked while Allow, Deny, or Cleanup tip SHA is still none: {checked:?}"
+        !checked,
+        "M0-AC1 checked while a tip SHA is none or Cleanup destroy is not traced"
     );
+}
+
+/// Early return only when every tip SHA is hex and the process-tap note traces destroy.
+fn ac1_tip_shas_ready(mic: &str, audio: &str, tap: &str) -> bool {
+    named_tip_sha(mic, "Allow tip SHA:")
+        && named_tip_sha(mic, "Deny tip SHA:")
+        && named_tip_sha(audio, "Allow tip SHA:")
+        && named_tip_sha(audio, "Deny tip SHA:")
+        && named_tip_sha(tap, "Allow tip SHA:")
+        && named_tip_sha(tap, "Deny tip SHA:")
+        && named_tip_sha(tap, "Cleanup tip SHA:")
+        && cleanup_destroy_traced(tap)
+}
+
+fn process_tap_early_return_ok(
+    partial: bool,
+    allow_ok: bool,
+    deny_ok: bool,
+    cleanup_ok: bool,
+    note: &str,
+) -> bool {
+    !partial && allow_ok && deny_ok && cleanup_ok && cleanup_destroy_traced(note)
+}
+
+/// Record line `destroy_traced: yes` plus both destroy APIs named in the note.
+fn cleanup_destroy_traced(note: &str) -> bool {
+    let yes = note.lines().any(|line| {
+        let t = line.trim().trim_matches('`');
+        match t.strip_prefix("destroy_traced:") {
+            Some(rest) => rest.trim().trim_matches('`') == "yes",
+            None => false,
+        }
+    });
+    yes && note.contains("AudioHardwareDestroyAggregateDevice")
+        && note.contains("AudioHardwareDestroyProcessTap")
+}
+
+/// Mutates the process-tap note in memory. Disk stays `Cleanup tip SHA: none`.
+#[test]
+fn m0_cleanup_hex_without_destroy_refuses_ac1() {
+    const SHA: &str = "abcdef0123456789";
+    const TAP: &str = "docs/evidence/m0/process-tap-product.md";
+    const RULE: &str = "A hex Cleanup tip SHA without `destroy_traced: yes` refuses a checked M0-AC1. Missing either `AudioHardwareDestroyAggregateDevice` or `AudioHardwareDestroyProcessTap` refuses it too. Cleanup tip SHA stays `none` on this tip.";
+
+    let mic = read("docs/evidence/m0/mic-operator-resume.md");
+    let audio = read("docs/evidence/m0/audiocapture-measure.md");
+    let tap = read(TAP);
+    assert!(tap.contains("Cleanup tip SHA: none"));
+    assert!(tap.contains("destroy_traced: no"));
+    assert!(tap.contains(RULE));
+    assert!(!named_tip_sha(&tap, "Cleanup tip SHA:"));
+    assert!(!cleanup_destroy_traced(&tap));
+    assert!(!ac1_tip_shas_ready(&mic, &audio, &tap));
+    assert_ac1_closed_until_tip_shas();
+
+    let fill =
+        |text: &str, label: &str| text.replace(&format!("{label} none"), &format!("{label} {SHA}"));
+    let mic_hex = fill(&fill(&mic, "Allow tip SHA:"), "Deny tip SHA:");
+    let audio_hex = fill(&fill(&audio, "Allow tip SHA:"), "Deny tip SHA:");
+    let tap_hex = fill(
+        &fill(&fill(&tap, "Allow tip SHA:"), "Deny tip SHA:"),
+        "Cleanup tip SHA:",
+    );
+    let open_box = format!("- [{}] **M0-AC1:**", " ");
+    let checked_box = format!("- [{}] **M0-AC1:**", "x");
+    let checked = tap_hex.replace(&open_box, &checked_box);
+    assert!(tip_token_is_sha(SHA));
+    assert_eq!(one_tip(&checked, "Cleanup tip SHA:"), SHA);
+    assert!(checked.contains("destroy_traced: no"));
+    assert!(checked.contains(&checked_box));
+    assert!(!cleanup_destroy_traced(&checked));
+    assert_checked_ac1_fails(&mic_hex, &audio_hex, &checked);
+
+    let stripped = destroy_record_yes(&checked)
+        .replace("AudioHardwareDestroyAggregateDevice", "omitted-aggregate")
+        .replace("AudioHardwareDestroyProcessTap", "omitted-process-tap");
+    assert!(!cleanup_destroy_traced(&stripped));
+    assert_checked_ac1_fails(&mic_hex, &audio_hex, &stripped);
+
+    let live = read(TAP);
+    assert_eq!(live, tap);
+    assert!(live.contains("Cleanup tip SHA: none"));
+    assert!(!live.contains(SHA));
+    assert!(!live.contains("- [x]") && !live.contains("- [X]"));
+}
+
+fn assert_checked_ac1_fails(mic: &str, audio: &str, tap: &str) {
+    let failed = std::panic::catch_unwind(|| assert_ac1_closed_for(mic, audio, tap, true));
+    assert!(
+        failed.is_err(),
+        "checked M0-AC1 must fail while Cleanup destroy is not traced"
+    );
+}
+
+fn destroy_record_yes(note: &str) -> String {
+    note.lines()
+        .map(|line| {
+            if line.trim() == "destroy_traced: no" {
+                "destroy_traced: yes"
+            } else {
+                line
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 fn named_tip_sha(text: &str, label: &str) -> bool {
@@ -2022,10 +2125,7 @@ fn spike_sources_evidence() -> SpikeEvidence {
     use std::sync::atomic::{AtomicU64, Ordering};
     static SEQ: AtomicU64 = AtomicU64::new(0);
     let n = SEQ.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "taco-tap-product-{}-{n}",
-        std::process::id()
-    ));
+    let dir = std::env::temp_dir().join(format!("taco-tap-product-{}-{n}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).unwrap();
     let out = dir.join("evidence.txt");
@@ -2056,7 +2156,9 @@ fn taco_run(source: &str, spike: bool) -> std::process::Output {
 fn fn_body<'a>(src: &'a str, name: &str) -> &'a str {
     let start = src.find(name).unwrap_or_else(|| panic!("missing {name}"));
     let rest = &src[start..];
-    let brace = rest.find('{').unwrap_or_else(|| panic!("missing body {name}"));
+    let brace = rest
+        .find('{')
+        .unwrap_or_else(|| panic!("missing body {name}"));
     let mut depth = 0;
     for (index, ch) in rest[brace..].char_indices() {
         match ch {
