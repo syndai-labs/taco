@@ -56,3 +56,5 @@ PR #74 tip `30fd669` is a Metal subprocess Stop stacked on #70 tip `e06ea0e`. A 
 PR #75 tip `dc1b9be` does not change the AC2/AC3 Stop-SHA list. It does not close either box above.
 
 PR #76 tip `2d9679f` refreshes this consequence on top of #72 tip `f16f0bb`. The flip guard on that tip also locks #74 tip `30fd669` into `ac2_ac3_cannot_flip_while_stop_shas_stand`. #74 owns `metal_subprocess_stop_cites_55_63_and_70`. That tip cites the Stop and does not copy that guard. The locks at `0829a70`, `232ea78`, `e06ea0e`, and `2ff5c4f` stay. Checking either box above fails on that tip while `30fd669` stands. This branch does not replay that charter guard. No new Mac run. No Metal measurement. Neither box above is a pass.
+
+PR #77 tip `595dced` does not change the AC2/AC3 Stop-SHA list. It does not close either box above.
