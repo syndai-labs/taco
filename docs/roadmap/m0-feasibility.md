@@ -113,3 +113,7 @@ subgraph request is still not a measured GPU device. Record:
 The Silero pin stays `1a153a22…`; no published ONNX is one ORT 1.31
 CoreML can take
 ([vad-silero-pin-stop.md](../evidence/m0/vad-silero-pin-stop.md)).
+An ORT upgrade is out of M0: `main` `GetOpBuilders` is the v1.31.0 blob
+and still has no `LSTM` or `If`
+([vad-ort-coreml-builders.md](../evidence/m0/vad-ort-coreml-builders.md)).
+#59 `ed9ee10` already keeps M0-AC2 unchecked while #57 `88eda06` stands.
