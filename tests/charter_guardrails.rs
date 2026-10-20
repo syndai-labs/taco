@@ -775,6 +775,268 @@ fn ac1_mac_resume_locks_timeout_and_both_outcomes() {
     assert!(!note.contains("- [x]") && !note.contains("- [X]"));
     assert!(note.contains("Allow tip SHA"));
     assert!(note.contains("none"));
+    assert!(note.contains("Allow tip SHA: none"));
+    assert!(note.contains("Deny tip SHA: none"));
+}
+
+/// AudioCapture Allow and Deny are both required before M0-AC1 can be checked.
+/// TIMEOUT is a third outcome. A Linux run of the measure script is not CoreAudio.
+#[test]
+fn audiocapture_allow_and_deny_required_before_ac1() {
+    let note = read("docs/evidence/m0/audiocapture-measure.md");
+    let start = read("docs/evidence/m0/audiocapture-start-mac.md");
+    let prep = read("docs/evidence/m0/audiocapture-prep.md");
+    for text in [&note, &start, &prep] {
+        assert!(text.contains("TIMEOUT is not Deny."));
+    }
+    assert!(note.contains("Legal outcomes are Allow, Deny, and TIMEOUT."));
+    assert!(note.contains("open_ms: 300000"));
+    assert!(note.contains("hold_ms: 1800000"));
+    assert!(note.contains("ai.syndai.taco"));
+    assert!(note.contains("taco captures one system or application audio source"));
+
+    let allow = named_tip_sha(&note, "Allow tip SHA:");
+    let deny = named_tip_sha(&note, "Deny tip SHA:");
+    if note.contains("Status: **Unmeasured**.") {
+        assert!(
+            !allow && !deny,
+            "Unmeasured cannot carry an AudioCapture Allow or Deny tip SHA"
+        );
+        assert!(note.contains("No button was pressed"));
+        assert!(note
+            .contains("Unmeasured — AudioCapture Allow/Deny not recorded; consequence AC1 open."));
+    }
+    assert_ac1_closed_until_tip_shas();
+
+    let plist = read("packaging/Info.plist");
+    assert!(plist.contains("ai.syndai.taco"));
+    assert!(plist.contains("NSAudioCaptureUsageDescription"));
+    assert!(plist.contains("taco captures one system or application audio source"));
+    let pack = read("scripts/m0-pack-taco-app.sh");
+    assert!(pack.contains("platform_unsupported"));
+    assert!(pack.contains("ai.syndai.taco"));
+    assert!(pack.contains("NSAudioCaptureUsageDescription"));
+    let pack_gate = pack.find("!= \"Darwin\"").expect("pack darwin gate");
+    let pack_sign = pack.find("codesign --force").expect("pack sign");
+    assert!(pack_gate < pack_sign, "pack fails closed before codesign");
+    assert!(read(".gitignore").contains("/packaging/Taco.app"));
+    assert!(note.contains("m0-pack-taco-app.sh"));
+
+    let script = read("scripts/m0-audiocapture-measure.sh");
+    assert!(script.contains("platform_unsupported"));
+    assert!(script.contains("Darwin"));
+    assert!(script.contains("open -W"));
+    assert!(script.contains("TACO_APP"));
+    assert!(script.contains("ai.syndai.taco"));
+    assert!(script.contains("TACO_CAPTURE_SPIKE_OPEN_MS"));
+    assert!(script.contains("TACO_CAPTURE_SPIKE_HOLD_MS"));
+    assert!(script.contains("300000"));
+    assert!(script.contains("1800000"));
+    assert!(script.contains("TIMEOUT is not Deny."));
+    assert!(script.contains("[t]aco run --source default"));
+    assert!(
+        !script.contains("tccutil reset"),
+        "the measure script must not reset TCC"
+    );
+    assert!(
+        !script.contains("target/debug/taco"),
+        "do not launch the raw debug binary; Taco.app is the attribution path"
+    );
+    let darwin = script.find("!= \"Darwin\"").expect("darwin gate");
+    let launch = script.find("open -W \\\n").expect("launch");
+    assert!(darwin < launch, "fail closed before any Taco.app launch");
+
+    if cfg!(target_os = "macos") {
+        return;
+    }
+    let pack_path = root().join("scripts/m0-pack-taco-app.sh");
+    let packed = Command::new("sh").arg(&pack_path).output().expect("pack script");
+    let pack_err = String::from_utf8_lossy(&packed.stderr);
+    assert_eq!(packed.status.code(), Some(2), "{pack_err}");
+    assert!(pack_err.contains("platform_unsupported"), "{pack_err}");
+    assert!(!root().join("packaging/Taco.app").exists());
+
+    let path = root().join("scripts/m0-audiocapture-measure.sh");
+    for args in [
+        Vec::<&str>::new(),
+        vec!["system"],
+        vec!["app:com.google.Chrome"],
+        vec!["pid:1"],
+    ] {
+        let output = Command::new("sh")
+            .arg(&path)
+            .args(&args)
+            .output()
+            .expect("measure script");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let combined = format!("{stdout}{stderr}");
+        assert_eq!(output.status.code(), Some(2), "{args:?}: {combined}");
+        assert!(
+            stderr.contains("platform_unsupported"),
+            "{args:?}: {combined}"
+        );
+        assert!(!combined.contains("outcome=Allow"), "{combined}");
+        assert!(!combined.contains("outcome=Deny"), "{combined}");
+        assert!(!combined.contains("verdict=pass"), "{combined}");
+        assert!(!combined.contains("granted"), "{combined}");
+        assert!(
+            !stdout.contains("mic settled"),
+            "off macOS must not report a settled mic gate: {stdout}"
+        );
+    }
+}
+
+/// M0-AC1 cannot flip while mic or AudioCapture Allow/Deny tip SHAs are still `none`.
+/// Acceptance requires microphone, system, and app tap.
+#[test]
+fn ac1_cannot_flip_while_tip_shas_are_none() {
+    assert_ac1_closed_until_tip_shas();
+}
+
+#[test]
+fn ac1_full_session_chains_pack_resume_then_audiocapture() {
+    let path = root().join("scripts/m0-ac1-full-session.sh");
+    let output = Command::new("sh")
+        .arg(&path)
+        .arg("self-check")
+        .output()
+        .expect("full session self-check");
+    let text = String::from_utf8(output.stdout).expect("stdout");
+    let err = String::from_utf8(output.stderr).expect("stderr");
+    assert!(output.status.success(), "{text}{err}");
+    assert!(text.contains("self-check ok"));
+
+    let (ok, denied) = full_session(&["classify", "no", "denied"]);
+    assert!(ok);
+    assert_eq!(denied.trim(), "TIMEOUT");
+    let (ok, granted) = full_session(&["classify", "yes", "granted"]);
+    assert!(ok);
+    assert_eq!(granted.trim(), "Allow");
+    let (ok, plan) = full_session(&["plan", "TIMEOUT"]);
+    assert!(ok);
+    assert_eq!(plan.trim(), "stop");
+
+    let script = read("scripts/m0-ac1-full-session.sh");
+    assert!(script.contains("platform_unsupported"));
+    assert!(script.contains("TIMEOUT is not Deny."));
+    assert!(script.contains("tccutil reset AudioCapture"));
+    assert!(!script.contains("reset Microphone"));
+    assert!(!script.contains("osascript"));
+    assert!(!script.contains("- [x]") && !script.contains("- [X]"));
+    let arm_at = script.find("\narm()").expect("arm");
+    let arm = &script[arm_at..];
+    let closed = arm.find("fail_closed").expect("linux gate");
+    let pack = arm.find("m0-pack-taco-app.sh").expect("pack");
+    let resume = arm.find("m0-ac1-mac-resume.sh").expect("mic resume");
+    let live = arm.find("mic LIVE").expect("live gate");
+    let measure = arm.find("m0-audiocapture-measure.sh").expect("measure");
+    assert!(
+        closed < pack && pack < resume && resume < live && live < measure,
+        "session order is pack, mic resume, then AudioCapture only after mic LIVE is gone"
+    );
+    assert!(!arm.contains("prompt_audio third"));
+    let prompts = arm.matches("prompt_audio").count();
+    assert_eq!(prompts, 2, "Allow then Deny, and no third AudioCapture open");
+
+    let note = read("docs/evidence/m0/ac1-full-session.md");
+    assert!(note.contains("Status: **Partial**"));
+    assert!(note.contains("No Allow was recorded here."));
+    assert!(note.contains("No Deny was recorded here."));
+    assert!(note.contains("Allow tip SHA: none"));
+    assert!(note.contains("Deny tip SHA: none"));
+    assert!(note.contains("TIMEOUT is not Deny."));
+    assert!(note.contains("a1c5c32"));
+    assert!(note.contains("652614b"));
+    assert!(note.contains("- [ ]"));
+    assert!(!note.contains("- [x]") && !note.contains("- [X]"));
+
+    if cfg!(target_os = "macos") {
+        return;
+    }
+    let armed = Command::new("sh")
+        .arg(&path)
+        .arg("--arm")
+        .output()
+        .expect("full session --arm");
+    let stdout = String::from_utf8(armed.stdout).expect("stdout");
+    let stderr = String::from_utf8(armed.stderr).expect("stderr");
+    let combined = format!("{stdout}{stderr}");
+    assert_eq!(armed.status.code(), Some(2), "{combined}");
+    assert!(stderr.contains("platform_unsupported"), "{combined}");
+    assert!(combined.contains("recorded: none"));
+    assert!(combined.contains("Allow tip SHA: none"));
+    assert!(combined.contains("M0-AC1 stays unchecked."));
+    assert!(!combined.contains("granted"), "{combined}");
+    assert!(!combined.contains("mic settled"), "{combined}");
+    assert!(!combined.contains("raising SecurityAgent"), "{combined}");
+    assert!(!stdout.contains("Outcome: Allow") && !stdout.contains("Outcome: Deny"));
+    assert!(!root().join("packaging/Taco.app").exists());
+}
+
+fn full_session(args: &[&str]) -> (bool, String) {
+    let output = Command::new("sh")
+        .arg(root().join("scripts/m0-ac1-full-session.sh"))
+        .args(args)
+        .output()
+        .expect("m0-ac1-full-session.sh");
+    let mut text = String::from_utf8(output.stdout).expect("stdout");
+    text.push_str(&String::from_utf8(output.stderr).expect("stderr"));
+    (output.status.success(), text)
+}
+
+fn assert_ac1_closed_until_tip_shas() {
+    let mic = read("docs/evidence/m0/mic-operator-resume.md");
+    let audio = read("docs/evidence/m0/audiocapture-measure.md");
+    let mic_ready = named_tip_sha(&mic, "Allow tip SHA:") && named_tip_sha(&mic, "Deny tip SHA:");
+    let audio_ready =
+        named_tip_sha(&audio, "Allow tip SHA:") && named_tip_sha(&audio, "Deny tip SHA:");
+    if mic_ready && audio_ready {
+        return;
+    }
+    let mut checked = Vec::new();
+    checked_m0_ac1(&root().join("docs"), &mut checked);
+    assert!(
+        checked.is_empty(),
+        "M0-AC1 checked while mic or AudioCapture Allow/Deny tip SHAs are still none: {checked:?}"
+    );
+}
+
+fn named_tip_sha(text: &str, label: &str) -> bool {
+    text.lines().any(|line| {
+        let Some((_, rest)) = line.split_once(label) else {
+            return false;
+        };
+        let token = rest
+            .trim()
+            .trim_matches('`')
+            .split_whitespace()
+            .next()
+            .unwrap_or("");
+        token.len() >= 7 && token.chars().all(|c| c.is_ascii_hexdigit())
+    })
+}
+
+fn checked_m0_ac1(dir: &Path, out: &mut Vec<String>) {
+    for entry in fs::read_dir(dir).unwrap().flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            checked_m0_ac1(&path, out);
+            continue;
+        }
+        if path.extension().and_then(|ext| ext.to_str()) != Some("md") {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        let flipped = text.lines().any(|line| {
+            line.contains("M0-AC1") && (line.contains("- [x]") || line.contains("- [X]"))
+        });
+        if flipped {
+            out.push(path.display().to_string());
+        }
+    }
 }
 
 fn fn_body<'a>(src: &'a str, name: &str) -> &'a str {

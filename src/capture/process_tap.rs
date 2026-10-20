@@ -1,7 +1,8 @@
 //! CoreAudio process tap. `unsafe` lives in `taco-tap` (`native/tap`) because
 //! this crate has `forbid(unsafe_code)`. `native/process_tap.m` is the real
 //! CoreAudio tap. It is compiled only for macOS, and only called when
-//! `TACO_CAPTURE_SPIKE` is set.
+//! `TACO_CAPTURE_SPIKE` is set. On that path the aggregate is started with
+//! `AudioDeviceStart`, held, then stopped. Drop destroys it.
 
 /// Matches `TACO_REFUSED` in `native/process_tap.m`. Not a successful open.
 const NOT_WIRED: i32 = 4;

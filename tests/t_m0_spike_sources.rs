@@ -13,10 +13,42 @@ fn t_m0_spike_sources() {
     assert_ne!(verdict, "pass");
 }
 
+/// Tap open has to start the aggregate. The microphone `AudioDeviceStart` does
+/// not. AC1 stays unchecked until a Mac operator records Allow and Deny.
+#[test]
+fn t_m0_spike_tap_starts_aggregate_without_checking_ac1() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let src = fs::read_to_string(root.join("native/process_tap.m")).unwrap();
+    let open = tap_open_body(&src);
+    assert!(open.contains("AudioDeviceStart"), "{open}");
+    assert!(open.contains("AudioDeviceStop"), "{open}");
+    assert!(
+        open.contains("@kAudioAggregateDeviceTapAutoStartKey : @0"),
+        "{open}"
+    );
+    assert!(src.contains("TACO_CAPTURE_SPIKE_OPEN_MS"));
+    assert!(src.contains("return 300000;"));
+    assert!(!src.contains("180000") && !src.contains("180_000"), "{src}");
+    let note = fs::read_to_string(root.join("docs/evidence/m0/audiocapture-prep.md")).unwrap();
+    assert!(note.contains("- [ ] **M0-AC1:**"));
+    let checked = format!("- [{}] **M0-AC1:**", "x");
+    assert!(!note.contains(&checked));
+    assert!(note.contains("No Mac run of this start is recorded"));
+}
+
 #[test]
 fn t_m0_native_scripts_are_not_run() {
     assert_eq!(run("T-M0-LINK-THREE-MODELS"), "not_run");
     assert_eq!(run("T-M0-CANCEL-LIFECYCLE"), "not_run");
+}
+
+fn tap_open_body(src: &str) -> &str {
+    let start = src.find("int taco_process_tap_open").expect("tap open");
+    let rest = &src[start..];
+    let end = rest
+        .find("static OSStatus taco_input_ioproc")
+        .expect("input proc follows tap open");
+    &rest[..end]
 }
 
 fn run(id: &str) -> String {
