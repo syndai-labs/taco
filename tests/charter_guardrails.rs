@@ -1864,6 +1864,12 @@ fn tip_token_is_sha(token: &str) -> bool {
         "7a5884e05f5c98a61f79918a7fae21bd10aaf577",
         "3602000",
         "36020005c98ed5a028f7cbdd77aaa028156d8467",
+        "d66894e",
+        "d66894ea15a07511e37e4c9bdfdcf9b6a6c439bd",
+        "237347f",
+        "237347f1ecdacb7fa7d007b417e047144ab2bd40",
+        "0f14be3",
+        "0f14be30491a6ed1b0df17f4fc29793558825daa",
     ];
     if NOT_OPERATOR.contains(&lower.as_str()) {
         return false;
@@ -2793,6 +2799,12 @@ fn tip_sha_denylist_rejects_non_clicks() {
         "7a5884e05f5c98a61f79918a7fae21bd10aaf577",
         "3602000",
         "36020005c98ed5a028f7cbdd77aaa028156d8467",
+        "d66894e",
+        "d66894ea15a07511e37e4c9bdfdcf9b6a6c439bd",
+        "237347f",
+        "237347f1ecdacb7fa7d007b417e047144ab2bd40",
+        "0f14be3",
+        "0f14be30491a6ed1b0df17f4fc29793558825daa",
     ] {
         assert!(!tip_token_is_sha(token), "{token}");
         let line = format!("Allow tip SHA: {token}");
@@ -2801,16 +2813,16 @@ fn tip_sha_denylist_rejects_non_clicks() {
     let stand_in = "abcdef0123456789";
     assert!(tip_token_is_sha(stand_in));
     assert!(!walk_contains(&root().join("docs"), stand_in));
-    // Prefer tip #112 remains an Allow, Deny, Cleanup, and After-pair SHA.
-    assert!(tip_token_is_sha("d66894e"));
-    assert!(tip_token_is_sha("d66894ea15a07511e37e4c9bdfdcf9b6a6c439bd"));
+    // This tip's own HEAD stays an Allow, Deny, Cleanup, and After-pair SHA.
+    // It is not on the denylist and is not read with `git rev-parse HEAD`.
 }
 
-/// Prefer tip `022cec3` is not an operator click.
+/// Prefer tip `d66894e` is not an operator click.
 ///
 /// When the Mac playbook prefer tip advances, the tip that becomes prefer
 /// must deny its own short+full in that same tip (or the next denylist tip
-/// before playbook flip).
+/// before playbook flip). This tip denies #112 and the #114 heads and leaves
+/// its own HEAD accepted.
 #[test]
 fn tip_under_test_sha_is_denied_as_operator_click() {
     let src = fs::read_to_string(root().join("tests/charter_guardrails.rs")).unwrap();
@@ -2818,8 +2830,8 @@ fn tip_under_test_sha_is_denied_as_operator_click() {
     let start = body.find("const NOT_OPERATOR").expect("NOT_OPERATOR");
     let list = &body[start..start + body[start..].find("];").expect("NOT_OPERATOR end")];
     for token in [
-        "022cec3",
-        "022cec314cd0d89f41e8c064d6ed98244791834a",
+        "d66894e",
+        "d66894ea15a07511e37e4c9bdfdcf9b6a6c439bd",
     ] {
         assert!(list.contains(&format!("\"{token}\"")), "{token}");
         assert!(!tip_token_is_sha(token), "{token}");
