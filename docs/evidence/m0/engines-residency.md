@@ -2,6 +2,7 @@
 
 A second attempt did not enter the band. The vmtrace and the reverted
 teardown experiments are in [engines-residency-retry.md](engines-residency-retry.md).
+The holder is named in [engines-residency-rootcause.md](engines-residency-rootcause.md).
 M0-AC2 and M0-AC3 stay unchecked.
 
 One hundred `session::prove_native` cycles in one process. The catalog metric

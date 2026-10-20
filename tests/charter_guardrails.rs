@@ -550,6 +550,26 @@ fn inference_adapters_refuse_in_process() {
     assert!(note.contains("fail closed"));
     assert!(!note.contains("- [x]"));
     assert!(!note.contains("- [X]"));
+    let residency = read("docs/evidence/m0/engines-residency-rootcause.md");
+    assert!(
+        residency.contains("ggml_backend_metal_reg"),
+        "residency Stop must name the Metal device holder"
+    );
+    assert!(
+        residency.contains("498401280"),
+        "residency Stop must keep the cycle-2 virtual_size gap"
+    );
+    assert!(residency.contains("M0-AC2 and M0-AC3 stay unchecked"));
+    assert!(
+        residency.contains("currentAllocatedSize"),
+        "residency Stop must name the Mac measurement still required"
+    );
+    assert!(!residency.contains("- [x]"), "residency Stop checks a box");
+    assert!(!residency.contains("- [X]"), "residency Stop checks a box");
+    assert!(
+        !residency.contains("within_tolerance=1"),
+        "residency Stop must not record a pass"
+    );
     let probe = engines::gpu_offload_linked();
     if !cfg!(all(
         feature = "native",
