@@ -1,6 +1,7 @@
 //! Frozen manifest, corners, corpora, and the unrun scheduling experiment.
 //! Digests come from `docs/evidence/m0/pin-measurement.md` (2026-10-16 Mac host).
 //! Measurement is not a Metal load and does not qualify M0-AC2.
+//! The VAD family stays Silero (`docs/evidence/m0/vad-alt-coreml-stop.md`).
 
 use crate::error::ErrorCode;
 use crate::language::Language;
