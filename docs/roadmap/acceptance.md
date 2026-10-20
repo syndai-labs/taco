@@ -71,7 +71,7 @@ that tip's `freeze.rs`. No Metal fake. PR #32 tip `0972b2d`
 ([engines-residency.md](../evidence/m0/engines-residency.md)) is that same M1
 Pro host. `proves_c1` stays false. It is not C2. PR #30 tip `e2ec751`
 ([taco-run-prove.md](../evidence/m0/taco-run-prove.md)) is an ad-hoc signed
-`taco run` on that host, not a second machine. PR #37 tip `d194012` and PR #38 tip `e7433c2` do not name C2. PR #55 tip `0829a70` and PR #57 tip `88eda06` do not name C2. PR #56 tip `a5619d8` does not name C2. PR #58 tip `fb4246e` and PR #59 tip `ed9ee10` do not name C2. None of those tips is a Metal pass.
+`taco run` on that host, not a second machine. PR #37 tip `d194012` and PR #38 tip `e7433c2` do not name C2. PR #55 tip `0829a70` and PR #57 tip `88eda06` do not name C2. PR #56 tip `a5619d8` does not name C2. PR #58 tip `fb4246e` and PR #59 tip `ed9ee10` do not name C2. PR #60 tip `aab661c`, PR #61 tip `f5d794a`, PR #62 tip `8c24c99`, PR #63 tip `232ea78`, PR #64 tip `c9a6f6f`, and PR #65 tip `04dda65` do not name C2. None of those tips is a Metal pass.
 
 | Dimension | Proposed starting point | Required evidence |
 | --- | --- | --- |
