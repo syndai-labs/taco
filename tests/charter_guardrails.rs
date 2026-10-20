@@ -633,6 +633,46 @@ fn ac2_ac3_cannot_flip_while_stop_shas_stand() {
     }
 }
 
+#[test]
+fn m0_ac2_ac3_partial_refuses_checked_boxes() {
+    let guard = read("tests/charter_guardrails.rs");
+    assert!(
+        guard.contains("fn ac2_ac3_cannot_flip_while_stop_shas_stand"),
+        "#76 owns ac2_ac3_cannot_flip_while_stop_shas_stand"
+    );
+    assert!(
+        guard.contains("Stop tip 30fd669 must stand in docs/evidence/m0/ac2-ac3-open.md"),
+        "#76 consequence5 Metal subprocess lock was dropped"
+    );
+    let note = read("docs/evidence/m0/ac2-ac3-partial.md");
+    assert!(
+        note.contains("Status: Partial"),
+        "ac2-ac3-partial.md drops Status: Partial"
+    );
+    for phrase in [
+        "M0-AC2 and M0-AC3 stay unchecked",
+        "Partial is not an accept",
+        "ORT CoreML LSTM/If upgrade is out of M0",
+        "Metal device process-lifetime release is out of M0",
+        "ac2_ac3_cannot_flip_while_stop_shas_stand",
+    ] {
+        assert!(note.contains(phrase), "ac2-ac3-partial.md drops `{phrase}`");
+    }
+    for sha in [
+        "d194012", "88eda06", "aab661c", "c9a6f6f", "2ff5c4f", "a0e1614", "37ff031", "0829a70",
+        "232ea78", "e06ea0e", "30fd669", "a8e2eca", "ed9ee10", "04dda65", "f16f0bb", "2d9679f",
+        "7f98ab1", "e2ec751",
+    ] {
+        assert!(note.contains(sha), "ac2-ac3-partial.md drops tip {sha}");
+    }
+    let mut checked = Vec::new();
+    checked_ac_boxes(&root().join("docs"), &mut checked);
+    assert!(
+        checked.is_empty(),
+        "M0-AC2 or M0-AC3 checked while the Partial note and Stop SHAs stand: {checked:?}"
+    );
+}
+
 fn stop_sha_stands(path: &str, sha: &str) -> bool {
     match fs::read_to_string(root().join(path)) {
         Ok(text) if !text.is_empty() && !text.contains(sha) => false,
