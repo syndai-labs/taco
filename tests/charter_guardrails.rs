@@ -657,6 +657,126 @@ fn microphone_spike_open_timeout_bounds_cpal_wait() {
     assert!(!note.contains("- [x]") && !note.contains("- [X]"));
 }
 
+fn resume_script(args: &[&str]) -> (bool, String) {
+    let output = Command::new("sh")
+        .arg(root().join("scripts/m0-ac1-mac-resume.sh"))
+        .args(args)
+        .output()
+        .expect("m0-ac1-mac-resume.sh");
+    let mut text = String::from_utf8(output.stdout).expect("stdout");
+    text.push_str(&String::from_utf8(output.stderr).expect("stderr"));
+    (output.status.success(), text)
+}
+
+#[test]
+fn ac1_mac_resume_locks_timeout_and_both_outcomes() {
+    let (ok, text) = resume_script(&["self-check"]);
+    assert!(ok, "self-check failed:\n{text}");
+    assert!(text.contains("self-check ok"));
+
+    let (ok, text) = resume_script(&["classify", "300000", "yes", "denied", "300000"]);
+    assert!(ok);
+    assert_eq!(text.trim(), "TIMEOUT");
+    let (ok, text) = resume_script(&["classify", "300000", "yes", "granted", "300000"]);
+    assert!(ok);
+    assert_eq!(text.trim(), "TIMEOUT");
+    let (ok, text) = resume_script(&["classify", "1200", "no", "denied", "300000"]);
+    assert!(ok);
+    assert_eq!(
+        text.trim(),
+        "UNPROVEN",
+        "pair-query denied with no service row is not Deny"
+    );
+    let (ok, text) = resume_script(&["plan", "TIMEOUT"]);
+    assert!(ok);
+    assert_eq!(text.trim(), "stop");
+
+    let (ok, text) = resume_script(&["simulate", "TIMEOUT"]);
+    assert!(!ok, "TIMEOUT must not look like a finished session");
+    assert!(text.contains("prompt 1 outcome TIMEOUT"));
+    assert!(text.contains("stop: TIMEOUT does not start another OPEN_MS"));
+    assert!(!text.contains("prompt 2"), "TIMEOUT burned a second OPEN_MS");
+    assert!(text.contains("mac: not-run"));
+    assert!(text.contains("recorded: none"));
+    assert!(text.contains("TIMEOUT is not Don't Allow."));
+    assert!(!text.contains("raising SecurityAgent"));
+
+    let (ok, text) = resume_script(&["simulate", "Allow", "Deny"]);
+    assert!(ok, "{text}");
+    assert!(text.contains("prompt 1 outcome Allow"));
+    assert!(text.contains("prompt 2 outcome Deny"));
+    assert!(text.contains("both outcomes observed"));
+    assert!(text.contains("M0-AC1 stays unchecked"));
+    assert!(text.contains("mac: not-run"));
+    assert!(text.contains("recorded: none"));
+    assert!(!text.contains("raising SecurityAgent"));
+    assert!(!text.contains("prompt 3"));
+
+    let (ok, text) = resume_script(&["evidence", "TIMEOUT"]);
+    assert!(ok);
+    assert!(text.contains("Outcome: TIMEOUT"));
+    assert!(!text.contains("Outcome: Deny"));
+    assert!(text.contains("Click: not a click"));
+    assert!(text.contains("Allow tip SHA: none"));
+    assert!(text.contains("Deny tip SHA: none"));
+    assert!(text.contains("- [ ]"));
+    assert!(!text.contains("- [x]") && !text.contains("- [X]"));
+
+    let (ok, text) = resume_script(&["instructions"]);
+    assert!(ok);
+    assert!(text.contains("Click Allow."));
+    assert!(text.contains("Click Don't Allow."));
+    assert!(text.contains("TIMEOUT is not Don't Allow."));
+    assert!(text.contains("OPEN_MS=300000"));
+    assert!(text.contains("HOLD_MS=1800000"));
+    assert!(text.contains("Watcher does not click."));
+
+    if !cfg!(target_os = "macos") {
+        let (ok, text) = resume_script(&["--arm"]);
+        assert!(!ok, "Linux --arm must not report a Mac session");
+        assert!(text.contains("recorded: none"));
+        assert!(text.contains("refusing: not macOS"));
+        assert!(!text.contains("Outcome: Allow"));
+        assert!(!text.contains("Outcome: Deny"));
+        assert!(!text.contains("raising SecurityAgent"));
+        assert!(!text.contains("both outcomes observed"));
+    }
+
+    let script = read("scripts/m0-ac1-mac-resume.sh");
+    assert!(script.contains("OPEN_MS=300000"));
+    assert!(script.contains("HOLD_MS=1800000"));
+    assert!(script.contains("export TACO_CAPTURE_SPIKE_OPEN_MS=$OPEN_MS"));
+    assert!(script.contains("export TACO_CAPTURE_SPIKE_HOLD_MS=$HOLD_MS"));
+    assert!(!script.contains("tccutil reset AudioCapture"));
+    assert!(!script.contains("osascript"));
+    let arm_at = script.find("\narm()").expect("arm");
+    let arm = &script[arm_at..];
+    let first = arm.find("prompt_once first").expect("first prompt");
+    let gate = arm.find("may_open_again").expect("gate");
+    let second = arm.find("prompt_once second").expect("second prompt");
+    assert!(first < gate && gate < second, "second open must follow the gate");
+    assert!(!arm.contains("prompt_once third"));
+    let launch = read("scripts/m0-launch-taco-app.sh");
+    assert!(launch.contains("300000"));
+    assert!(launch.contains("1800000"));
+    assert!(launch.contains("open -W"));
+
+    let note = read("docs/evidence/m0/mic-operator-resume.md");
+    assert!(note.contains("No Allow was recorded here."));
+    assert!(note.contains("No Deny was recorded here."));
+    assert!(note.contains("TIMEOUT is not Don't Allow."));
+    assert!(note.contains("300000"));
+    assert!(note.contains("1800000"));
+    assert!(note.contains("7fb5006"));
+    assert!(note.contains("fdc201f"));
+    assert!(note.contains("7c71d50"));
+    assert!(note.contains("ce5690f"));
+    assert!(note.contains("- [ ]"));
+    assert!(!note.contains("- [x]") && !note.contains("- [X]"));
+    assert!(note.contains("Allow tip SHA"));
+    assert!(note.contains("none"));
+}
+
 fn fn_body<'a>(src: &'a str, name: &str) -> &'a str {
     let start = src.find(name).unwrap_or_else(|| panic!("missing {name}"));
     let rest = &src[start..];

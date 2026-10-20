@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundleExecutable</key>
+  <string>taco</string>
+  <key>CFBundleIdentifier</key>
+  <string>ai.syndai.taco</string>
+  <key>CFBundleName</key>
+  <string>taco</string>
+  <key>CFBundleDisplayName</key>
+  <string>Taco</string>
+  <key>CFBundleVersion</key>
+  <string>0.0.0-m0</string>
+  <key>CFBundleShortVersionString</key>
+  <string>0.0.0-m0</string>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>taco uses the microphone you select to show local subtitles.</string>
+  <key>NSAudioCaptureUsageDescription</key>
+  <string>taco captures one system or application audio source for local subtitles.</string>
+</dict>
+</plist>
