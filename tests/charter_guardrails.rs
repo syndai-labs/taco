@@ -3001,6 +3001,42 @@ fn ac1_cannot_flip_while_operator_timeout_partial_stands() {
     );
 }
 
+/// Required AC2/AC3 Stop tip SHAs. Dropping any of these from their Stop notes
+/// requires an explicit Mac-backed tip line in `ac2-ac3-open.md`:
+/// `Mac tip `<7+ hex>` drops Stop `<sha>``.
+/// Linux cannot invent that tip. Prefer tip #430 `beac1c3` does not drop them.
+const REQUIRED_AC23_STOPS: &[(&str, &str)] = &[
+    ("docs/evidence/m0/vad-metal-ep.md", "d194012"),
+    ("docs/evidence/m0/engines-residency.md", "a0e1614"),
+    ("docs/evidence/m0/ac2-ac3-open.md", "30fd669"),
+    ("docs/evidence/m0/ac2-ac3-open.md", "aab661c"),
+    ("docs/evidence/m0/ac2-ac3-open.md", "232ea78"),
+];
+
+fn mac_tip_drops_stop(open_note: &str, sha: &str) -> bool {
+    let needle = format!("drops Stop `{sha}`");
+    open_note.lines().any(|line| {
+        let t = line.trim();
+        t.contains("Mac tip `") && t.contains(&needle)
+    })
+}
+
+fn required_ac23_stop_must_stand(path: &str, sha: &str) {
+    let open = read("docs/evidence/m0/ac2-ac3-open.md");
+    if mac_tip_drops_stop(&open, sha) {
+        return;
+    }
+    assert!(
+        stop_sha_stands(path, sha),
+        "{path} drops Stop tip {sha} without a Mac tip `<sha>` drops Stop `{sha}` line in ac2-ac3-open.md"
+    );
+    let text = read(path);
+    assert!(
+        text.contains(sha),
+        "{path} drops Stop tip {sha} (no Mac-backed tip supersedes it)"
+    );
+}
+
 /// Copied from #76 tip `2d9679f`. That tip is not an ancestor of this measure tip.
 /// The Partial note cites it and does not replace it. The two Stop notes must exist.
 #[test]
@@ -3064,6 +3100,9 @@ fn ac2_ac3_cannot_flip_while_stop_shas_stand() {
         metal_subprocess_stands,
         "Stop tip 30fd669 must stand in docs/evidence/m0/ac2-ac3-open.md"
     );
+    for (path, sha) in REQUIRED_AC23_STOPS {
+        required_ac23_stop_must_stand(path, sha);
+    }
     if !vad_stands
         && !residency_stands
         && !metal_device_stands
@@ -3194,6 +3233,175 @@ fn m0_ac2_ac3_partial_refuses_checked_boxes() {
 
 /// PR #54 tip `6a839de` is not an ancestor of prefer tip `fe08f47`.
 /// The body matches `m0_ac4_cannot_be_checked_while_gaps_stand` on that tip.
+
+#[test]
+fn required_ac23_stop_shas_require_mac_tip_to_drop() {
+    for (path, sha) in REQUIRED_AC23_STOPS {
+        required_ac23_stop_must_stand(path, sha);
+    }
+    let open = read("docs/evidence/m0/ac2-ac3-open.md");
+    for sha in ["d194012", "a0e1614", "30fd669", "aab661c", "232ea78"] {
+        assert!(
+            !mac_tip_drops_stop(&open, sha),
+            "unexpected Mac tip drops Stop `{sha}` while Linux has no Metal pass"
+        );
+        assert!(
+            open.contains(sha),
+            "ac2-ac3-open.md must keep citing Stop {sha}"
+        );
+    }
+}
+
+/// #74 tip `30fd669`: a Metal helper process violates single Mach-O, in-process Metal,
+/// and LINK-THREE. Linux refuses packaging / charter paths that introduce one.
+/// This test does not spawn Metal or any helper process.
+#[test]
+fn link_three_refuses_metal_helper_packaging_paths() {
+    assert!(
+        stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "30fd669"),
+        "Stop tip 30fd669 must stand (cite #74); Linux cannot drop it"
+    );
+    let open = read("docs/evidence/m0/ac2-ac3-open.md");
+    for phrase in [
+        "30fd669",
+        "violates single Mach-O",
+        "in-process Metal",
+        "LINK-THREE",
+        "metal_subprocess_stop_cites_55_63_and_70",
+    ] {
+        assert!(open.contains(phrase), "ac2-ac3-open.md drops `{phrase}`");
+    }
+
+    let plist = read("packaging/Info.plist");
+    assert!(
+        plist.contains("<string>taco</string>")
+            && plist.contains("CFBundleExecutable"),
+        "packaging/Info.plist must keep CFBundleExecutable=taco (single Mach-O)"
+    );
+    assert!(
+        !plist.to_lowercase().contains("helper"),
+        "packaging/Info.plist must not name a Metal helper executable"
+    );
+
+    let pack_dir = root().join("packaging");
+    for entry in fs::read_dir(&pack_dir).unwrap().flatten() {
+        let name = entry.file_name().to_string_lossy().to_lowercase();
+        for bad in [
+            "metalhelper",
+            "metal-helper",
+            "metal_helper",
+            "helper.app",
+            ".metal",
+        ] {
+            assert!(
+                !name.contains(bad),
+                "packaging/ must not ship helper/out-of-process Metal path `{name}` (Stop 30fd669)"
+            );
+        }
+    }
+
+    // Charter / packaging docs must not prescribe a Metal helper process as the fix.
+    let forbidden = [
+        "ship a Metal helper process",
+        "out-of-process Metal helper",
+        "MetalHelper.app",
+        "metal_helper binary",
+        "second Mach-O for Metal",
+    ];
+    for dir in ["packaging", "docs/adr", "docs/roadmap"] {
+        let base = root().join(dir);
+        if !base.is_dir() {
+            continue;
+        }
+        walk_assert_no_forbidden(&base, &forbidden);
+    }
+}
+
+fn walk_assert_no_forbidden(dir: &Path, forbidden: &[&str]) {
+    for entry in fs::read_dir(dir).unwrap().flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            walk_assert_no_forbidden(&path, forbidden);
+            continue;
+        }
+        let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
+            continue;
+        };
+        if !matches!(ext, "md" | "plist" | "sh" | "rs" | "txt") {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        for phrase in forbidden {
+            assert!(
+                !text.contains(phrase),
+                "{} introduces forbidden Metal helper path `{phrase}` (Stop 30fd669 / LINK-THREE)",
+                path.display()
+            );
+        }
+    }
+}
+
+#[test]
+fn residency_prove_scaffolding_unsupported_on_linux() {
+    let script = read("scripts/m0-residency-prove.sh");
+    assert!(
+        script.contains("UNSUPPORTED_ON_LINUX"),
+        "scripts/m0-residency-prove.sh must print UNSUPPORTED_ON_LINUX off Darwin"
+    );
+    assert!(
+        script.contains("No phys_footprint was measured"),
+        "scripts/m0-residency-prove.sh must not invent phys_footprint off Darwin"
+    );
+    assert!(
+        script.contains("Metal pass evidence was not written"),
+        "scripts/m0-residency-prove.sh must refuse Metal pass evidence off Darwin"
+    );
+    assert!(
+        script.contains("ac2=0") && script.contains("ac3=0"),
+        "scripts/m0-residency-prove.sh must keep ac2=0 ac3=0"
+    );
+
+    if cfg!(target_os = "macos") {
+        return;
+    }
+
+    let dir = std::env::temp_dir().join(format!(
+        "taco-residency-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+    let out = dir.join("evidence.txt");
+    let output = Command::new("sh")
+        .arg(root().join("scripts/m0-residency-prove.sh"))
+        .arg(&out)
+        .output()
+        .expect("m0-residency-prove.sh");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let combined = format!("{stdout}{stderr}");
+    assert_eq!(output.status.code(), Some(2), "{combined}");
+    assert!(stderr.contains("UNSUPPORTED_ON_LINUX"), "{combined}");
+    assert!(stderr.contains("No phys_footprint was measured"), "{combined}");
+    assert!(stderr.contains("Metal pass evidence was not written"), "{combined}");
+    assert!(stderr.contains("ac2=0"), "{combined}");
+    assert!(stderr.contains("ac3=0"), "{combined}");
+    let evidence = fs::read_to_string(&out).expect("evidence");
+    assert!(evidence.contains("verdict=unsupported_on_linux"), "{evidence}");
+    assert!(evidence.contains("phys_footprint=none"), "{evidence}");
+    assert!(!evidence.contains("ac2=1"), "{evidence}");
+    assert!(!evidence.contains("ac3=1"), "{evidence}");
+    // Reject invented numeric footprints in the Linux evidence path.
+    for line in evidence.lines() {
+        if let Some(rest) = line.strip_prefix("phys_footprint=") {
+            assert_eq!(rest, "none", "invented phys_footprint on Linux: {line}");
+        }
+    }
+    let _ = fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn m0_ac4_cannot_be_checked_while_gaps_stand() {
     let signed_gap = freeze::SIGNED_INSTALL.is_none();
