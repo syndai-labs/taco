@@ -121,7 +121,10 @@ No patch under `native/patches/` for this device. No `ggml_metal_device_free`
 call. No Linux path that pretends an `MTLDevice` was released. The prove line
 stays `ac2=0 ac3=0`. The residency harness
 (`tests/t_m0_residency.rs`) samples `phys_footprint` and does not release the
-device. #59 tip `ed9ee10` is the checkbox lock.
+device. #59 tip `ed9ee10` is a different checkbox lock. The refcount shape is
+rejected in [metal-device-refcount.md](metal-device-refcount.md), which is the
+flip guard citing this Stop (`232ea78`) and #55 (`0829a70`). This note still
+does not add that guard.
 
 ## Mac measurement
 

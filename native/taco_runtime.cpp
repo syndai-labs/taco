@@ -746,9 +746,12 @@ extern "C" int taco_engines_prove(
 
     free_mt(&session);
     log_phase("after_free_mt");
-    // llama_backend_free() is ggml_quantize_free(). The MTLDevice from
-    // ggml_metal_device_get / ggml_backend_metal_reg (g_devices) lives until
-    // process exit. Freeing it here use-after-frees the next prove. #55 0829a70.
+    // llama_backend_free() is ggml_quantize_free(). Do not refcount-free the
+    // MTLDevice here. Cycle 2 llama_model load calls ggml_backend_dev_get_props
+    // → ggml_metal_device_get_memory, which reads mtl_device with no nil check,
+    // and ggml_metal_init then prints [[device name] UTF8String] before it
+    // tests the queue. ggml_metal_device_get only appends. ggml_metal_rsets_free
+    // aborts while a residency set remains. #63 232ea78, #55 0829a70.
     llama_backend_free();
     log_phase("after_backend_free");
     out->teardown = 1;

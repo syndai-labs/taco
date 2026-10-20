@@ -32,7 +32,7 @@ The holder is inside the pinned ggml, not in `taco_runtime.cpp`. [metal-device-t
 
 Calling `ggml_metal_device_free` from taco, or nulling only the registry pointer, is a use-after-free on the next `prove_native`. The buffer-type statics and `ggml_backend_registry::devices` still hold that device, and `ggml_metal_device_get`'s `unique_ptr` would free it again at exit. Whisper and llama backends in this process (`product::g_asr`, `product::g_mt`) would see the same freed device. This pin has no function that drops all of those owners together. A Linux stub that pretends to drop an `MTLBuffer` would not be that device.
 
-An autorelease-pool pop around prove/cancel is the wrong lever for this free path. `ggml_metal_buffer_free` uses `[buffer release]`, not `autorelease`. The #49 waits already covered in-flight command buffers. #59 tip `ed9ee10` already locks the AC2/AC3 checkbox while #55 tip `0829a70` stands. This tree does not add a second lock.
+An autorelease-pool pop around prove/cancel is the wrong lever for this free path. `ggml_metal_buffer_free` uses `[buffer release]`, not `autorelease`. The #49 waits already covered in-flight command buffers. A refcount that frees the device when the last backend drops is rejected in [metal-device-refcount.md](metal-device-refcount.md). That note's charter test cites #63 `232ea78` and #55 `0829a70`. It is not the #59 tip `ed9ee10` test.
 
 ## Mac measurement still required
 
