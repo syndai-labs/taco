@@ -1841,6 +1841,8 @@ fn tip_token_is_sha(token: &str) -> bool {
         "d24b1e3f964cae88eb67c5215dccc44905b8fabb",
         "65e314f",
         "65e314f4278e4b114e785f645546635c40efbce3",
+        "022cec3",
+        "022cec314cd0d89f41e8c064d6ed98244791834a",
     ];
     if NOT_OPERATOR.contains(&lower.as_str()) {
         return false;
@@ -2747,6 +2749,8 @@ fn tip_sha_denylist_rejects_non_clicks() {
         "d24b1e3f964cae88eb67c5215dccc44905b8fabb",
         "65e314f",
         "65e314f4278e4b114e785f645546635c40efbce3",
+        "022cec3",
+        "022cec314cd0d89f41e8c064d6ed98244791834a",
     ] {
         assert!(!tip_token_is_sha(token), "{token}");
         let line = format!("Allow tip SHA: {token}");
@@ -2755,6 +2759,26 @@ fn tip_sha_denylist_rejects_non_clicks() {
     let stand_in = "abcdef0123456789";
     assert!(tip_token_is_sha(stand_in));
     assert!(!walk_contains(&root().join("docs"), stand_in));
+}
+
+/// Prefer tip `022cec3` is not an operator click.
+///
+/// When the Mac playbook prefer tip advances, the tip that becomes prefer
+/// must deny its own short+full in that same tip (or the next denylist tip
+/// before playbook flip).
+#[test]
+fn tip_under_test_sha_is_denied_as_operator_click() {
+    let src = fs::read_to_string(root().join("tests/charter_guardrails.rs")).unwrap();
+    let body = fn_body(&src, "fn tip_token_is_sha");
+    let start = body.find("const NOT_OPERATOR").expect("NOT_OPERATOR");
+    let list = &body[start..start + body[start..].find("];").expect("NOT_OPERATOR end")];
+    for token in [
+        "022cec3",
+        "022cec314cd0d89f41e8c064d6ed98244791834a",
+    ] {
+        assert!(list.contains(&format!("\"{token}\"")), "{token}");
+        assert!(!tip_token_is_sha(token), "{token}");
+    }
 }
 
 struct SpikeEvidence {
