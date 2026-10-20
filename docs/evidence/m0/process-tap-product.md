@@ -45,6 +45,8 @@ Standalone `scripts/m0-process-tap-measure.sh --arm` is the other entry: system 
 
 A Cleanup tip SHA is a git SHA of a Mac commit whose log quotes both destroy calls from that run. Linux `cargo test`, `platform_unsupported`, and the #11 exit 0 do not qualify. `destroy_traced` in the measure record stays `no` until that Mac commit exists.
 
+A hex Cleanup tip SHA without `destroy_traced: yes` refuses a checked M0-AC1. Missing either `AudioHardwareDestroyAggregateDevice` or `AudioHardwareDestroyProcessTap` refuses it too. Cleanup tip SHA stays `none` on this tip.
+
 ## When to run
 
 Watcher does not click. `OPEN_MS` is `300000`. `HOLD_MS` is `1800000`. Both are pinned in the script. Inherited values are ignored. The tap window is `OPEN_MS`. `HOLD_MS` is passed so the Taco.app launch matches the mic harness. The tap does not read it.
