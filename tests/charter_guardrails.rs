@@ -2222,6 +2222,10 @@ fn tip_token_is_sha(token: &str) -> bool {
         "6cb06cf39d17aaca3b6038e5cb21f886753094b0",
         "bb2f2d5",
         "bb2f2d593a2aa8bc0ab8414e0a149386924c7605",
+        "7c7e388",
+        "7c7e3889463f14f1bb0a0ad6851874d793ab47c6",
+        "e210c5b",
+        "e210c5b0b51bb9c0ac4822aeeda3448ce8c21cdc",
     ];
     if NOT_OPERATOR.contains(&lower.as_str()) {
         return false;
@@ -3509,6 +3513,10 @@ fn tip_sha_denylist_rejects_non_clicks() {
         "6cb06cf39d17aaca3b6038e5cb21f886753094b0",
         "bb2f2d5",
         "bb2f2d593a2aa8bc0ab8414e0a149386924c7605",
+        "7c7e388",
+        "7c7e3889463f14f1bb0a0ad6851874d793ab47c6",
+        "e210c5b",
+        "e210c5b0b51bb9c0ac4822aeeda3448ce8c21cdc",
     ] {
         assert!(!tip_token_is_sha(token), "{token}");
         let line = format!("Allow tip SHA: {token}");
@@ -3521,11 +3529,11 @@ fn tip_sha_denylist_rejects_non_clicks() {
     // It is not on the denylist and is not read with `git rev-parse HEAD`.
 }
 
-/// Prefer tip `6cb06cf` is not an operator click.
+/// Prefer tip `7c7e388` is not an operator click.
 ///
 /// When the Mac playbook prefer tip advances, the tip that becomes prefer
 /// must deny its own short+full in that same tip (or the next denylist tip
-/// before playbook flip). This tip denies #288 and the #289 head and leaves
+/// before playbook flip). This tip denies #290 and the #291 head and leaves
 /// its own HEAD accepted.
 #[test]
 fn tip_under_test_sha_is_denied_as_operator_click() {
@@ -3534,8 +3542,8 @@ fn tip_under_test_sha_is_denied_as_operator_click() {
     let start = body.find("const NOT_OPERATOR").expect("NOT_OPERATOR");
     let list = &body[start..start + body[start..].find("];").expect("NOT_OPERATOR end")];
     for token in [
-        "6cb06cf",
-        "6cb06cf39d17aaca3b6038e5cb21f886753094b0",
+        "7c7e388",
+        "7c7e3889463f14f1bb0a0ad6851874d793ab47c6",
     ] {
         assert!(list.contains(&format!("\"{token}\"")), "{token}");
         assert!(!tip_token_is_sha(token), "{token}");
