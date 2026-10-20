@@ -2,6 +2,8 @@
 
 Status: **Partial**. `system`, `app:`, and `pid:` already run through product `taco run`. CoreAudio open and operator Allow/Deny stay Mac-only. Linux tap success is a Stop. M0-AC1 stays unchecked.
 
+PR #75 tip `dc1b9be` (`dc1b9bef6735d37315e4a32ef0893dd2ac20df11`, `cursor/m0-product-process-taps-b19b`) is this Partial. That SHA is not an Allow tip and not a Deny tip.
+
 Allow tip SHA: none
 Deny tip SHA: none
 
@@ -34,6 +36,6 @@ PR #11 tip `cd9a4c8` (`cd9a4c8e0c66727c7c66c50923419f8800950dda`, `cursor/m0-pro
 
 Partial — process taps are on taco run; Mac CoreAudio and operator Allow/Deny stay open; Linux tap success is Stop.
 
-Checking M0-AC1 requires this Partial to be replaced by a Mac Allow tip SHA and a Mac Deny tip SHA written above. Neither SHA exists. A Linux `cargo test`, `platform_unsupported`, or the #11 exit 0 does not fill either line.
+Checking M0-AC1, or replacing this Partial with Done, needs a Mac Allow tip SHA and a Mac Deny tip SHA on the lines above. Either line still `none` refuses that flip. TIMEOUT is not Deny. When a Cleanup tip SHA or Destroy tip SHA line is present, `none` on that line also refuses the flip. Acceptance is microphone, system, and app tap. A Linux `cargo test`, `platform_unsupported`, or the #11 exit 0 does not fill either line.
 
 - [ ] **M0-AC1:** A report proves microphone, system, and app tap feasibility from the intended CLI artifact, including allow/deny and cleanup.

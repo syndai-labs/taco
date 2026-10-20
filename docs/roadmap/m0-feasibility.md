@@ -76,6 +76,7 @@ tests failing before the contract types satisfy them. Do not rename the IDs.
   has a named device reserved for M2 qualification. Proposed minimum OS is confirmed
   or revised explicitly before any support promise is accepted.
   [process-tap-product.md](../evidence/m0/process-tap-product.md) is Partial.
+  PR #75 tip `dc1b9be`. TIMEOUT is not Deny.
   Product `taco run` dispatches `system`, `app:`, and `pid:` (PR #11 tip `cd9a4c8`,
   ancestor of stack base `a1c5c32`). CoreAudio and operator Allow/Deny stay Mac-only.
   Linux tap success is a Stop.

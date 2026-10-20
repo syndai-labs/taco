@@ -902,13 +902,194 @@ fn process_tap_product_path_refuses_linux_success() {
     );
 }
 
+/// PR #75 tip `dc1b9be` is Partial. Allow or Deny still `none` refuses a checked
+/// M0-AC1 and a Partial→Done flip. A Cleanup or Destroy tip line, when present
+/// and `none`, does too. TIMEOUT is not Deny. Linux tap success stays Stop.
+#[test]
+fn process_tap_tips_refuse_ac1_flip_while_either_sha_is_none() {
+    const TIP: &str = "dc1b9be";
+    const TIP_FULL: &str = "dc1b9bef6735d37315e4a32ef0893dd2ac20df11";
+    const STOP: &str = "Partial — process taps are on taco run; Mac CoreAudio and operator Allow/Deny stay open; Linux tap success is Stop.";
+    const CLEANUP_LABELS: [&str; 3] = [
+        "Cleanup tip SHA:",
+        "Destroy tip SHA:",
+        "Cleanup/Destroy tip SHA:",
+    ];
+
+    for fake in [
+        "none",
+        "TIMEOUT",
+        "timeout",
+        "Don't Allow",
+        "denied",
+        "Deny",
+        TIP,
+        TIP_FULL,
+        "cd9a4c8",
+        "DC1B9BE",
+    ] {
+        assert!(
+            !tip_token_is_sha(fake),
+            "{fake} must not count as an operator tip SHA"
+        );
+    }
+    assert!(tip_token_is_sha("0123456789abcdef"));
+
+    let note = read("docs/evidence/m0/process-tap-product.md");
+    assert!(
+        note.contains(TIP),
+        "process-tap Partial must cite #75 tip {TIP}"
+    );
+    assert!(note.contains(TIP_FULL), "cite the full #75 tip");
+    assert!(
+        note.contains("TIMEOUT is not Deny."),
+        "TIMEOUT must not be recorded as Deny"
+    );
+    assert!(
+        note.contains("When a Cleanup tip SHA or Destroy tip SHA line is present, `none` on that line also refuses the flip."),
+        "cleanup tip lock dropped"
+    );
+    assert!(read("docs/evidence/m0/mic-operator-resume.md").contains("TIMEOUT is not Don't Allow."));
+    assert!(read("scripts/m0-ac1-mac-resume.sh").contains("TIMEOUT is not Don't Allow."));
+
+    for path in [
+        "docs/evidence/m0/process-tap-product.md",
+        "docs/roadmap/risks-and-decisions.md",
+        "docs/roadmap/m0-feasibility.md",
+    ] {
+        let text = read(path);
+        assert!(text.contains(TIP), "{path} drops #75 tip {TIP}");
+        assert!(
+            text.contains(STOP),
+            "{path} drops the Linux tap success Stop"
+        );
+    }
+
+    let allow = one_tip(&note, "Allow tip SHA:");
+    let deny = one_tip(&note, "Deny tip SHA:");
+    assert_ne!(allow, "TIMEOUT", "TIMEOUT is not Allow");
+    assert_ne!(deny, "TIMEOUT", "TIMEOUT is not Deny");
+    let mut cleanup = Vec::new();
+    for label in CLEANUP_LABELS {
+        if let Some(token) = optional_tip(&note, label) {
+            assert_ne!(token, "TIMEOUT", "TIMEOUT is not Deny ({label})");
+            cleanup.push((label, token));
+        }
+    }
+
+    let spike = spike_sources_evidence();
+    assert_eq!(
+        harness_field(&spike.text, "linux_coreaudio").as_deref(),
+        Some("refused")
+    );
+    assert_eq!(
+        harness_field(&spike.text, "linux_success").as_deref(),
+        Some("stop")
+    );
+    assert_eq!(
+        harness_field(&spike.text, "product_tip").as_deref(),
+        Some(TIP)
+    );
+    assert_eq!(
+        harness_field(&spike.text, "timeout_is_deny").as_deref(),
+        Some("no")
+    );
+    assert_ne!(
+        harness_field(&spike.text, "deny_tip").as_deref(),
+        Some("TIMEOUT")
+    );
+    assert_ne!(
+        harness_field(&spike.text, "allow_tip").as_deref(),
+        Some("TIMEOUT")
+    );
+
+    let status = status_value(&note);
+    let partial = status.starts_with("**Partial**.");
+    let allow_ok = tip_token_is_sha(&allow);
+    let deny_ok = tip_token_is_sha(&deny);
+    let cleanup_ok = cleanup.iter().all(|(_, token)| tip_token_is_sha(token));
+    if !partial && allow_ok && deny_ok && cleanup_ok {
+        return;
+    }
+
+    assert!(
+        partial,
+        "Partial→Done while a process-tap tip SHA is none: {status}"
+    );
+    assert!(
+        !status.contains("Done") && !status.contains("Accepted") && !status.contains("Pass"),
+        "status flipped while a tip SHA is none: {status}"
+    );
+    assert_eq!(allow, "none", "Allow tip SHA");
+    assert_eq!(deny, "none", "Deny tip SHA");
+    assert!(!allow_ok, "Allow tip counted while the lock stands");
+    assert!(!deny_ok, "Deny tip counted while the lock stands");
+    for (label, token) in &cleanup {
+        assert_eq!(token, "none", "{label} is none and still blocks M0-AC1");
+        assert!(!tip_token_is_sha(token), "{label}");
+    }
+
+    let register = read("docs/roadmap/risks-and-decisions.md");
+    assert!(
+        register
+            .lines()
+            .any(|line| line.starts_with("| R1 | Partial.")),
+        "R1 left Partial while a process-tap tip SHA is none"
+    );
+    assert!(
+        !register.lines().any(|line| {
+            line.starts_with("| R1 | Done")
+                || line.starts_with("| R1 | Accepted")
+                || line.starts_with("| R1 | Pass")
+        }),
+        "R1 flipped to Done while a process-tap tip SHA is none"
+    );
+
+    let mut checked = Vec::new();
+    checked_ac1_lines(&root().join("docs"), &mut checked);
+    assert!(
+        checked.is_empty(),
+        "M0-AC1 checked while process-tap Allow tip is {allow:?}, Deny tip is {deny:?}, cleanup {cleanup:?}: {checked:?}"
+    );
+
+    assert_eq!(spike.status, 2);
+    assert_eq!(
+        harness_field(&spike.text, "verdict").as_deref(),
+        Some("not_run")
+    );
+    assert_ne!(
+        harness_field(&spike.text, "verdict").as_deref(),
+        Some("pass")
+    );
+    assert_eq!(
+        harness_field(&spike.text, "allow_tip").as_deref(),
+        Some("none")
+    );
+    assert_eq!(
+        harness_field(&spike.text, "deny_tip").as_deref(),
+        Some("none")
+    );
+    for key in ["cleanup_tip", "destroy_tip"] {
+        if let Some(token) = harness_field(&spike.text, key) {
+            assert_eq!(
+                token, "none",
+                "{key} is none and still blocks a pass verdict"
+            );
+            assert!(!tip_token_is_sha(&token), "{key}");
+        }
+    }
+}
+
 struct SpikeEvidence {
     status: i32,
     text: String,
 }
 
 fn spike_sources_evidence() -> SpikeEvidence {
-    let dir = std::env::temp_dir().join(format!("taco-tap-product-{}", std::process::id()));
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static SEQ: AtomicU64 = AtomicU64::new(0);
+    let n = SEQ.fetch_add(1, Ordering::Relaxed);
+    let dir = std::env::temp_dir().join(format!("taco-tap-product-{}-{n}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).unwrap();
     let out = dir.join("evidence.txt");
@@ -958,6 +1139,111 @@ fn checked_m0_ac1(dir: &Path, out: &mut Vec<String>) {
             out.push(path.display().to_string());
         }
     }
+}
+
+fn tip_token_is_sha(token: &str) -> bool {
+    let lower = token.to_ascii_lowercase();
+    const NOT_OPERATOR: &[&str] = &[
+        "dc1b9be",
+        "dc1b9bef6735d37315e4a32ef0893dd2ac20df11",
+        "cd9a4c8",
+        "cd9a4c8e0c66727c7c66c50923419f8800950dda",
+        "a1c5c32",
+        "a1c5c322a9edf1da4064dd9678c1c2f1d58d8b9b",
+        "7c71d50",
+        "7c71d509b404de536bb4a10b60c254d382824403",
+    ];
+    if NOT_OPERATOR.contains(&lower.as_str()) {
+        return false;
+    }
+    (7..=40).contains(&token.len())
+        && token
+            .chars()
+            .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
+}
+
+fn tip_sha_tokens(text: &str, label: &str) -> Vec<String> {
+    text.lines()
+        .filter_map(|line| {
+            let rest = line.trim().strip_prefix(label)?;
+            let token = rest
+                .trim()
+                .trim_matches('`')
+                .split_whitespace()
+                .next()
+                .unwrap_or("");
+            if token.is_empty() {
+                None
+            } else {
+                Some(token.to_string())
+            }
+        })
+        .collect()
+}
+
+fn one_tip(text: &str, label: &str) -> String {
+    let tokens = tip_sha_tokens(text, label);
+    assert_eq!(tokens.len(), 1, "{label} must be one line");
+    tokens.into_iter().next().unwrap()
+}
+
+fn optional_tip(text: &str, label: &str) -> Option<String> {
+    let tokens = tip_sha_tokens(text, label);
+    if tokens.is_empty() {
+        return None;
+    }
+    assert_eq!(tokens.len(), 1, "{label} must be one line");
+    tokens.into_iter().next()
+}
+
+fn status_value(text: &str) -> String {
+    let mut found = None;
+    for line in text.lines() {
+        let Some(rest) = line.trim().strip_prefix("Status:") else {
+            continue;
+        };
+        assert!(
+            found.replace(rest.trim().to_string()).is_none(),
+            "duplicate Status"
+        );
+    }
+    found.expect("missing Status")
+}
+
+fn checked_ac1_lines(dir: &Path, out: &mut Vec<String>) {
+    for entry in fs::read_dir(dir).unwrap().flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            checked_ac1_lines(&path, out);
+            continue;
+        }
+        if path.extension().and_then(|ext| ext.to_str()) != Some("md") {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        for (number, line) in text.lines().enumerate() {
+            if line.contains("M0-AC1") && line.to_ascii_lowercase().contains("[x]") {
+                out.push(format!("{}:{}: {line}", path.display(), number + 1));
+            }
+        }
+    }
+}
+
+fn harness_field(text: &str, key: &str) -> Option<String> {
+    let prefix = format!("{key}=");
+    let mut found = None;
+    for line in text.lines() {
+        let Some(rest) = line.strip_prefix(&prefix) else {
+            continue;
+        };
+        assert!(
+            found.replace(rest.trim().to_string()).is_none(),
+            "duplicate {key}"
+        );
+    }
+    found
 }
 
 fn fn_body<'a>(src: &'a str, name: &str) -> &'a str {
