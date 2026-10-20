@@ -1,6 +1,8 @@
 #!/bin/sh
-# One Mac session for M0-AC1: pack, mic Allow-then-Deny, then AudioCapture.
-# The watcher does not click. TIMEOUT is not Deny.
+# One Mac session for M0-AC1: pack, mic Allow-then-Deny, AudioCapture, then process-tap.
+# Process-tap runs only after the mic watch is gone and the AudioCapture pair completed.
+# That system sheet is the process-tap TCC prompt. after-pair does not open system again.
+# The watcher does not click. TIMEOUT is not Deny. Drop is not a Cleanup tip SHA.
 # Off macOS --arm exits 2 with platform_unsupported. That is not a CoreAudio result.
 set -eu
 
@@ -86,13 +88,19 @@ M0-AC1 full session. Watcher does not click.
 TIMEOUT is not Deny. A pair-query denied with no service row is not Deny.
 Allow tip SHA: none
 Deny tip SHA: none
+Cleanup tip SHA: none
 M0-AC1 stays unchecked.
+M0-AC1 stays unchecked while Allow, Deny, or Cleanup tip SHA is still none.
 
 1. Pack Taco.app (scripts/m0-pack-taco-app.sh).
 2. Mic Allow, then Don't Allow (scripts/m0-ac1-mac-resume.sh --arm).
 3. After mic LIVE is gone, AudioCapture (scripts/m0-audiocapture-measure.sh).
 Click Allow on the first AudioCapture sheet, then Don't Allow on the next.
 If that first window has no AudioCapture service row, it is TIMEOUT, not Deny, and this script does not open AudioCapture again.
+4. After that pair, and only if mic LIVE is still gone, process-tap (scripts/m0-process-tap-measure.sh after-pair).
+Not prompting system again. Not resetting TCC.
+The app source is app:com.google.Chrome. A missing sheet is the same service, not Deny.
+Exit 0 is not a Cleanup tip SHA. Drop is not a Cleanup tip SHA.
 EOF
 }
 
@@ -111,7 +119,9 @@ prompt_audio() {
   fi
   echo "Click $click. Watcher does not click." >&2
   set +e
-  sh "$root/scripts/m0-audiocapture-measure.sh" system
+  # Keep the measure transcript off this function's stdout. The caller
+  # captures only the classify word (Allow, Deny, or TIMEOUT).
+  sh "$root/scripts/m0-audiocapture-measure.sh" system >&2
   launch_rc=$?
   set -e
   echo "process_exit=$launch_rc is not an outcome. TIMEOUT is not Deny." >&2
@@ -126,7 +136,9 @@ prompt_audio() {
 finish_unchecked() {
   echo "Allow tip SHA: none" >&2
   echo "Deny tip SHA: none" >&2
+  echo "Cleanup tip SHA: none" >&2
   echo "M0-AC1 stays unchecked." >&2
+  echo "M0-AC1 stays unchecked while Allow, Deny, or Cleanup tip SHA is still none." >&2
 }
 
 arm() {
@@ -191,7 +203,21 @@ arm() {
   esac
   if pair_complete "$first" "$second"; then
     echo "both AudioCapture outcomes observed" >&2
+    echo "system process-tap TCC sheet is that AudioCapture pair. Not prompting system again." >&2
+    if live_mic; then
+      echo "mic LIVE: not starting process-tap measure. Do not kill that pid. Do not reset TCC." >&2
+      finish_unchecked
+      exit 3
+    fi
+    set +e
+    sh "$root/scripts/m0-process-tap-measure.sh" after-pair
+    tap_rc=$?
+    set -e
+    echo "process-tap after-pair status $tap_rc. TIMEOUT is not Deny. Exit 0 is not a Cleanup tip SHA." >&2
     finish_unchecked
+    if [ "$tap_rc" -ne 0 ]; then
+      exit "$tap_rc"
+    fi
     exit "$mic_rc"
   fi
   echo "AC1 still open: need both Allow and Deny" >&2
@@ -217,7 +243,12 @@ self_check() {
   echo "$text" | grep -q "m0-audiocapture-measure.sh"
   echo "$text" | grep -q "Allow tip SHA: none"
   echo "$text" | grep -q "Deny tip SHA: none"
+  echo "$text" | grep -q "Cleanup tip SHA: none"
   echo "$text" | grep -q "M0-AC1 stays unchecked."
+  echo "$text" | grep -q "M0-AC1 stays unchecked while Allow, Deny, or Cleanup tip SHA is still none."
+  echo "$text" | grep -q "m0-process-tap-measure.sh after-pair"
+  echo "$text" | grep -q "Not prompting system again."
+  echo "$text" | grep -q "Drop is not a Cleanup tip SHA."
   echo "self-check ok"
 }
 

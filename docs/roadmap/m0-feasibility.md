@@ -77,9 +77,13 @@ tests failing before the contract types satisfy them. Do not rename the IDs.
   or revised explicitly before any support promise is accepted.
   [process-tap-product.md](../evidence/m0/process-tap-product.md) is Partial.
   Product `taco run` dispatches `system`, `app:`, and `pid:` (PR #11 tip `cd9a4c8`,
-  ancestor of stack base `a1c5c32`). CoreAudio and operator Allow/Deny stay Mac-only.
+  ancestor of stack base `a1c5c32`). Product-path freeze is #75 tip `dc1b9be`
+  (`dc1b9bef6735d37315e4a32ef0893dd2ac20df11`). CoreAudio and operator Allow/Deny stay Mac-only.
   Linux tap success is a Stop.
   Partial — process taps are on taco run; Mac CoreAudio and operator Allow/Deny stay open; Linux tap success is Stop.
+  Allow tip SHA, Deny tip SHA, and Cleanup tip SHA stay `none` in
+  [process-tap-product.md](../evidence/m0/process-tap-product.md). Drop is not a Cleanup tip SHA.
+  M0-AC1 stays unchecked while Allow, Deny, or Cleanup tip SHA is still `none`.
 - [ ] **M0-AC2:** The combined native spike performs ASR and translation with the exact
   pinned artifacts, in process, with observed Metal GPU execution. A subprocess CLI
   or a CPU-only `-ngl 0` run does not pass.
