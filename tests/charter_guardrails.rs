@@ -600,6 +600,104 @@ fn inference_adapters_refuse_in_process() {
     assert!(src_text().contains("fn initialize"));
 }
 
+#[test]
+fn metal_refcount_stop_cites_63_and_55() {
+    let note = read("docs/evidence/m0/metal-device-refcount.md");
+    for needle in [
+        "232ea78",
+        "0829a70",
+        "2a667032dc788c3a071d538e0b572e45a3f12731",
+        "ggml_metal_device_get_memory",
+        "ggml_metal_rsets_free",
+        "ggml_backend_dev_get_props",
+        "ggml_metal_device_get",
+        "product::g_asr",
+        "product::g_mt",
+        "This host is Linux",
+        "No Mac `phys_footprint` was recorded for this refcount",
+        "33554432",
+        "metal_refcount_stop_cites_63_and_55",
+        "M0-AC2",
+        "M0-AC3",
+    ] {
+        assert!(note.contains(needle), "refcount Stop drops `{needle}`");
+    }
+    assert!(!note.contains("- [x]"), "refcount Stop checks a box");
+    assert!(!note.contains("- [X]"), "refcount Stop checks a box");
+    assert!(
+        !note.contains("within_tolerance=1"),
+        "refcount Stop records a residency pass"
+    );
+    assert!(!note.contains("ac2=1"), "refcount Stop records ac2");
+    assert!(!note.contains("ac3=1"), "refcount Stop records ac3");
+
+    let runtime = read("native/taco_runtime.cpp");
+    assert!(
+        runtime.contains("ac2=0 ac3=0"),
+        "prove must keep printing ac2=0 ac3=0"
+    );
+    assert!(
+        !runtime.contains("ggml_metal_device_free("),
+        "taco must not free the pinned Metal device"
+    );
+    let cmake = read("native/CMakeLists.txt");
+    assert!(
+        !cmake.to_lowercase().contains("metal-device"),
+        "CMake must not apply a Metal device patch"
+    );
+    let patches = root().join("native/patches");
+    for entry in fs::read_dir(&patches).unwrap().flatten() {
+        let name = entry.file_name().to_string_lossy().to_lowercase();
+        assert!(
+            !name.contains("metal"),
+            "native/patches must not carry a Metal device patch"
+        );
+    }
+
+    let risks = read("docs/roadmap/risks-and-decisions.md");
+    assert!(
+        risks.contains("metal-device-refcount.md"),
+        "decision register drops the refcount Stop"
+    );
+    assert!(
+        risks.contains("232ea78"),
+        "decision register drops #63 tip 232ea78"
+    );
+    assert!(
+        risks.contains("0829a70"),
+        "decision register drops #55 tip 0829a70"
+    );
+
+    let mut flipped = Vec::new();
+    mark_checked_ac2_ac3(&root().join("docs"), &mut flipped);
+    mark_checked_ac2_ac3(&root().join("src"), &mut flipped);
+    assert!(
+        flipped.is_empty(),
+        "M0-AC2 or M0-AC3 checked while #63 232ea78 and #55 0829a70 stand: {flipped:?}"
+    );
+}
+
+fn mark_checked_ac2_ac3(dir: &Path, out: &mut Vec<String>) {
+    for entry in fs::read_dir(dir).unwrap().flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            mark_checked_ac2_ac3(&path, out);
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        for id in ["M0-AC2", "M0-AC3"] {
+            let checked = text.lines().any(|line| {
+                line.contains(id) && (line.contains("- [x]") || line.contains("- [X]"))
+            });
+            if checked {
+                out.push(format!("{} {id}", path.display()));
+            }
+        }
+    }
+}
+
 fn src_text() -> String {
     let mut out = String::new();
     append_rs(&root().join("src"), &mut out);
