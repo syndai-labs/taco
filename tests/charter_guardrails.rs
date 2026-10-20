@@ -677,6 +677,111 @@ fn metal_refcount_stop_cites_63_and_55() {
     );
 }
 
+#[test]
+fn metal_subprocess_stop_cites_55_63_and_70() {
+    let note = read("docs/evidence/m0/metal-subprocess.md");
+    for needle in [
+        "0829a70",
+        "232ea78",
+        "e06ea0e",
+        "2a667032dc788c3a071d538e0b572e45a3f12731",
+        "ggml_backend_metal_reg",
+        "ggml_metal_device_get",
+        "product::g_asr",
+        "product::g_mt",
+        "This host is Linux",
+        "No connected self-hosted workers",
+        "No Mac `phys_footprint` was recorded",
+        "no charter-legal path",
+        "posix_spawn",
+        "runtime helper required to launch",
+        "Fail on a subprocess",
+        "Two dylibs on disk and a helper process are both failures.",
+        "33554432",
+        "Do not start a new process per cycle",
+        "whisper-cli",
+        "metal_subprocess_stop_cites_55_63_and_70",
+        "M0-AC2",
+        "M0-AC3",
+        "ac2=0 ac3=0",
+    ] {
+        assert!(note.contains(needle), "subprocess Stop drops `{needle}`");
+    }
+    assert!(!note.contains("- [x]"), "subprocess Stop checks a box");
+    assert!(!note.contains("- [X]"), "subprocess Stop checks a box");
+    assert!(
+        !note.contains("within_tolerance=1"),
+        "subprocess Stop records a residency pass"
+    );
+    assert!(!note.contains("ac2=1"), "subprocess Stop records ac2");
+    assert!(!note.contains("ac3=1"), "subprocess Stop records ac3");
+
+    let charter = read("CHARTER.md");
+    assert!(charter.contains("Rust single binary"));
+    assert!(charter.contains("external inference service"));
+    let adr = read("docs/adr/0004-local-inference.md");
+    assert!(adr.contains("Two dylibs on disk and a helper process are both failures."));
+    assert!(adr.contains("helper CLI or only on CPU fails M0."));
+    assert!(adr.contains("subprocess inference CLI"));
+    let risks = read("docs/roadmap/risks-and-decisions.md");
+    assert!(risks.contains("no helper process, sidecar dylib, or CPU-only fallback"));
+    assert!(risks.contains("metal-subprocess.md"));
+    for sha in ["0829a70", "232ea78", "e06ea0e"] {
+        assert!(risks.contains(sha), "decision register drops {sha}");
+    }
+    let catalog = read("docs/roadmap/test-catalog.md");
+    assert!(catalog.contains("Fail on a subprocess"));
+    assert!(catalog.contains("in one process"));
+    assert!(catalog.contains("runtime helper required to launch"));
+    let feasibility = read("docs/roadmap/m0-feasibility.md");
+    assert!(feasibility.contains("A subprocess CLI"));
+    let contract = read("docs/roadmap/agent-contract.md");
+    assert!(contract.contains("fork the architecture into a helper process."));
+    assert!(contract.contains("whisper-cli"));
+
+    let src = src_text();
+    for needle in [
+        "Command::new",
+        "whisper-cli",
+        "llama-server",
+        "llama-completion",
+        "posix_spawn",
+    ] {
+        assert!(!src.contains(needle), "src spawns a helper via `{needle}`");
+    }
+    assert_eq!(
+        read("Cargo.toml").matches("[[bin]]").count(),
+        1,
+        "product Cargo.toml grew a helper bin"
+    );
+    assert!(
+        !read("native/CMakeLists.txt").contains("add_executable"),
+        "CMake grew a helper executable"
+    );
+    assert!(!read("native/ffi/Cargo.toml").contains("[[bin]]"));
+    let runtime = read("native/taco_runtime.cpp");
+    assert!(runtime.contains("ac2=0 ac3=0"));
+    assert!(!runtime.contains("ggml_metal_device_free("));
+    assert!(!runtime.contains("posix_spawn"));
+    assert!(!runtime.contains("popen("));
+    let patches = root().join("native/patches");
+    for entry in fs::read_dir(&patches).unwrap().flatten() {
+        let name = entry.file_name().to_string_lossy().to_lowercase();
+        assert!(
+            !name.contains("metal"),
+            "native/patches must not carry a Metal device patch"
+        );
+    }
+
+    let mut flipped = Vec::new();
+    mark_checked_ac2_ac3(&root().join("docs"), &mut flipped);
+    mark_checked_ac2_ac3(&root().join("src"), &mut flipped);
+    assert!(
+        flipped.is_empty(),
+        "M0-AC2 or M0-AC3 checked while #55 0829a70, #63 232ea78, and #70 e06ea0e stand: {flipped:?}"
+    );
+}
+
 fn mark_checked_ac2_ac3(dir: &Path, out: &mut Vec<String>) {
     for entry in fs::read_dir(dir).unwrap().flatten() {
         let path = entry.path();
