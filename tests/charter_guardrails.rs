@@ -571,7 +571,8 @@ fn pins_are_not_a_verify_pass_and_corpora_stay_unsealed() {
         );
     }
     let ac_checked = evidence.lines().any(|line| {
-        line.contains("M0-AC") && (line.contains("- [x]") || line.contains("- [X]"))
+        line_checks_m0_ac(line)
+            || (line.contains("M0-AC") && (line.contains("- [x]") || line.contains("- [X]")))
     });
     assert!(
         !ac_checked,
@@ -1794,13 +1795,21 @@ fn tip_token_is_sha(token: &str) -> bool {
         "d78e7f8",
         "5e9649c",
         "234c26a",
+        "234c26a6f3b25a8ec376b50ad3244fb46d3a0dbb",
         "36ccc74",
+        "36ccc7454a16a771f235fafc7fdf519da8e03ac8",
         "4969bf6",
+        "4969bf636366d04002b8456b972971412dbca1cc",
         "828bd48",
+        "828bd48a44385e7fc107180fc5efa3c48d51b6bf",
         "964e384",
+        "964e3844a2d9d32dbb9b0381c9d8a2cff61eea45",
         "f9b08be",
+        "f9b08becdef91c9880fc0cb2167c1f9d23bbdc7e",
         "0972b2d",
+        "0972b2d64933f37742803134e6cac0e119c0ba4f",
         "7ae6d98",
+        "7ae6d9836d0e25f2d5e93221863a74dad22355fd",
         "f5494b4",
         "f5494b495a73f30b63657ca71f8ee7589d2b2e34",
         "9eb8087",
@@ -2551,24 +2560,9 @@ fn m0_ac4_cannot_be_checked_while_gaps_stand() {
 }
 
 fn checked_m0_ac4(dir: &Path, out: &mut Vec<String>) {
-    for entry in fs::read_dir(dir).unwrap().flatten() {
-        let path = entry.path();
-        if path.is_dir() {
-            checked_m0_ac4(&path, out);
-            continue;
-        }
-        if path.extension().and_then(|ext| ext.to_str()) != Some("md") {
-            continue;
-        }
-        let Ok(text) = fs::read_to_string(&path) else {
-            continue;
-        };
-        for (number, line) in text.lines().enumerate() {
-            if line.contains("M0-AC4") && (line.contains("- [x]") || line.contains("- [X]")) {
-                out.push(format!("{}:{}: {line}", path.display(), number + 1));
-            }
-        }
-    }
+    let mut all = Vec::new();
+    collect_checked_m0_ac(dir, &mut all);
+    out.extend(all.into_iter().filter(|hit| hit.ends_with(" M0-AC4")));
 }
 
 fn stop_sha_stands(path: &str, sha: &str) -> bool {
@@ -2688,13 +2682,21 @@ fn tip_sha_denylist_rejects_non_clicks() {
         "d78e7f8",
         "5e9649c",
         "234c26a",
+        "234c26a6f3b25a8ec376b50ad3244fb46d3a0dbb",
         "36ccc74",
+        "36ccc7454a16a771f235fafc7fdf519da8e03ac8",
         "4969bf6",
+        "4969bf636366d04002b8456b972971412dbca1cc",
         "828bd48",
+        "828bd48a44385e7fc107180fc5efa3c48d51b6bf",
         "964e384",
+        "964e3844a2d9d32dbb9b0381c9d8a2cff61eea45",
         "f9b08be",
+        "f9b08becdef91c9880fc0cb2167c1f9d23bbdc7e",
         "0972b2d",
+        "0972b2d64933f37742803134e6cac0e119c0ba4f",
         "7ae6d98",
+        "7ae6d9836d0e25f2d5e93221863a74dad22355fd",
         "f5494b4",
         "f5494b495a73f30b63657ca71f8ee7589d2b2e34",
         "9eb8087",
