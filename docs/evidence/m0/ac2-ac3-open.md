@@ -80,3 +80,9 @@ PR #86 tip `8938f5b` cites #83 through #85. Those cites do not check a box.
 PR #87 tip `a40fad1` does not change the AC2/AC3 Stop-SHA list. It does not close either box above.
 
 PR #88 tip `2766f79` does not change the AC2/AC3 Stop-SHA list. It does not close either box above.
+
+PR #89 tip `831d455` cites #86 through #88. Those cites do not check a box.
+
+PR #90 tip `7e8f3c5` does not change the AC2/AC3 Stop-SHA list. It does not close either box above.
+
+PR #91 tip `79cb73d` freezes both boxes as Partial on the measure tip, stacked on #88 tip `2766f79`. #85 tip `576ac63` is not an ancestor of that tip. It cites `ac2_ac3_cannot_flip_while_stop_shas_stand` and does not replace it. Status: Partial. The guard on that tip is `m0_ac2_ac3_partial_refuses_checked_boxes`. ORT CoreML `LSTM` and `If`, and a Metal device process-lifetime release, stay out of M0. This branch does not replay that guard and does not copy that note. Neither box above is a pass.
