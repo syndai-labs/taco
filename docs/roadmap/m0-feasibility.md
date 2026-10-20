@@ -1,6 +1,8 @@
 # M0 — Feasibility and executable contracts
 
 Status: **Not accepted.** Shared `taco` types and default-tier tests are in the tree. Hardware spikes are recorded blockers in the decision register. Acceptance checkboxes stay open. Depends on: charter only.
+
+Cited tips: redundant sibling `0ee1065` (PR #95, on `cursor/m0-destroy-trace-on-partials-b19b`, same tree as #94 `fe08f47`, Mac prefer tip is #103 `f5494b4` not #95, guard not replayed, boxes unchecked), tips20 cite `008cacb` (PR #96, cites #92 `6b165eb` through #94 `fe08f47`, not an ancestor of this tip, boxes unchecked), tips21 cite `d0877e0` (PR #97, cites #95 `0ee1065` and #96 `008cacb`, not an ancestor of this tip, does not join #95 onto #94, boxes unchecked), pins on prefer `7f8ab75` (PR #98, `pins_are_not_a_verify_pass_and_corpora_stay_unsealed` already on this tip, not replayed, corpora unsealed, `device=` stays `cpu`, boxes unchecked), AC4 Partial `e2b7b01` (PR #99, `m0_ac4_cannot_be_checked_while_gaps_stand` already on this tip, not replayed, `SIGNED_INSTALL` stays None, boxes unchecked), destroy-prose refuse `c32735f` (PR #100, `m0_cleanup_prose_destroy_names_without_evidence_refuses_ac1` already on this tip, not replayed, Cleanup tip SHA none, `destroy_traced` stays no, boxes unchecked), tip-SHA denylist `58f0fe5` (PR #101, `tip_sha_denylist_rejects_non_clicks` and `m0_checked_box_variants_refuse` already on this tip, not replayed, Allow Deny and Cleanup tip SHAs none, boxes unchecked), prefer-tip evidence `a0b6d95` (PR #102, After-pair tip SHA none, Stop notes vendored, TIMEOUT is not Deny, boxes unchecked), prefer-tip join `f5494b4` (PR #103, joins #100 `c32735f`, #101 `58f0fe5`, #102 `a0b6d95`, #98 `7f8ab75`, and #99 `e2b7b01` onto #94 `fe08f47`, guards not replayed, Allow Deny Cleanup and After-pair tip SHAs none, Linux is not a Metal pass, boxes unchecked).
 Accountable: technical lead; reviewers: capture, inference, and release owners.
 Decisions: [ADR 0001](../adr/0001-process-and-pipeline.md),
 [0002](../adr/0002-audio-capture.md), [0004](../adr/0004-local-inference.md),
@@ -87,13 +89,16 @@ tests failing before the contract types satisfy them. Do not rename the IDs.
   [ac1-full-session.md](../evidence/m0/ac1-full-session.md) cites PR #77 tip `595dced`.
   Microphone and AudioCapture Allow/Deny tip SHAs are none. TIMEOUT is not Deny.
   Partial — mic and AudioCapture Allow/Deny tip SHAs are none; consequence AC1 open.
+  PR #95 tip `0ee1065`, PR #96 tip `008cacb`, PR #97 tip `d0877e0`, PR #98 tip `7f8ab75`, PR #99 tip `e2b7b01`, PR #100 tip `c32735f`, PR #101 tip `58f0fe5`, PR #102 tip `a0b6d95`, and PR #103 tip `f5494b4` keep Allow, Deny, and Cleanup tip SHAs `none`. After-pair tip SHA stays `none`. `destroy_traced` stays `no`. Mac prefer tip is #103 `f5494b4`, not #95. This cite does not copy `m0_cleanup_prose_destroy_names_without_evidence_refuses_ac1` or `m0_checked_box_variants_refuse` again.
 - [ ] **M0-AC2:** The combined native spike performs ASR and translation with the exact
   pinned artifacts, in process, with observed Metal GPU execution. A subprocess CLI
   or a CPU-only `-ngl 0` run does not pass.
+  PR #95 tip `0ee1065`, PR #96 tip `008cacb`, PR #97 tip `d0877e0`, PR #98 tip `7f8ab75`, PR #99 tip `e2b7b01`, PR #100 tip `c32735f`, PR #101 tip `58f0fe5`, PR #102 tip `a0b6d95`, and PR #103 tip `f5494b4` do not print `device=metal`. `device=` stays `cpu`. ORT CoreML `LSTM` and `If`, and a Metal device process-lifetime release, stay out of M0.
 - [ ] **M0-AC3:** Cancellation during initialization and active inference joins the
   worker inside the shutdown reserve. A wrapper timeout alone does not pass. Linkage,
   the required llama.cpp revision, and embedded shader packaging have a recorded
   resolution that still yields one Mach-O.
+  PR #95 tip `0ee1065`, PR #96 tip `008cacb`, PR #97 tip `d0877e0`, PR #98 tip `7f8ab75`, PR #99 tip `e2b7b01`, PR #100 tip `c32735f`, PR #101 tip `58f0fe5`, PR #102 tip `a0b6d95`, and PR #103 tip `f5494b4` are not a 100-cycle pass. This cite does not copy `m0_ac2_ac3_partial_refuses_checked_boxes` again.
 - [ ] **M0-AC4:** The [acceptance plan](acceptance.md) names both corners, OS builds,
   the selected quantization and sampling, corpus and license inventory, the closed
   language table, and reviewed numeric targets. No unresolved mandatory value remains.
@@ -101,6 +106,7 @@ tests failing before the contract types satisfy them. Do not rename the IDs.
   [ac4-partial.md](../evidence/m0/ac4-partial.md).
   Charter accept is blocked: M0-AC4 cannot be checked while SIGNED_INSTALL=None or C2_BLOCKED stands.
   The launchd user-agent run does not close M0-AC4.
+  PR #99 tip `e2b7b01` freezes this Partial on the prefer tip. PR #95 tip `0ee1065`, PR #96 tip `008cacb`, PR #97 tip `d0877e0`, PR #98 tip `7f8ab75`, PR #100 tip `c32735f`, PR #101 tip `58f0fe5`, PR #102 tip `a0b6d95`, and PR #103 tip `f5494b4` do not check M0-AC4. Mac prefer tip is #103 `f5494b4`, not #95.
 - [ ] **M0-AC5:** Every M0 item in the [decision register](risks-and-decisions.md) has
   a recorded decision, owner, evidence, and consequence. ADRs are accepted only to the
   extent supported; unresolved feasibility explicitly blocks dependent milestones.
@@ -134,3 +140,5 @@ Newer Stops still stand: #55 tip `0829a70` (residual phys_footprint is the proce
 #69 tip `2ff5c4f` is a Stop: the VAD stays Silero-only, and the charter forbids an alternate VAD pin. #70 tip `e06ea0e` deepens the #55 and #63 Metal-device Stops: a Metal device refcount free is still a use-after-free on prove cycle 2. `0829a70` and `232ea78` stay. #64 tip `c9a6f6f` still owns `ort_coreml_upgrade_cannot_flip_ac2`; this branch cites that Stop and does not copy that guard. Checking M0-AC2 or M0-AC3 still fails while `2ff5c4f` and `e06ea0e` stand. This note adds no Metal measurement.
 
 #74 tip `30fd669` is a Stop: a Metal helper process violates single Mach-O, in-process Metal, and LINK-THREE, and it does not close residency. #74 owns `metal_subprocess_stop_cites_55_63_and_70`; this branch cites that Stop and does not copy that guard. `0829a70`, `232ea78`, `e06ea0e`, and `2ff5c4f` stay. Checking M0-AC2 or M0-AC3 still fails while `30fd669` stands. This note adds no Metal measurement.
+
+PR #95 tip `0ee1065` does not change the AC2/AC3 Stop-SHA list. Mac prefer tip is #103 `f5494b4`, not #95. PR #96 tip `008cacb` and PR #97 tip `d0877e0` cite earlier tips and do not close either box. PR #98 tip `7f8ab75` does not print `device=metal`. PR #99 tip `e2b7b01` does not close M0-AC2 or M0-AC3. PR #100 tip `c32735f` and PR #101 tip `58f0fe5` do not change the Stop-SHA list. PR #102 tip `a0b6d95` vendors the `d194012` and `a0e1614` Stop notes and does not drop them. PR #103 tip `f5494b4` joins those tips onto #94 tip `fe08f47`. It cites `ac2_ac3_cannot_flip_while_stop_shas_stand` and does not replace it. ORT CoreML `LSTM` and `If`, and a Metal device process-lifetime release, stay out of M0. This cite does not replay those guards and does not add a Metal measurement. Neither box above is a pass.
