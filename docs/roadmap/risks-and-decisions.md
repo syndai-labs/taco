@@ -156,7 +156,7 @@ Charter accept is blocked: M0-AC2 and M0-AC3 cannot be checked while the CPU VAD
 
 [mic-operator-timeouts.md](../evidence/m0/mic-operator-timeouts.md) records PR #51 tip `7c71d50`. TIMEOUT is not Don't Allow. Allow tip SHA: none. Deny tip SHA: none. Partial — operator Allow/Deny unproven; consequence AC1 open.
 
-[ac1-full-session-partial.md](../evidence/m0/ac1-full-session-partial.md) cites PR #77 tip `595dced`. Microphone and AudioCapture Allow and Deny tip SHAs are none. TIMEOUT is not Deny. Partial — mic and AudioCapture Allow/Deny tip SHAs are none; consequence AC1 open. PR #51 tip `7c71d50` and PR #62 tip `8c24c99` stay. This branch does not copy `ac1_cannot_flip_while_tip_shas_are_none` and does not record a Mac click.
+[ac1-full-session.md](../evidence/m0/ac1-full-session.md) cites PR #77 tip `595dced`. Microphone tip SHAs live in [mic-operator-resume.md](../evidence/m0/mic-operator-resume.md). AudioCapture tip SHAs live in [audiocapture-measure.md](../evidence/m0/audiocapture-measure.md). Both pairs are none. TIMEOUT is not Deny. Partial — mic and AudioCapture Allow/Deny tip SHAs are none; consequence AC1 open. PR #51 tip `7c71d50` and PR #62 tip `8c24c99` stay. This branch does not copy `ac1_cannot_flip_while_tip_shas_are_none` and does not record a Mac click.
 
 [ac4-partial.md](../evidence/m0/ac4-partial.md) records PR #54 tip `6a839de`. `SIGNED_INSTALL` stays `None`. `C2_BLOCKED` stays true. Charter accept is blocked: M0-AC4 cannot be checked while SIGNED_INSTALL=None or C2_BLOCKED stands. The launchd user-agent run does not close M0-AC4.
 

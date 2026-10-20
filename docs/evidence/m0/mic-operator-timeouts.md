@@ -13,6 +13,6 @@ Partial — operator Allow/Deny unproven; consequence AC1 open.
 
 Checking M0-AC1 requires this Partial to be replaced and both an Allow tip SHA and a Deny tip SHA to be written above. A timeout, a disappeared dialog, or `tccutil` printing `denied` does not fill either line.
 
-PR #77 tip `595dced` is still Partial. Its microphone and AudioCapture tip SHAs are none. TIMEOUT is not Deny. This note stays the #51 lock.
+PR #77 tip `595dced` is still Partial. `mic-operator-resume.md` and `audiocapture-measure.md` keep each Allow tip SHA and Deny tip SHA at none. TIMEOUT is not Deny. This note stays the #51 lock.
 
 - [ ] **M0-AC1:** A report proves microphone, system, and app tap feasibility from the intended CLI artifact, including allow/deny and cleanup.
