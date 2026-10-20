@@ -1,7 +1,8 @@
 // Incremental Silero on the pinned ONNX, inside this Mach-O.
-// The device token is read from the session assignment and, when CoreML is
-// linked, from MLComputePlan. It is not the provider option we requested.
-// This is not whisper_full.
+// The device token is read from MLComputePlan, not from the provider option.
+// Silero's compute is inside If subgraphs. ORT 1.31 CoreML skips those unless
+// EnableOnSubgraphs=1. There is still no CoreML builder for LSTM or If, so
+// device= stays cpu until a Mac plan names GPU or ANE. This is not whisper_full.
 
 #include <array>
 #include <cmath>
@@ -106,15 +107,18 @@ int taco_vad_ort(const char * path) {
         cache.path = make_cache_dir();
         if (!cache.path.empty()) {
             try {
+                // ponytail: EnableOnSubgraphs only. ORT 1.31 CoreML has no LSTM or If
+                // builder, so the recurrent body stays on CPU until a Mac plan says otherwise.
                 const std::unordered_map<std::string, std::string> coreml = {
                     {"MLComputeUnits", "CPUAndGPU"},
                     {"ModelFormat", "MLProgram"},
                     {"ProfileComputePlan", "1"},
                     {"ModelCacheDirectory", cache.path},
+                    {"EnableOnSubgraphs", "1"},
                 };
                 opts.AppendExecutionProvider("CoreML", coreml);
                 requested_coreml = true;
-                std::printf("vad_ort_request ep=CoreML units=CPUAndGPU format=MLProgram\n");
+                std::printf("vad_ort_request ep=CoreML units=CPUAndGPU format=MLProgram subgraphs=1\n");
             } catch (const Ort::Exception & err) {
                 std::printf("vad_ort_request=fail ep=CoreML msg=%s\n", err.what());
                 opts = Ort::SessionOptions();
@@ -126,8 +130,9 @@ int taco_vad_ort(const char * path) {
             std::printf("vad_ort_request=fail ep=CoreML msg=cache_dir\n");
         }
 #else
-        std::printf("vad_ort_request ep=CPU\n");
+        std::printf("vad_ort_request ep=CPU reason=coreml_provider_not_linked device=cpu\n");
 #endif
+        opts.AddConfigEntry("session.record_ep_graph_assignment_info", "1");
         std::fflush(stdout);
         Ort::Session session(env, path, opts);
 
@@ -321,7 +326,7 @@ int taco_vad_ort(const char * path) {
 #else
 
 int taco_vad_ort(const char *) {
-    std::printf("vad_ort=not_linked\n");
+    std::printf("vad_ort=not_linked device=cpu reason=coreml_ep_not_in_this_binary\n");
     std::fflush(stdout);
     return 1;
 }
