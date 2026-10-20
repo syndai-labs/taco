@@ -2,6 +2,8 @@
 
 Stop. Not a pass. M0-AC2 and M0-AC3 stay unchecked.
 
+The holder is named in [engines-residency-rootcause.md](engines-residency-rootcause.md): the process-lifetime Metal device in `ggml_backend_metal_reg`. This file is the vmtrace. It is not a pass.
+
 The catalog rule is still the one in `docs/roadmap/acceptance.md`: after 100
 in-process start/stop cycles, with models released on each teardown,
 `phys_footprint` after cycle 100 ≤ the cycle-1 teardown + 33554432 bytes.
