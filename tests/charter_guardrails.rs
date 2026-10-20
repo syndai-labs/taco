@@ -1172,8 +1172,6 @@ fn process_tap_tips_refuse_ac1_flip_while_either_sha_is_none() {
     let after_pair = one_tip(&note, "After-pair tip SHA:");
     assert_ne!(allow, "TIMEOUT", "TIMEOUT is not Allow");
     assert_ne!(deny, "TIMEOUT", "TIMEOUT is not Deny");
-    assert_eq!(after_pair, "none", "After-pair tip SHA");
-    assert!(!tip_token_is_sha(&after_pair), "After-pair tip SHA");
     let mut cleanup = Vec::new();
     for label in CLEANUP_LABELS {
         if let Some(token) = optional_tip(&note, label) {
@@ -1227,8 +1225,13 @@ fn process_tap_tips_refuse_ac1_flip_while_either_sha_is_none() {
     );
     assert_eq!(allow, "none", "Allow tip SHA");
     assert_eq!(deny, "none", "Deny tip SHA");
+    assert_eq!(after_pair, "none", "After-pair tip SHA");
     assert!(!allow_ok, "Allow tip counted while the lock stands");
     assert!(!deny_ok, "Deny tip counted while the lock stands");
+    assert!(
+        !tip_token_is_sha(&after_pair),
+        "After-pair tip counted while the lock stands"
+    );
     for (label, token) in &cleanup {
         assert_eq!(token, "none", "{label} is none and still blocks M0-AC1");
         assert!(!tip_token_is_sha(token), "{label}");
@@ -1452,7 +1455,60 @@ fn process_tap_early_return_ok(
     cleanup_ok: bool,
     note: &str,
 ) -> bool {
-    !partial && allow_ok && deny_ok && cleanup_ok && cleanup_destroy_traced(note)
+    !partial
+        && allow_ok
+        && deny_ok
+        && cleanup_ok
+        && named_tip_sha(note, "After-pair tip SHA:")
+        && cleanup_destroy_traced(note)
+}
+
+/// Hex Allow/Deny/Cleanup and both destroy quotes still refuse the status
+/// early return while After-pair is `none` and status is not Partial.
+/// Disk tip SHAs stay `none`. No M0-AC box is checked.
+#[test]
+fn process_tap_early_return_refuses_after_pair_none() {
+    const SHA: &str = "abcdef0123456789";
+    const TAP: &str = "docs/evidence/m0/process-tap-product.md";
+    let tap = read(TAP);
+    let fill =
+        |text: &str, label: &str| text.replace(&format!("{label} none"), &format!("{label} {SHA}"));
+    let flipped = destroy_record_yes(&fill(
+        &fill(&fill(&tap, "Allow tip SHA:"), "Deny tip SHA:"),
+        "Cleanup tip SHA:",
+    ))
+    .replace("Status: **Partial**.", "Status: **Done**.");
+    let note = format!(
+        "{flipped}\n> AudioHardwareDestroyAggregateDevice\n> AudioHardwareDestroyProcessTap\n"
+    );
+    let allow = one_tip(&note, "Allow tip SHA:");
+    let deny = one_tip(&note, "Deny tip SHA:");
+    let cleanup = one_tip(&note, "Cleanup tip SHA:");
+    let after_pair = one_tip(&note, "After-pair tip SHA:");
+    assert_eq!(allow, SHA);
+    assert_eq!(deny, SHA);
+    assert_eq!(cleanup, SHA);
+    assert_eq!(after_pair, "none");
+    assert!(cleanup_destroy_traced(&note));
+    assert!(!note.contains("- [x]") && !note.contains("- [X]"));
+    let partial = status_value(&note).starts_with("**Partial**.");
+    assert!(!partial, "status not Partial");
+    assert!(!process_tap_early_return_ok(
+        partial,
+        tip_token_is_sha(&allow),
+        tip_token_is_sha(&deny),
+        tip_token_is_sha(&cleanup),
+        &note,
+    ));
+
+    let live = read(TAP);
+    assert_eq!(live, tap);
+    assert!(live.contains("Allow tip SHA: none"));
+    assert!(live.contains("Deny tip SHA: none"));
+    assert!(live.contains("Cleanup tip SHA: none"));
+    assert!(live.contains("After-pair tip SHA: none"));
+    assert!(!live.contains(SHA));
+    assert!(!live.contains("- [x]") && !live.contains("- [X]"));
 }
 
 /// Record line `destroy_traced: yes`, plus each destroy API on its own
