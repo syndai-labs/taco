@@ -1,6 +1,6 @@
 # AudioCapture measurement after the mic watch
 
-M0-AC1 stays unchecked. This is the command list for `system`, `app:`, and `pid:` once no `taco run --source default` process is left. It does not press Allow or Deny. It does not reset TCC.
+M0-AC1 stays unchecked. The operator measure, once no `taco run --source default` process is left, is [`audiocapture-measure.md`](audiocapture-measure.md) and `scripts/m0-audiocapture-measure.sh`. That script launches Taco.app (`ai.syndai.taco`) with `open -W`. It does not click. TIMEOUT is not Deny. The Terminal command list below is the dry-run that was not started. Do not use it for the click. A raw `./target/debug/taco` from Cursor is attributed to `com.todesktop.230313mzl4w4u92`.
 
 Host: macOS 27.0.1 (26A434), arm64. Worktree `~/workspace/syndai/taco-m0-audiocapture-start`, tip `f9b08be` (PR #47; fetched from `4811926`, then fast-forwarded). Binary:
 
