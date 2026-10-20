@@ -78,6 +78,9 @@ tests failing before the contract types satisfy them. Do not rename the IDs.
   [mic-operator-timeouts.md](../evidence/m0/mic-operator-timeouts.md) is Partial.
   PR #51 tip `7c71d50`. TIMEOUT is not Don't Allow.
   Partial — operator Allow/Deny unproven; consequence AC1 open.
+  [ac1-full-session-partial.md](../evidence/m0/ac1-full-session-partial.md) cites PR #77 tip `595dced`.
+  Microphone and AudioCapture Allow and Deny tip SHAs are none. TIMEOUT is not Deny.
+  Partial — mic and AudioCapture Allow/Deny tip SHAs are none; consequence AC1 open.
 - [ ] **M0-AC2:** The combined native spike performs ASR and translation with the exact
   pinned artifacts, in process, with observed Metal GPU execution. A subprocess CLI
   or a CPU-only `-ngl 0` run does not pass.

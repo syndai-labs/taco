@@ -608,6 +608,145 @@ fn ac1_cannot_flip_while_operator_timeout_partial_stands() {
     );
 }
 
+/// PR #77 tip `595dced` is Partial. Mic and AudioCapture each need an Allow tip
+/// SHA and a Deny tip SHA. Either `none` keeps M0-AC1 unchecked. TIMEOUT is not
+/// a Deny tip. PR #51 tip `7c71d50` and PR #62 tip `8c24c99` stay.
+#[test]
+fn ac1_cannot_flip_while_full_session_tip_shas_are_none() {
+    const TIP: &str = "595dced";
+    const CONSEQUENCE: &str =
+        "Partial — mic and AudioCapture Allow/Deny tip SHAs are none; consequence AC1 open.";
+    const LABELS: [&str; 4] = [
+        "Microphone Allow tip SHA:",
+        "Microphone Deny tip SHA:",
+        "AudioCapture Allow tip SHA:",
+        "AudioCapture Deny tip SHA:",
+    ];
+
+    for fake in [
+        "none",
+        "TIMEOUT",
+        "timeout",
+        "Don't Allow",
+        "denied",
+        "Deny",
+    ] {
+        assert!(
+            !tip_token_is_sha(fake),
+            "{fake} must not count as an Allow or Deny tip SHA"
+        );
+    }
+
+    let note = read("docs/evidence/m0/ac1-full-session-partial.md");
+    assert!(
+        note.contains(TIP),
+        "AC1 full session must cite PR #77 tip 595dced"
+    );
+    assert!(
+        note.contains("595dcedafa5e7f2dcc829670e41c462f8ca6dab1"),
+        "cite the full #77 tip"
+    );
+    assert!(
+        note.contains("TIMEOUT is not Deny."),
+        "TIMEOUT must not be recorded as Deny"
+    );
+    assert!(
+        note.contains("TIMEOUT is not Don't Allow."),
+        "TIMEOUT must not be recorded as Don't Allow"
+    );
+    assert!(note.contains("7c71d50"), "#51 lock must stay cited");
+    assert!(note.contains("8c24c99"), "#62 lock must stay cited");
+    assert!(
+        note.contains("ac1_cannot_flip_while_tip_shas_are_none"),
+        "#77 owns that guard; this branch only cites it"
+    );
+
+    let harness = read("tests/charter_guardrails.rs");
+    for lock in [
+        "fn ac1_cannot_flip_while_operator_timeout_partial_stands",
+        "fn m0_ac4_cannot_be_checked_while_partial_stands",
+        "fn open_ms_and_hold_ms_cannot_regress",
+        "fn register_and_harness_stay_open_while_partials_stand",
+        "fn ac2_ac3_cannot_flip_while_stop_shas_stand",
+    ] {
+        assert!(harness.contains(lock), "flip guard {lock} was removed");
+    }
+
+    let timeout = read("docs/evidence/m0/mic-operator-timeouts.md");
+    assert!(timeout.contains("7c71d50"));
+    assert!(
+        timeout.contains(TIP),
+        "timeout note dropped PR #77 tip 595dced"
+    );
+    assert!(timeout.contains("TIMEOUT is not Don't Allow."));
+    assert!(timeout.contains("TIMEOUT is not Deny."));
+    assert!(timeout.contains("Allow tip SHA: none"));
+    assert!(timeout.contains("Deny tip SHA: none"));
+    assert!(
+        !named_tip_sha(&timeout, "Allow tip SHA:"),
+        "TIMEOUT or a fake token filled the #51 Allow tip"
+    );
+    assert!(
+        !named_tip_sha(&timeout, "Deny tip SHA:"),
+        "TIMEOUT must not fill the #51 Deny tip"
+    );
+
+    let partial = note.contains("Status: **Partial**.");
+    let mut filled = [false; 4];
+    for (i, label) in LABELS.iter().enumerate() {
+        let tokens = tip_sha_tokens(&note, label);
+        assert_eq!(tokens.len(), 1, "{label} must be a single line");
+        let token = &tokens[0];
+        assert_ne!(token, "TIMEOUT", "TIMEOUT is not Deny ({label})");
+        assert_ne!(token, "Don't Allow", "{label} is not a click label");
+        filled[i] = tip_token_is_sha(token);
+        assert_eq!(
+            filled[i],
+            named_tip_sha(&note, label),
+            "{label} parser drifted"
+        );
+    }
+
+    if !partial && filled.iter().copied().all(|ready| ready) {
+        return;
+    }
+
+    assert!(
+        partial,
+        "Partial flipped while a mic or AudioCapture tip SHA is still none"
+    );
+    assert!(
+        !note.contains("Status: **Done**") && !note.contains("Status: **Accepted**"),
+        "Done is not this Partial"
+    );
+    for (label, ready) in LABELS.iter().zip(filled.iter()) {
+        assert!(!ready, "{label} filled while #77 Partial stands");
+        let token = &tip_sha_tokens(&note, label)[0];
+        assert_eq!(*token, "none", "{label} must stay none");
+    }
+
+    for path in [
+        "docs/evidence/m0/ac1-full-session-partial.md",
+        "docs/roadmap/risks-and-decisions.md",
+        "docs/roadmap/m0-feasibility.md",
+    ] {
+        let text = read(path);
+        assert!(text.contains(CONSEQUENCE), "{path} drops the #77 Partial");
+        assert!(text.contains(TIP), "{path} drops PR #77 tip 595dced");
+        assert!(
+            text.contains("TIMEOUT is not Deny."),
+            "{path} treats TIMEOUT as Deny"
+        );
+    }
+
+    let mut checked = Vec::new();
+    checked_ids(&root().join("docs"), &["M0-AC1"], &mut checked);
+    assert!(
+        checked.is_empty(),
+        "M0-AC1 checked while mic or AudioCapture Allow/Deny tip SHAs are none: {checked:?}"
+    );
+}
+
 #[test]
 fn m0_ac4_cannot_be_checked_while_partial_stands() {
     let evidence = read("docs/evidence/m0/ac4-partial.md");
@@ -739,18 +878,32 @@ fn register_and_harness_stay_open_while_partials_stand() {
 }
 
 fn named_tip_sha(text: &str, label: &str) -> bool {
-    text.lines().any(|line| {
-        let Some((_, rest)) = line.split_once(label) else {
-            return false;
-        };
-        let token = rest
-            .trim()
-            .trim_matches('`')
-            .split_whitespace()
-            .next()
-            .unwrap_or("");
-        token.len() >= 7 && token.chars().all(|c| c.is_ascii_hexdigit())
-    })
+    tip_sha_tokens(text, label)
+        .iter()
+        .any(|token| tip_token_is_sha(token))
+}
+
+fn tip_token_is_sha(token: &str) -> bool {
+    token.len() >= 7 && token.chars().all(|c| c.is_ascii_hexdigit())
+}
+
+fn tip_sha_tokens(text: &str, label: &str) -> Vec<String> {
+    text.lines()
+        .filter_map(|line| {
+            let (_, rest) = line.split_once(label)?;
+            let token = rest
+                .trim()
+                .trim_matches('`')
+                .split_whitespace()
+                .next()
+                .unwrap_or("");
+            if token.is_empty() {
+                None
+            } else {
+                Some(token.to_string())
+            }
+        })
+        .collect()
 }
 
 fn checked_ids(dir: &Path, ids: &[&str], out: &mut Vec<String>) {
