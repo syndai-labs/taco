@@ -1876,6 +1876,12 @@ fn tip_token_is_sha(token: &str) -> bool {
         "7fe1985c5ceceb31cc3c43a05aacb49b5624a1f4",
         "0a962b2",
         "0a962b2291f52571303af4853e7c57fc1798cdc4",
+        "86e9393",
+        "86e9393f296b59e90480bb64884bb5b0a5662c64",
+        "4811926",
+        "4811926e2c566318f9b4087221b7d0c7220d468e",
+        "11ffe70",
+        "11ffe702b20e71ba6536a798a7ad4c910a0cbce6",
     ];
     if NOT_OPERATOR.contains(&lower.as_str()) {
         return false;
@@ -2817,6 +2823,12 @@ fn tip_sha_denylist_rejects_non_clicks() {
         "7fe1985c5ceceb31cc3c43a05aacb49b5624a1f4",
         "0a962b2",
         "0a962b2291f52571303af4853e7c57fc1798cdc4",
+        "86e9393",
+        "86e9393f296b59e90480bb64884bb5b0a5662c64",
+        "4811926",
+        "4811926e2c566318f9b4087221b7d0c7220d468e",
+        "11ffe70",
+        "11ffe702b20e71ba6536a798a7ad4c910a0cbce6",
     ] {
         assert!(!tip_token_is_sha(token), "{token}");
         let line = format!("Allow tip SHA: {token}");
@@ -2829,12 +2841,12 @@ fn tip_sha_denylist_rejects_non_clicks() {
     // It is not on the denylist and is not read with `git rev-parse HEAD`.
 }
 
-/// Prefer tip `8b82bbd` is not an operator click.
+/// Prefer tip `86e9393` is not an operator click.
 ///
 /// When the Mac playbook prefer tip advances, the tip that becomes prefer
 /// must deny its own short+full in that same tip (or the next denylist tip
-/// before playbook flip). This tip denies #115, the #116 head, and the #117
-/// head and leaves its own HEAD accepted.
+/// before playbook flip). This tip denies #118, cited fetch pointer
+/// `4811926`, and the #119 head and leaves its own HEAD accepted.
 #[test]
 fn tip_under_test_sha_is_denied_as_operator_click() {
     let src = fs::read_to_string(root().join("tests/charter_guardrails.rs")).unwrap();
@@ -2842,8 +2854,8 @@ fn tip_under_test_sha_is_denied_as_operator_click() {
     let start = body.find("const NOT_OPERATOR").expect("NOT_OPERATOR");
     let list = &body[start..start + body[start..].find("];").expect("NOT_OPERATOR end")];
     for token in [
-        "8b82bbd",
-        "8b82bbdd8d70304bbd71c4aef28d334093f01efe",
+        "86e9393",
+        "86e9393f296b59e90480bb64884bb5b0a5662c64",
     ] {
         assert!(list.contains(&format!("\"{token}\"")), "{token}");
         assert!(!tip_token_is_sha(token), "{token}");
