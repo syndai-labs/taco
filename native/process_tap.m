@@ -3,12 +3,14 @@
 #import <CoreAudio/AudioHardwareTapping.h>
 #import <CoreAudio/CATapDescription.h>
 
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 typedef struct taco_shared_ring taco_shared_ring;
-// ponytail: weak no-op so this .o links. Tap open does not start IO.
-// Replace with a real ring push when a callback actually runs.
+// ponytail: weak no-op so this .o links. The tap IO proc discards samples.
+// Push into the ring when a session reads tap audio.
 __attribute__((weak)) void taco_ring_push(taco_shared_ring *ring, const uint8_t *bytes,
                                           size_t len) {
     (void)ring;
@@ -146,6 +148,50 @@ static int find_one_bundle(const char *bundle_id, AudioObjectID *out_proc) {
     return TACO_OK;
 }
 
+// Operator window while the aggregate is started. AudioDeviceStart returns
+// before the AudioCapture dialog is answered, so the process has to stay up.
+// 0 starts and stops without waiting. Out of range uses the default.
+// Does not press Allow or Deny.
+static int spike_open_ms(void) {
+    const char *env = getenv("TACO_CAPTURE_SPIKE_OPEN_MS");
+    if (env == NULL || env[0] == '\0') {
+        return 300000;
+    }
+    char *end = NULL;
+    long value = strtol(env, &end, 10);
+    if (end == env || *end != '\0' || value < 0 || value > 600000L) {
+        return 300000;
+    }
+    return (int)value;
+}
+
+static void sleep_ms(int ms) {
+    if (ms <= 0) {
+        return;
+    }
+    struct timespec ts = {
+        .tv_sec = (time_t)(ms / 1000),
+        .tv_nsec = (long)(ms % 1000) * 1000000L,
+    };
+    while (nanosleep(&ts, &ts) != 0 && errno == EINTR) {
+    }
+}
+
+// No-op. Starting the aggregate is what asks for AudioCapture. Samples are not read.
+static OSStatus taco_tap_ioproc(AudioObjectID device, const AudioTimeStamp *now,
+                                const AudioBufferList *input, const AudioTimeStamp *input_time,
+                                AudioBufferList *output, const AudioTimeStamp *output_time,
+                                void *client) {
+    (void)device;
+    (void)now;
+    (void)input;
+    (void)input_time;
+    (void)output;
+    (void)output_time;
+    (void)client;
+    return noErr;
+}
+
 void taco_process_tap_close(uint32_t tap_id, int32_t created_tap, uint32_t aggregate_id,
                             int32_t created_aggregate) {
     if (created_aggregate && aggregate_id != kAudioObjectUnknown) {
@@ -242,6 +288,31 @@ int taco_process_tap_open(int kind, int32_t pid, const char *bundle_id, taco_tap
             set_msg(out->message, sizeof(out->message), "default_output_changed");
             return TACO_REFUSED;
         }
+
+        // TapAutoStart stays 0. A 1 makes AudioDeviceStart wait for the first
+        // buffer from a tapped process. The prompt is this start, not create.
+        AudioDeviceIOProcID io_proc = NULL;
+        status = AudioDeviceCreateIOProcID(aggregate_id, taco_tap_ioproc, NULL, &io_proc);
+        if (status != noErr || io_proc == NULL) {
+            taco_process_tap_close(out->tap_id, 1, out->aggregate_id, 1);
+            memset(out, 0, sizeof(*out));
+            out->status = TACO_OS;
+            set_msg(out->message, sizeof(out->message), "create_ioproc");
+            return TACO_OS;
+        }
+        status = AudioDeviceStart(aggregate_id, io_proc);
+        if (status != noErr) {
+            AudioDeviceDestroyIOProcID(aggregate_id, io_proc);
+            taco_process_tap_close(out->tap_id, 1, out->aggregate_id, 1);
+            memset(out, 0, sizeof(*out));
+            out->status = TACO_OS;
+            set_msg(out->message, sizeof(out->message), "start_tap");
+            return TACO_OS;
+        }
+        sleep_ms(spike_open_ms());
+        AudioDeviceStop(aggregate_id, io_proc);
+        AudioDeviceDestroyIOProcID(aggregate_id, io_proc);
+
         out->status = TACO_OK;
         set_msg(out->message, sizeof(out->message), "ok");
         return TACO_OK;

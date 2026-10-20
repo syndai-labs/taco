@@ -1,7 +1,15 @@
 #!/bin/sh
-# Build a minimal Taco.app around a signed debug taco Mach-O.
-# Copies the binary. Does not codesign, replace, or signal the source.
+# Pack Taco.app from this worktree so AudioCapture uses bundle ai.syndai.taco.
+# Copies a signed debug binary. Does not launch, click, or reset TCC.
+# Off macOS this exits 2. That is not a CoreAudio result.
 set -eu
+
+if [ "$(uname -s 2>/dev/null || echo unknown)" != "Darwin" ]; then
+  echo "platform_unsupported" >&2
+  echo "Taco.app pack runs only on macOS. No CoreAudio result was produced." >&2
+  exit 2
+fi
+
 root=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 src=${1:-$root/target/debug/taco}
 dest=${2:-$root/packaging/Taco.app}
@@ -13,6 +21,10 @@ if [ ! -f "$src" ]; then
 fi
 if [ ! -f "$plist" ]; then
   echo "missing plist: $plist" >&2
+  exit 2
+fi
+if ! grep -a -q "NSAudioCaptureUsageDescription" "$plist"; then
+  echo "plist has no NSAudioCaptureUsageDescription" >&2
   exit 2
 fi
 src_real=$(CDPATH= cd -- "$(dirname "$src")" && pwd)/$(basename "$src")
@@ -29,7 +41,6 @@ mkdir -p "$dest/Contents/MacOS"
 cp -p "$src" "$dest_bin"
 chmod 755 "$dest_bin"
 cp "$plist" "$dest/Contents/Info.plist"
-# Sign the copy inside the bundle, then the bundle. Never "$src".
 codesign --force --sign - --identifier ai.syndai.taco "$dest_bin"
 codesign --force --sign - --identifier ai.syndai.taco "$dest"
 echo "ok: $dest"

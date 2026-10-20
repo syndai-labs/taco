@@ -21,6 +21,9 @@ TIMEOUT is not Don't Allow. PR #51 tip `7c71d50` stays the Partial for the earli
 
 Both an Allow outcome and a Deny outcome are required. The session note written on the Mac is `docs/evidence/m0/mic-operator-resume-session.md`. Allow tip SHA stays `none` and Deny tip SHA stays `none` until that session is committed. M0-AC1 stays unchecked.
 
-AudioCapture is not launched here. That path stays PR #47 tip `ce5690f`.
+Allow tip SHA: none
+Deny tip SHA: none
+
+This resume script does not launch AudioCapture. `scripts/m0-ac1-full-session.sh` packs, runs this resume, then runs `scripts/m0-audiocapture-measure.sh` only after mic LIVE is gone. PR #47 tip `ce5690f` starts the aggregate with `AudioDeviceStart`. PR #67 tip `652614b` is the measure harness.
 
 - [ ] **M0-AC1:** microphone Allow and Deny from Taco.app
