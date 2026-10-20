@@ -187,7 +187,7 @@ Exit 0 is also not an AudioCapture authorization. The same `tccutil` list says A
 
 ## Allow and deny are still missing
 
-AC1 needs an allow and a deny from `taco run` for microphone, system, and an app. These Chrome and system runs did not show a dialog and no button was pressed. That gap is open.
+AC1 needs an allow and a deny from `taco run` for microphone, system, and an app, plus a separately traced destroy. These Chrome and system runs did not show a dialog and no button was pressed. That gap is open. The measure contract and the Allow, Deny, and Cleanup tip SHA lines are in [process-tap-product.md](process-tap-product.md). Exit 0 and the untraced Drop on this tip do not fill them.
 
 `tccutil reset Microphone com.apple.Terminal` printed `Successfully reset Microphone approval status for com.apple.Terminal`. The next `tccutil list -s Microphone -b com.apple.Terminal` still printed `denied`. Terminal's AudioCapture list was already `denied`. A second launch, `osascript` `tell application "Terminal" to do script` of `taco run --source default`, did not start `taco` and did not return. A dialog with Don't Allow and Allow was on screen. Its title was not read, so it is not recorded as a microphone or AudioCapture prompt. Neither button was pressed. The `osascript` process was then killed. No allow and no deny were taken.
 

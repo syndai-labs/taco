@@ -887,8 +887,9 @@ fn audiocapture_allow_and_deny_required_before_ac1() {
     }
 }
 
-/// M0-AC1 cannot flip while mic or AudioCapture Allow/Deny tip SHAs are still `none`.
-/// Acceptance requires microphone, system, and app tap.
+/// M0-AC1 cannot flip while mic, AudioCapture, or process-tap Allow/Deny tip SHAs
+/// are still `none`, or while the process-tap Cleanup tip SHA is still `none`.
+/// Acceptance requires microphone, system, and app tap, plus a traced destroy.
 #[test]
 fn ac1_cannot_flip_while_tip_shas_are_none() {
     assert_ac1_closed_until_tip_shas();
@@ -935,9 +936,40 @@ fn ac1_full_session_chains_pack_resume_then_audiocapture() {
         closed < pack && pack < resume && resume < live && live < measure,
         "session order is pack, mic resume, then AudioCapture only after mic LIVE is gone"
     );
+    let pair = arm.find("pair_complete").expect("pair");
+    let tap = arm.find("m0-process-tap-measure.sh").expect("process-tap");
+    assert!(
+        measure < pair && pair < tap,
+        "process-tap measure follows a completed AudioCapture pair"
+    );
+    let between = &arm[pair..tap];
+    assert!(
+        between.contains("mic LIVE"),
+        "process-tap waits until the mic watch is gone"
+    );
+    assert!(
+        between.contains("Do not reset TCC"),
+        "a live mic must not reach a TCC reset"
+    );
+    assert!(
+        !between.contains("tccutil reset"),
+        "after the AudioCapture pair the session must not reset TCC"
+    );
+    assert!(arm.contains("after-pair"));
+    assert!(
+        !arm.contains("process-tap-measure.sh\" --arm"),
+        "full session must not re-prompt the system sheet via process-tap --arm"
+    );
+    assert!(
+        script.contains("m0-audiocapture-measure.sh\" system >&2"),
+        "AudioCapture stdout must not hide the Allow/Deny word"
+    );
     assert!(!arm.contains("prompt_audio third"));
     let prompts = arm.matches("prompt_audio").count();
-    assert_eq!(prompts, 2, "Allow then Deny, and no third AudioCapture open");
+    assert_eq!(
+        prompts, 2,
+        "Allow then Deny, and no third AudioCapture open"
+    );
 
     let note = read("docs/evidence/m0/ac1-full-session.md");
     assert!(note.contains("Status: **Partial**"));
@@ -945,7 +977,9 @@ fn ac1_full_session_chains_pack_resume_then_audiocapture() {
     assert!(note.contains("No Deny was recorded here."));
     assert!(note.contains("Allow tip SHA: none"));
     assert!(note.contains("Deny tip SHA: none"));
+    assert!(note.contains("Cleanup tip SHA: none"));
     assert!(note.contains("TIMEOUT is not Deny."));
+    assert!(note.contains("Drop is not a Cleanup tip SHA."));
     assert!(note.contains("a1c5c32"));
     assert!(note.contains("652614b"));
     assert!(note.contains("- [ ]"));
@@ -966,7 +1000,10 @@ fn ac1_full_session_chains_pack_resume_then_audiocapture() {
     assert!(stderr.contains("platform_unsupported"), "{combined}");
     assert!(combined.contains("recorded: none"));
     assert!(combined.contains("Allow tip SHA: none"));
+    assert!(combined.contains("Cleanup tip SHA: none"));
     assert!(combined.contains("M0-AC1 stays unchecked."));
+    assert!(combined
+        .contains("M0-AC1 stays unchecked while Allow, Deny, or Cleanup tip SHA is still none."));
     assert!(!combined.contains("granted"), "{combined}");
     assert!(!combined.contains("mic settled"), "{combined}");
     assert!(!combined.contains("raising SecurityAgent"), "{combined}");
@@ -988,17 +1025,21 @@ fn full_session(args: &[&str]) -> (bool, String) {
 fn assert_ac1_closed_until_tip_shas() {
     let mic = read("docs/evidence/m0/mic-operator-resume.md");
     let audio = read("docs/evidence/m0/audiocapture-measure.md");
+    let tap = read("docs/evidence/m0/process-tap-product.md");
     let mic_ready = named_tip_sha(&mic, "Allow tip SHA:") && named_tip_sha(&mic, "Deny tip SHA:");
     let audio_ready =
         named_tip_sha(&audio, "Allow tip SHA:") && named_tip_sha(&audio, "Deny tip SHA:");
-    if mic_ready && audio_ready {
+    let tap_ready = named_tip_sha(&tap, "Allow tip SHA:")
+        && named_tip_sha(&tap, "Deny tip SHA:")
+        && named_tip_sha(&tap, "Cleanup tip SHA:");
+    if mic_ready && audio_ready && tap_ready {
         return;
     }
     let mut checked = Vec::new();
     checked_m0_ac1(&root().join("docs"), &mut checked);
     assert!(
         checked.is_empty(),
-        "M0-AC1 checked while mic or AudioCapture Allow/Deny tip SHAs are still none: {checked:?}"
+        "M0-AC1 checked while Allow, Deny, or Cleanup tip SHA is still none: {checked:?}"
     );
 }
 
@@ -1037,6 +1078,298 @@ fn checked_m0_ac1(dir: &Path, out: &mut Vec<String>) {
             out.push(path.display().to_string());
         }
     }
+}
+
+/// Process-tap Allow, Deny, and Cleanup stay `none` until a Mac operator run.
+/// Linux `--arm` is `platform_unsupported`, not a CoreAudio result.
+#[test]
+fn process_tap_measure_keeps_tip_shas_none() {
+    let note = read("docs/evidence/m0/process-tap-product.md");
+    assert!(note.contains("It is not a Mac session."));
+    assert!(note.contains("Allow tip SHA: none"));
+    assert!(note.contains("Deny tip SHA: none"));
+    assert!(note.contains("Cleanup tip SHA: none"));
+    assert!(note.contains("Drop is not a Cleanup tip SHA."));
+    assert!(note.contains("TIMEOUT is not Deny."));
+    assert!(note.contains("open_ms: 300000"));
+    assert!(note.contains("hold_ms: 1800000"));
+    assert!(note.contains("app:com.google.Chrome"));
+    assert!(note.contains("destroy_traced: no"));
+    assert!(!named_tip_sha(&note, "Allow tip SHA:"));
+    assert!(!named_tip_sha(&note, "Deny tip SHA:"));
+    assert!(!named_tip_sha(&note, "Cleanup tip SHA:"));
+    assert!(note.contains("- [ ]"));
+    assert!(!note.contains("- [x]") && !note.contains("- [X]"));
+    assert_ac1_closed_until_tip_shas();
+
+    let script = read("scripts/m0-process-tap-measure.sh");
+    assert!(script.contains("platform_unsupported"));
+    assert!(script.contains("Darwin"));
+    assert!(script.contains("open -W"));
+    assert!(script.contains("TACO_APP"));
+    assert!(script.contains("ai.syndai.taco"));
+    assert!(script.contains("TACO_CAPTURE_SPIKE_OPEN_MS"));
+    assert!(script.contains("TACO_CAPTURE_SPIKE_HOLD_MS"));
+    assert!(script.contains("OPEN_MS=300000"));
+    assert!(script.contains("HOLD_MS=1800000"));
+    assert!(!script.contains("${OPEN_MS"));
+    assert!(!script.contains("${HOLD_MS"));
+    assert!(script.contains("TIMEOUT is not Deny."));
+    assert!(script.contains("No service row is not Deny."));
+    assert!(script.contains("Watcher does not click."));
+    assert!(script.contains("[t]aco run --source default"));
+    assert!(script.contains("app:com.google.Chrome"));
+    assert!(script.contains("Drop is not a Cleanup tip SHA."));
+    assert!(script.contains("AudioHardwareDestroyAggregateDevice"));
+    assert!(script.contains("AudioHardwareDestroyProcessTap"));
+    assert!(!script.contains("osascript"));
+    assert!(!script.contains("pkill"));
+    assert!(!script.contains("killall"));
+    assert!(!script.contains("target/debug/taco"));
+    assert!(!script.contains("reset Microphone"));
+    let darwin = script.find("!= \"Darwin\"").expect("darwin gate");
+    let launch = script.find("open -W \\\n").expect("launch");
+    assert!(darwin < launch, "fail closed before any Taco.app launch");
+
+    let prompt = script.find("\nprompt_system()").expect("prompt_system");
+    let prompt_end = script
+        .find("\n# Safe chain step")
+        .expect("after-pair comment");
+    let prompt_body = &script[prompt..prompt_end];
+    let live = prompt_body.find("mic LIVE").expect("mic check");
+    let reset = prompt_body
+        .find("tccutil reset AudioCapture")
+        .expect("reset");
+    assert!(live < reset, "do not reset TCC while a mic is live");
+
+    let after = script.find("\nafter_pair()").expect("after_pair");
+    let after_end = script.find("\narm_measure()").expect("arm_measure");
+    let after_body = &script[after..after_end];
+    assert!(!after_body.contains("tccutil reset"));
+    assert!(script.contains("APP_HAL=app:com.google.Chrome"));
+    assert!(after_body.contains("$APP_HAL"));
+    assert!(after_body.contains("Not prompting system again."));
+    assert!(after_body.contains("Not resetting TCC."));
+    assert!(after_body.contains("Drop is not a Cleanup tip SHA."));
+
+    if cfg!(target_os = "macos") {
+        return;
+    }
+    let path = root().join("scripts/m0-process-tap-measure.sh");
+    for args in [
+        Vec::<&str>::new(),
+        vec!["--arm"],
+        vec!["gate"],
+        vec!["system"],
+        vec!["app:com.google.Chrome"],
+        vec!["pid:1"],
+        vec!["after-pair"],
+    ] {
+        let output = Command::new("sh")
+            .arg(&path)
+            .args(&args)
+            .output()
+            .expect("process-tap measure");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let combined = format!("{stdout}{stderr}");
+        assert_eq!(output.status.code(), Some(2), "{args:?}: {combined}");
+        assert!(
+            stderr.contains("platform_unsupported"),
+            "{args:?}: {combined}"
+        );
+        assert!(stderr.contains("Allow tip SHA: none"), "{combined}");
+        assert!(stderr.contains("Deny tip SHA: none"), "{combined}");
+        assert!(stderr.contains("Cleanup tip SHA: none"), "{combined}");
+        assert!(stderr.contains(
+            "M0-AC1 stays unchecked while Allow, Deny, or Cleanup tip SHA is still none."
+        ));
+        assert!(!combined.contains("outcome=Allow"), "{combined}");
+        assert!(!combined.contains("outcome=Deny"), "{combined}");
+        assert!(!combined.contains("verdict=pass"), "{combined}");
+        assert!(!combined.contains("granted"), "{combined}");
+        assert!(
+            !stdout.contains("mic settled"),
+            "off macOS must not report a settled mic gate: {stdout}"
+        );
+        assert!(!combined.contains("destroy_traced: yes"), "{combined}");
+    }
+    assert!(!root().join("packaging/Taco.app").exists());
+}
+
+#[test]
+fn process_tap_product_path_refuses_linux_success() {
+    let consequence =
+        "Partial — process taps are on taco run; Mac CoreAudio and operator Allow/Deny stay open; Linux tap success is Stop.";
+    for path in [
+        "docs/evidence/m0/process-tap-product.md",
+        "docs/roadmap/risks-and-decisions.md",
+        "docs/roadmap/m0-feasibility.md",
+    ] {
+        let text = read(path);
+        assert!(
+            text.contains(consequence),
+            "{path} drops the process-tap Partial"
+        );
+        assert!(text.contains("cd9a4c8"), "{path} drops the #11 tip");
+        assert!(text.contains("- [ ]"), "{path} drops the open box");
+        assert!(!text.contains("- [x]") && !text.contains("- [X]"), "{path}");
+    }
+    let note = read("docs/evidence/m0/process-tap-product.md");
+    assert!(note.contains("Status: **Partial**."));
+    assert!(note.contains("a1c5c32"));
+    assert!(note.contains("session::start_capture"));
+    assert!(note.contains("open_system_tap"));
+    assert!(note.contains("open_bundle_tap"));
+    assert!(note.contains("open_pid_tap"));
+    assert!(note.contains("AudioHardwareCreateProcessTap"));
+    assert!(note.contains("app:com.google.Chrome"));
+    assert!(note.contains("pid:688"));
+    assert!(note.contains("Allow tip SHA: none"));
+    assert!(note.contains("Deny tip SHA: none"));
+    assert!(note.contains("Cleanup tip SHA: none"));
+    assert!(note
+        .contains("M0-AC1 stays unchecked while Allow, Deny, or Cleanup tip SHA is still none."));
+    assert!(note.contains("Drop is not a Cleanup tip SHA."));
+    assert!(note.contains("M0-AC1 stays unchecked"));
+    assert!(note.contains("platform_unsupported"));
+    assert!(read("docs/roadmap/m0-feasibility.md").contains("- [ ] **M0-AC1:**"));
+
+    let session_src = read("src/session.rs");
+    let start = fn_body(&session_src, "pub fn start_capture");
+    let gate = start.find("platform_supported()").expect("platform gate");
+    let system = start.find("open_system_tap()").expect("system tap");
+    let bundle = start.find("open_bundle_tap(").expect("app tap");
+    let pid = start.find("open_pid_tap(").expect("pid tap");
+    assert!(
+        gate < system && system < bundle && bundle < pid,
+        "platform gate must precede the product tap dispatch"
+    );
+    let main = read("src/main.rs");
+    let run = main.find("Commands::Run").expect("taco run");
+    let call = main
+        .find("session::start_capture")
+        .expect("product capture");
+    assert!(run < call, "taco run must call start_capture");
+
+    let tap = read("src/capture/process_tap.rs");
+    assert!(tap.contains("Which::System | Which::Pid(_) | Which::Bundle(_) => Err(NOT_WIRED)"));
+    let macos_cfg = tap
+        .find("#[cfg(target_os = \"macos\")]")
+        .expect("macos cfg");
+    let macos_ok = tap.find("Ok(ProcessTap { inner })").expect("macos open");
+    assert!(macos_cfg < macos_ok, "tap Ok stays inside the macOS cfg");
+    let build = read("native/tap/build.rs");
+    let early = build.find("!= \"macos\"").expect("os gate");
+    let compile = build.find("cc::Build").expect("compile");
+    assert!(
+        early < compile,
+        "non-macOS must return before compiling the tap"
+    );
+    assert!(build[early..compile].contains("return;"));
+    assert!(read("native/process_tap.m").contains("AudioHardwareCreateProcessTap"));
+    assert!(read("src/lib.rs").contains("forbid(unsafe_code)"));
+
+    let script = read("scripts/qual/T-M0-SPIKE-SOURCES");
+    assert!(script.contains("echo \"verdict=not_run\""));
+    assert!(!script.contains("echo \"verdict=pass\""));
+    assert!(script.contains("echo \"linux_coreaudio=refused\""));
+    assert!(script.contains("echo \"process_tap=taco_run\""));
+    assert!(script.contains("echo \"allow_tip=none\""));
+    assert!(script.contains("echo \"deny_tip=none\""));
+    assert!(script.contains("echo \"cleanup_tip=none\""));
+    let spike = spike_sources_evidence();
+    assert_eq!(spike.status, 2);
+    assert!(spike.text.contains("verdict=not_run"));
+    assert!(spike.text.contains("linux_coreaudio=refused"));
+    assert!(spike.text.contains("cleanup_tip=none"));
+    assert!(!spike.text.contains("verdict=pass"));
+
+    assert!(std::env::var_os("TACO_CAPTURE_SPIKE").is_none());
+    for raw in ["system", "app:com.apple.Safari", "pid:42"] {
+        let mut session = Session::new();
+        let ok = taco::session::PreflightOk {
+            selector: selector::parse_selector(raw).unwrap(),
+            pair: language::parse_pair("en", "zh").unwrap(),
+        };
+        assert_eq!(
+            taco::session::start_capture(&mut session, &ok).unwrap_err(),
+            taco::error::ErrorCode::CaptureNotAvailable,
+            "{raw}"
+        );
+        assert!(!session.capture_started);
+    }
+
+    if !cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+        assert!(!taco::session::platform_supported());
+        assert!(!taco::capture::spike_linked());
+        let before = taco::capture::backend_calls();
+        assert!(taco::capture::open_system_tap().is_err());
+        assert!(taco::capture::open_bundle_tap("com.apple.Safari").is_err());
+        assert!(taco::capture::open_pid_tap(42).is_err());
+        assert_eq!(taco::capture::backend_calls(), before);
+        for source in ["system", "app:com.apple.Safari", "pid:42"] {
+            for spike_on in [false, true] {
+                let output = taco_run(source, spike_on);
+                assert_eq!(
+                    output.status.code(),
+                    Some(1),
+                    "{source} spike={spike_on} status"
+                );
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                assert!(
+                    stderr.contains("platform_unsupported"),
+                    "{source} spike={spike_on}: {stderr}"
+                );
+                assert!(
+                    !stderr.contains("AudioHardwareCreateProcessTap"),
+                    "{stderr}"
+                );
+                assert!(String::from_utf8_lossy(&output.stdout).trim().is_empty());
+            }
+        }
+    }
+
+    let mut checked = Vec::new();
+    checked_m0_ac1(&root().join("docs"), &mut checked);
+    assert!(
+        checked.is_empty(),
+        "M0-AC1 checked while process-tap Allow/Deny is Mac-only: {checked:?}"
+    );
+}
+
+struct SpikeEvidence {
+    status: i32,
+    text: String,
+}
+
+fn spike_sources_evidence() -> SpikeEvidence {
+    let dir = std::env::temp_dir().join(format!("taco-tap-product-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+    let out = dir.join("evidence.txt");
+    let status = Command::new("sh")
+        .arg(root().join("scripts/qual/T-M0-SPIKE-SOURCES"))
+        .arg(&out)
+        .status()
+        .expect("T-M0-SPIKE-SOURCES");
+    let text = fs::read_to_string(&out).expect("spike evidence");
+    let _ = fs::remove_dir_all(&dir);
+    SpikeEvidence {
+        status: status.code().unwrap_or(0),
+        text,
+    }
+}
+
+fn taco_run(source: &str, spike: bool) -> std::process::Output {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_taco"));
+    cmd.args(["run", "--source", source, "--from", "en", "--to", "zh"]);
+    if spike {
+        cmd.env("TACO_CAPTURE_SPIKE", "1");
+    } else {
+        cmd.env_remove("TACO_CAPTURE_SPIKE");
+    }
+    cmd.output().expect("spawn taco")
 }
 
 fn fn_body<'a>(src: &'a str, name: &str) -> &'a str {
