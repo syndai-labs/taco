@@ -514,6 +514,8 @@ fn ac2_ac3_cannot_flip_while_stop_shas_stand() {
     let coreml_subgraph_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "88eda06");
     let silero_pin_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "aab661c");
     let metal_teardown_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "232ea78");
+    let silero_only_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "2ff5c4f");
+    let metal_refcount_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "e06ea0e");
     assert!(
         metal_device_stands,
         "Stop tip 0829a70 must stand in docs/evidence/m0/ac2-ac3-open.md"
@@ -530,12 +532,22 @@ fn ac2_ac3_cannot_flip_while_stop_shas_stand() {
         metal_teardown_stands,
         "Stop tip 232ea78 must stand in docs/evidence/m0/ac2-ac3-open.md"
     );
+    assert!(
+        silero_only_stands,
+        "Stop tip 2ff5c4f must stand in docs/evidence/m0/ac2-ac3-open.md"
+    );
+    assert!(
+        metal_refcount_stands,
+        "Stop tip e06ea0e must stand in docs/evidence/m0/ac2-ac3-open.md"
+    );
     if !vad_stands
         && !residency_stands
         && !metal_device_stands
         && !coreml_subgraph_stands
         && !silero_pin_stands
         && !metal_teardown_stands
+        && !silero_only_stands
+        && !metal_refcount_stands
     {
         return;
     }
@@ -589,6 +601,17 @@ fn ac2_ac3_cannot_flip_while_stop_shas_stand() {
             ("use-after-free", "unsafe Metal device teardown"),
             ("c9a6f6f", "#64 ORT upgrade Stop"),
             ("an ORT upgrade is out of M0", "ORT upgrade stays out of M0"),
+            ("2ff5c4f", "#69 Silero-only Stop"),
+            ("e06ea0e", "#70 Metal refcount Stop"),
+            (
+                "charter forbids an alternate VAD pin",
+                "no alternate VAD pin",
+            ),
+            ("Silero-only", "VAD stays Silero"),
+            (
+                "still a use-after-free on prove cycle 2",
+                "refcount free is still UAF",
+            ),
         ] {
             assert!(text.contains(sha), "{path} drops {why} `{sha}`");
         }
