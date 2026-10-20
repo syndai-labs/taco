@@ -58,7 +58,7 @@ Status: **Partial**. M0-AC4 stays unchecked. `C2_BLOCKED` is true. `SIGNED_INSTA
 Charter accept is blocked: M0-AC4 cannot be checked while SIGNED_INSTALL=None or C2_BLOCKED stands.
 The launchd user-agent run does not close M0-AC4.
 Record: [ac4-partial.md](../evidence/m0/ac4-partial.md).
-PR #95 tip `0ee1065`, PR #96 tip `008cacb`, PR #97 tip `d0877e0`, PR #98 tip `7f8ab75`, PR #99 tip `e2b7b01`, PR #100 tip `c32735f`, PR #101 tip `58f0fe5`, PR #102 tip `a0b6d95`, and PR #103 tip `f5494b4` do not name C2. Mac prefer tip is #103 `f5494b4`, not #95. None of those tips is a Metal pass.
+PR #95 tip `0ee1065`, PR #96 tip `008cacb`, PR #97 tip `d0877e0`, PR #98 tip `7f8ab75`, PR #99 tip `e2b7b01`, PR #100 tip `c32735f`, PR #101 tip `58f0fe5`, PR #102 tip `a0b6d95`, PR #103 tip `f5494b4`, PR #105 tip `e6fd0a9`, PR #106 tip `7f11ab8`, PR #107 tip `eba8eb1`, and PR #108 tip `32986ad` do not name C2. Mac prefer tip is #108 `32986ad`, not #107. This cite does not replace it. None of those tips is a Metal pass.
 
 | Dimension | Proposed starting point | Required evidence |
 | --- | --- | --- |
