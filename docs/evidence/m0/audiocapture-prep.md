@@ -121,6 +121,8 @@ Microphone, ScreenCapture, or SystemAudioRecording.
 
 ## After the microphone watch has exited
 
+The click path is [`audiocapture-measure.md`](audiocapture-measure.md). Run `scripts/m0-audiocapture-measure.sh gate`, then one `system` launch through Taco.app. Josh clicks Allow, then Don't Allow on a second launch after `tccutil reset AudioCapture ai.syndai.taco` only. Legal outcomes are Allow, Deny, and TIMEOUT. TIMEOUT is not Deny. The commands below were the pre-start notes. They are not a recorded click.
+
 Confirm the watch is idle:
 
 ```sh
@@ -140,8 +142,9 @@ cargo build
 codesign -dv --verbose=2 ./target/debug/taco
 ```
 
-`Identifier=ai.syndai.taco` and `Info.plist entries=5`. Launch from
-Terminal.app. Spikes launched under Cursor were attributed to responsible
+`Identifier=ai.syndai.taco` and `Info.plist entries=5`. The click launch is
+`scripts/m0-audiocapture-measure.sh` through `open -W` on Taco.app, not this
+debug binary. Spikes launched under Cursor were attributed to responsible
 bundle `com.todesktop.230313mzl4w4u92`, preflighted Microphone, and wrote no
 `ai.syndai.taco` service row.
 
