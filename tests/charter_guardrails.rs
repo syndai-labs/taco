@@ -1072,8 +1072,11 @@ fn process_tap_tips_refuse_ac1_flip_while_either_sha_is_none() {
 
     let allow = one_tip(&note, "Allow tip SHA:");
     let deny = one_tip(&note, "Deny tip SHA:");
+    let after_pair = one_tip(&note, "After-pair tip SHA:");
     assert_ne!(allow, "TIMEOUT", "TIMEOUT is not Allow");
     assert_ne!(deny, "TIMEOUT", "TIMEOUT is not Deny");
+    assert_eq!(after_pair, "none", "After-pair tip SHA");
+    assert!(!tip_token_is_sha(&after_pair), "After-pair tip SHA");
     let mut cleanup = Vec::new();
     for label in CLEANUP_LABELS {
         if let Some(token) = optional_tip(&note, label) {
@@ -1332,7 +1335,7 @@ fn assert_ac1_closed_for(mic: &str, audio: &str, tap: &str, checked: bool) {
     );
 }
 
-/// Early return only when every tip SHA is hex and the process-tap note traces destroy.
+/// Early return only when every tip SHA is hex, including After-pair, and the process-tap note traces destroy. Missing sheet is not Deny.
 fn ac1_tip_shas_ready(mic: &str, audio: &str, tap: &str) -> bool {
     named_tip_sha(mic, "Allow tip SHA:")
         && named_tip_sha(mic, "Deny tip SHA:")
@@ -1341,6 +1344,7 @@ fn ac1_tip_shas_ready(mic: &str, audio: &str, tap: &str) -> bool {
         && named_tip_sha(tap, "Allow tip SHA:")
         && named_tip_sha(tap, "Deny tip SHA:")
         && named_tip_sha(tap, "Cleanup tip SHA:")
+        && named_tip_sha(tap, "After-pair tip SHA:")
         && cleanup_destroy_traced(tap)
 }
 
@@ -1405,9 +1409,12 @@ fn m0_cleanup_hex_without_destroy_refuses_ac1() {
     let audio = read("docs/evidence/m0/audiocapture-measure.md");
     let tap = read(TAP);
     assert!(tap.contains("Cleanup tip SHA: none"));
+    assert!(tap.contains("After-pair tip SHA: none"));
+    assert!(tap.contains("Missing sheet is not Deny."));
     assert!(tap.contains("destroy_traced: no"));
     assert!(tap.contains(RULE));
     assert!(!named_tip_sha(&tap, "Cleanup tip SHA:"));
+    assert!(!named_tip_sha(&tap, "After-pair tip SHA:"));
     assert!(!cleanup_destroy_traced(&tap));
     assert!(!ac1_tip_shas_ready(&mic, &audio, &tap));
     assert_ac1_closed_until_tip_shas();
@@ -1417,8 +1424,11 @@ fn m0_cleanup_hex_without_destroy_refuses_ac1() {
     let mic_hex = fill(&fill(&mic, "Allow tip SHA:"), "Deny tip SHA:");
     let audio_hex = fill(&fill(&audio, "Allow tip SHA:"), "Deny tip SHA:");
     let tap_hex = fill(
-        &fill(&fill(&tap, "Allow tip SHA:"), "Deny tip SHA:"),
-        "Cleanup tip SHA:",
+        &fill(
+            &fill(&fill(&tap, "Allow tip SHA:"), "Deny tip SHA:"),
+            "Cleanup tip SHA:",
+        ),
+        "After-pair tip SHA:",
     );
     let open_box = format!("- [{}] **M0-AC1:**", " ");
     let checked_box = format!("- [{}] **M0-AC1:**", "x");
@@ -1436,9 +1446,19 @@ fn m0_cleanup_hex_without_destroy_refuses_ac1() {
     assert!(!cleanup_destroy_traced(&stripped));
     assert_checked_ac1_fails(&mic_hex, &audio_hex, &stripped);
 
+    let after_none = destroy_record_yes(&fill(
+        &fill(&fill(&tap, "Allow tip SHA:"), "Deny tip SHA:"),
+        "Cleanup tip SHA:",
+    ));
+    assert!(cleanup_destroy_traced(&after_none));
+    assert_eq!(one_tip(&after_none, "After-pair tip SHA:"), "none");
+    assert!(!ac1_tip_shas_ready(&mic_hex, &audio_hex, &after_none));
+    assert_checked_ac1_fails(&mic_hex, &audio_hex, &after_none);
+
     let live = read(TAP);
     assert_eq!(live, tap);
     assert!(live.contains("Cleanup tip SHA: none"));
+    assert!(live.contains("After-pair tip SHA: none"));
     assert!(!live.contains(SHA));
     assert!(!live.contains("- [x]") && !live.contains("- [X]"));
 }
@@ -1688,6 +1708,8 @@ fn process_tap_measure_keeps_tip_shas_none() {
     assert!(note.contains("Allow tip SHA: none"));
     assert!(note.contains("Deny tip SHA: none"));
     assert!(note.contains("Cleanup tip SHA: none"));
+    assert!(note.contains("After-pair tip SHA: none"));
+    assert!(note.contains("Missing sheet is not Deny."));
     assert!(note.contains("Drop is not a Cleanup tip SHA."));
     assert!(note.contains("TIMEOUT is not Deny."));
     assert!(note.contains("open_ms: 300000"));
@@ -1697,6 +1719,7 @@ fn process_tap_measure_keeps_tip_shas_none() {
     assert!(!named_tip_sha(&note, "Allow tip SHA:"));
     assert!(!named_tip_sha(&note, "Deny tip SHA:"));
     assert!(!named_tip_sha(&note, "Cleanup tip SHA:"));
+    assert!(!named_tip_sha(&note, "After-pair tip SHA:"));
     assert!(note.contains("- [ ]"));
     assert!(!note.contains("- [x]") && !note.contains("- [X]"));
     assert_ac1_closed_until_tip_shas();
@@ -2044,12 +2067,81 @@ fn m0_ac1_partial_refuses_checked_boxes() {
     );
 }
 
+/// #51 tip `7c71d50` timeout pids, vendored in `mic-operator-timeouts.md`.
+/// TIMEOUT is not Deny. Does not replace the #77 consequence in the roadmap.
+#[test]
+fn ac1_cannot_flip_while_operator_timeout_partial_stands() {
+    let note = read("docs/evidence/m0/mic-operator-timeouts.md");
+    assert!(
+        note.contains("TIMEOUT is not Don't Allow."),
+        "TIMEOUT must not be recorded as Deny"
+    );
+    assert!(
+        note.contains("not an operator Deny"),
+        "a pair-query denied with no service row is not Deny"
+    );
+    for pid in ["39380", "54200", "65422", "71152", "76134", "82331", "89220"] {
+        assert!(note.contains(pid), "timeout note drops pid {pid}");
+    }
+    for pid in ["65422", "71152", "76134", "82331", "89220"] {
+        assert!(
+            note.contains(&format!("| {pid} | `OPEN_MS TIMEOUT` |")),
+            "pid {pid} is not an OPEN_MS TIMEOUT row"
+        );
+    }
+    assert_eq!(one_tip(&note, "Allow tip SHA:"), "none");
+    assert_eq!(one_tip(&note, "Deny tip SHA:"), "none");
+    assert!(!named_tip_sha(&note, "Allow tip SHA:"));
+    assert!(!named_tip_sha(&note, "Deny tip SHA:"));
+    assert!(note.contains("- [ ]"));
+    assert!(!note.contains("- [x]") && !note.contains("- [X]"));
+    let consequence =
+        "Partial — mic and AudioCapture Allow/Deny tip SHAs are none; consequence AC1 open.";
+    for path in [
+        "docs/roadmap/risks-and-decisions.md",
+        "docs/roadmap/m0-feasibility.md",
+    ] {
+        assert!(
+            read(path).contains(consequence),
+            "{path} dropped the #77 consequence"
+        );
+    }
+    let mut checked = Vec::new();
+    checked_m0_ac1(&root().join("docs"), &mut checked);
+    assert!(
+        checked.is_empty(),
+        "M0-AC1 checked while operator TIMEOUT pids stand: {checked:?}"
+    );
+}
+
 /// Copied from #76 tip `2d9679f`. That tip is not an ancestor of this measure tip.
-/// The function body is unchanged. The Partial note cites it and does not replace it.
+/// The Partial note cites it and does not replace it. The two Stop notes must exist.
 #[test]
 fn ac2_ac3_cannot_flip_while_stop_shas_stand() {
-    let vad_stands = stop_sha_stands("docs/evidence/m0/vad-metal-ep.md", "d194012");
-    let residency_stands = stop_sha_stands("docs/evidence/m0/engines-residency.md", "a0e1614");
+    let vad_path = "docs/evidence/m0/vad-metal-ep.md";
+    let residency_path = "docs/evidence/m0/engines-residency.md";
+    assert!(
+        root().join(vad_path).is_file(),
+        "{vad_path} must exist so the Stop text is real"
+    );
+    assert!(
+        root().join(residency_path).is_file(),
+        "{residency_path} must exist so the Stop text is real"
+    );
+    let vad = read(vad_path);
+    let residency = read(residency_path);
+    assert!(vad.contains("d194012"), "{vad_path} drops Stop tip d194012");
+    assert!(
+        residency.contains("a0e1614"),
+        "{residency_path} drops Stop tip a0e1614"
+    );
+    assert!(!vad.contains("ac2=1"), "{vad_path} claims ac2=1");
+    assert!(
+        !residency.contains("ac2=1"),
+        "{residency_path} claims ac2=1"
+    );
+    let vad_stands = stop_sha_stands(vad_path, "d194012");
+    let residency_stands = stop_sha_stands(residency_path, "a0e1614");
     let metal_device_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "0829a70");
     let coreml_subgraph_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "88eda06");
     let silero_pin_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "aab661c");
