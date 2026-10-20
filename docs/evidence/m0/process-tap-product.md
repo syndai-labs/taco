@@ -5,8 +5,9 @@ Status: **Partial**. `system`, `app:`, and `pid:` already run through product `t
 Allow tip SHA: none
 Deny tip SHA: none
 Cleanup tip SHA: none
+After-pair tip SHA: none
 
-M0-AC1 stays unchecked while Allow, Deny, or Cleanup tip SHA is still none. When a Cleanup tip SHA or Destroy tip SHA line is present, `none` on that line also refuses the flip.
+M0-AC1 stays unchecked while Allow, Deny, or Cleanup tip SHA is still none. When a Cleanup tip SHA or Destroy tip SHA line is present, `none` on that line also refuses the flip. After-pair tip SHA stays `none` on this tip. Missing sheet is not Deny.
 
 Product-path freeze is #75 tip `dc1b9be` (`dc1b9bef6735d37315e4a32ef0893dd2ac20df11`), brought onto this session branch. That SHA is not an Allow, Deny, or Cleanup tip.
 
@@ -35,7 +36,7 @@ PR #11 tip `cd9a4c8` (`cd9a4c8e0c66727c7c66c50923419f8800950dda`, `cursor/m0-pro
 
 They are not copied into the tip SHA lines above. This tree did not show the sheet. A second system Allow/Deny after that pair is the same service, not a new decision. `scripts/m0-ac1-full-session.sh` therefore runs `scripts/m0-process-tap-measure.sh after-pair` only once the AudioCapture pair is complete and no `taco run --source default` is left. `after-pair` does not reset TCC and does not open `system` again.
 
-The app source on that step is `app:com.google.Chrome`, the HAL client recorded in [process-tap.md](process-tap.md). Terminal is not a HAL client. A missing sheet while AudioCapture is already granted or denied is the same service, not Deny. `capture_not_available` is not Deny.
+The app source on that step is `app:com.google.Chrome`, the HAL client recorded in [process-tap.md](process-tap.md). Terminal is not a HAL client. Missing sheet is not Deny. A missing sheet while AudioCapture is already granted or denied is the same service, not Deny. `capture_not_available` is not Deny.
 
 Standalone `scripts/m0-process-tap-measure.sh --arm` is the other entry: system Allow, then Don't Allow, then one Chrome launch. Do not run it after the full session. That would prompt the same system sheet again.
 
