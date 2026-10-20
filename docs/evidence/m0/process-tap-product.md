@@ -25,7 +25,7 @@ PR #11 tip `cd9a4c8` (`cd9a4c8e0c66727c7c66c50923419f8800950dda`, `cursor/m0-pro
 - `TACO_CAPTURE_SPIKE=1` `--source system` exited 0. No dialog. Not Allow. Not Deny.
 - `app:com.google.Chrome` and `pid:688` exited 0. `tccd` logged a microphone preflight only (`authValue=2`). No `AUTHREQ_PROMPTING`. No `kTCCServiceAudioCapture` line. Exit 0 is not an AudioCapture allow.
 - `app:com.apple.Terminal` and its pid missed. CoreAudio's HAL client list does not include Terminal. That miss stays not-found. It is not a binding bug and it does not become a system tap.
-- `EXTERNAL_INPUT.display_name` is `syndai-iphone-02 Microphone`. `qualified_in_m0` stays false.
+- `EXTERNAL_INPUT.display_name` is `syndai-iphone-02 Microphone`, frozen at tip `cd9a4c8`. `qualified_in_m0` stays false. The reserved name does not prove external input. No iPhone capture ran on this tip.
 - `T-M0-SPIKE-SOURCES` stays `verdict=not_run`.
 - Exit 0 is not a Cleanup tip SHA. The note on that tip says Drop destroys the tap and the private aggregate, and that destroy was not separately traced in a log. Drop is not a Cleanup tip SHA.
 
