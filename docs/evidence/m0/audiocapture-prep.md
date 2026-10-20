@@ -21,3 +21,5 @@ At 01:55 KST pid 76134 was `taco run --source default --from en --to zh` from th
 `denied` from the pair query, with the bundle absent from `tccutil list -s`, is the same output as a bundle that has never been asked. It is not an operator Deny.
 
 - [ ] **M0-AC1:** A report proves microphone, system, and app tap feasibility from the intended CLI artifact, including allow/deny and cleanup.
+
+PR #47 tip `ce5690f` ([audiocapture-start-mac.md](audiocapture-start-mac.md)) is newer than code tip `f9b08be`. On that branch `4811926` calls `AudioDeviceStart` on the spike aggregate and `f9b08be` sets the unset open default to `300000`. The Mac note did not start the tap (pid 97484 was still `taco run --source default`). No dialog and no button. This branch does not replay `native/process_tap.m`. The #44 gap above stands on this branch. M0-AC1 stays unchecked.
