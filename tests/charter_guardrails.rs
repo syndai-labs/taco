@@ -600,6 +600,52 @@ fn inference_adapters_refuse_in_process() {
     assert!(src_text().contains("fn initialize"));
 }
 
+#[test]
+fn ort_coreml_upgrade_cannot_flip_ac2() {
+    // #59 ed9ee10 locks AC2 while 88eda06 stands. This lock is the registry
+    // fact behind that Stop: main's factory blob is still v1.31.0.
+    let note = read("docs/evidence/m0/vad-ort-coreml-builders.md");
+    for needle in [
+        "891704e8d9ca33411424c97ec7dc75ab1600540b",
+        "402979ac",
+        "a7a1172c",
+        "988cc07aed",
+        "GetOpBuilders",
+        "LSTM",
+        "If",
+        "88eda06",
+        "aab661c",
+        "ed9ee10",
+        "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3",
+        "out of M0",
+        "BUILD_SHARED_LIBS OFF",
+        "M0-AC2 stays unchecked",
+    ] {
+        assert!(note.contains(needle), "builder Stop drops {needle}");
+    }
+    assert!(!note.contains("- [x]"), "builder Stop checks a box");
+    assert!(!note.contains("- [X]"), "builder Stop checks a box");
+    assert!(!note.contains("device=metal"));
+    assert!(read("src/freeze.rs")
+        .contains("1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3"));
+    assert!(read("docs/evidence/m0/vad-silero-pin-stop.md").contains("The VAD pin does not change"));
+    assert!(read("native/CMakeLists.txt").contains("891704e8d9ca33411424c97ec7dc75ab1600540b"));
+    assert!(read("docs/roadmap/m0-feasibility.md").contains("vad-ort-coreml-builders.md"));
+    assert!(read("docs/roadmap/risks-and-decisions.md")
+        .contains("891704e8d9ca33411424c97ec7dc75ab1600540b"));
+    for path in [
+        "docs/roadmap/m0-feasibility.md",
+        "docs/roadmap/risks-and-decisions.md",
+        "docs/evidence/m0/vad-ort-coreml-builders.md",
+    ] {
+        let text = read(path);
+        assert!(
+            !text.contains("- [x] **M0-AC2") && !text.contains("- [X] **M0-AC2"),
+            "{path} checks M0-AC2 while the CoreML builder gap stands"
+        );
+    }
+}
+
 fn src_text() -> String {
     let mut out = String::new();
     append_rs(&root().join("src"), &mut out);

@@ -140,6 +140,17 @@ This does not replace the R3 rows above. The pin does not change.
 | --- | --- | --- | --- | --- | --- |
 | R3 | Stop. The VAD pin stays `silero_vad.onnx` `1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3`. No published Silero ONNX is a graph ORT 1.31 CoreML can take. | audio owner | Master `silero_vad.onnx` re-hashed to the freeze digest (2327524 bytes). The other five ONNX files in `src/silero_vad/data` were hashed and parsed. `16k_sequence` and `openvino_16k` drop `If` and keep one `LSTM`. `op18_ifless` (`7671cd04b004e9076da0d4a7b1a5aec36adf161c39230c1cb94a4fd5db6bbd28`) unrolls `LSTM` into registered ops and keeps a top-level `If`. Its branches have zero initializers, so reflect `Pad` misses `GetAllInitializedTensors`, and `Slice` requires a static shape the symbolic sequence dim does not have. `GetOpBuilders()` at v1.31.0 still has no `LSTM` or `If`. Repo `LICENSE` is MIT; `silero-vad-weights` `spdx` stays `None`. | Swap the pin for `op18_ifless` or a 16 kHz file that still has `LSTM`, treat a `.mlmodelc` package as the ORT session, or set SPDX from the repo LICENSE in this change. | M0-AC2 stays unchecked. A later milestone needs a publisher ONNX the 1.31 support checks accept, or an `LSTM` builder, then a Mac `MLComputePlan` device of `MLGPUComputeDevice` or `MLNeuralEngineComputeDevice` before `device=` may leave `cpu`. |
 
+## M0 ORT CoreML builder gap (stacked on #60 `aab661c`)
+
+Host: Linux cloud agent. No Apple GPU, no CoreML, no `MLComputePlan`. Detail is in
+[vad-ort-coreml-builders.md](../evidence/m0/vad-ort-coreml-builders.md). M0-AC2 stays open.
+This does not replace the R3 rows above. The pin does not change. The static ORT
+link stays the 1.31.0 archives.
+
+| ID | Decision | Owner | Evidence on this host | Rejected alternative | Consequence |
+| --- | --- | --- | --- | --- | --- |
+| R3 | Stop. Upgrading static ORT is out of M0. `coreml::GetOpBuilders()` on `main` is the v1.31.0 blob and still does not register `LSTM` or `If`. | audio owner | Blob `891704e8d9ca33411424c97ec7dc75ab1600540b` (4639 bytes) is `op_builder_factory.cc` on tag `v1.31.0` (`402979ac`) and on `main` `a7a1172c` (2026-10-20, 91 commits ahead). `builders/impl/` has no LSTM, If, or Equal builder. The post-tag CoreML edit `988cc07aed` only raises `GetMaxSupportedOpSet` from 27 to 28 and appends FLOAT6 to the C API enum. v1.31.0 release notes add CoreML device selection (`#31975`), not those builders. The link is static archives (`BUILD_SHARED_LIBS OFF`, `libonnxruntime_providers_coreml.a` when present) inside one Mach-O. ADR 0004 freezes that runtime and rejects an ONNX dylib. | Rebuild `main` into `.cache/m0-onnx` and treat the same registry as a device change, read the QNN LSTM builder or the CPU LSTM checks as CoreML coverage, or vendor a CoreML LSTM builder into this tree. | M0-AC2 stays unchecked. #57 `88eda06`, #60 `aab661c`, and #59 `ed9ee10` stand. A later milestone needs a merged builder for `LSTM` (and `If` if the sample-rate wrapper stays) in a static CoreML build, then a Mac `MLComputePlan` device of `MLGPUComputeDevice` or `MLNeuralEngineComputeDevice` before `device=` may leave `cpu`. |
+
 ## Acceptance criteria
 
 - [ ] Every M0 decision has a concrete resolution before dependent milestone exit.

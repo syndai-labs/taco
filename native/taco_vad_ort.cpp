@@ -108,7 +108,7 @@ int taco_vad_ort(const char * path) {
         if (!cache.path.empty()) {
             try {
                 // ponytail: EnableOnSubgraphs only. ORT 1.31 CoreML has no LSTM or If
-                // builder, so the recurrent body stays on CPU until a Mac plan says otherwise.
+                // builder. main's GetOpBuilders matches that tag, so a rebuild stays CPU.
                 const std::unordered_map<std::string, std::string> coreml = {
                     {"MLComputeUnits", "CPUAndGPU"},
                     {"ModelFormat", "MLProgram"},

@@ -67,6 +67,8 @@ set_target_properties(taco_engines PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUI
 # VAD without ORT. Do not point this at a shared ONNX Runtime library.
 # A CoreML static provider in the same tree is linked when its archive exists.
 # ONNX Runtime 1.31 has no Metal execution provider.
+# main GetOpBuilders blob 891704e8d9ca33411424c97ec7dc75ab1600540b matches v1.31.0.
+# Do not rebuild this static link in M0 to chase LSTM or If.
 set(ORT_ROOT "" CACHE PATH "Local ONNX Runtime build root")
 if(NOT ORT_ROOT)
     set(ORT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.cache/m0-onnx")
