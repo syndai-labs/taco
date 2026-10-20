@@ -510,7 +510,17 @@ fn package_source_and_milestone_boxes() {
 fn ac2_ac3_cannot_flip_while_stop_shas_stand() {
     let vad_stands = stop_sha_stands("docs/evidence/m0/vad-metal-ep.md", "d194012");
     let residency_stands = stop_sha_stands("docs/evidence/m0/engines-residency.md", "a0e1614");
-    if !vad_stands && !residency_stands {
+    let metal_device_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "0829a70");
+    let coreml_subgraph_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "88eda06");
+    assert!(
+        metal_device_stands,
+        "Stop tip 0829a70 must stand in docs/evidence/m0/ac2-ac3-open.md"
+    );
+    assert!(
+        coreml_subgraph_stands,
+        "Stop tip 88eda06 must stand in docs/evidence/m0/ac2-ac3-open.md"
+    );
+    if !vad_stands && !residency_stands && !metal_device_stands && !coreml_subgraph_stands {
         return;
     }
     let mut checked = Vec::new();
@@ -536,6 +546,18 @@ fn ac2_ac3_cannot_flip_while_stop_shas_stand() {
             text.contains(waiver),
             "{path} drops the Partial waiver weight"
         );
+        for (sha, why) in [
+            ("0829a70", "Metal-device Stop"),
+            ("88eda06", "CoreML subgraph Stop"),
+            ("37ff031", "#49 residency retry Stop"),
+            ("a8e2eca", "#41 consequence freeze"),
+            ("ggml_backend_metal_reg", "Metal-device holder"),
+            ("EnableOnSubgraphs", "CoreML subgraph lever"),
+            ("GetOpBuilders", "ORT 1.31 op-builder gap"),
+            ("LSTM", "missing LSTM builder"),
+        ] {
+            assert!(text.contains(sha), "{path} drops {why} `{sha}`");
+        }
     }
 }
 
