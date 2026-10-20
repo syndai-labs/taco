@@ -86,6 +86,31 @@ Host: Apple M1 Pro, 32 GiB (34359738368 bytes), macOS 27.0.1 (26A434),
 | R12 | Stop. Not run. | inference/quality owners | No serialized-vs-concurrent measurement. The installed Metal compiler was not a timing run. | A microbenchmark or a CPU timing presented as the joint gate. | Blocks M0 acceptance and M4's baseline. |
 | R14 | Corners, terminal hosts, and devices are not provisioned. | release/quality owners | This shell on macOS 27.0.1 is a measurement host, not a qualified corner. C2 OS build and the alternate terminal host are unnamed. No second terminal host was exercised. | An aggregate "works on this Mac" verdict. | Release cells stay not run. M1 and M5 stay blocked. |
 
+## M0-AC2 and M0-AC3 stay open (tip `7f98ab1`)
+
+Date: 2026-10-16. Owner: native runtime. This does not resolve R2, R3, or R5.
+The 2026-10-16 stop rows above predate
+[taco-engines.md](../evidence/m0/taco-engines.md) on this tip. Their "did not
+execute" and "not run" claims for `T-M0-LINK-THREE-MODELS` and
+`T-M0-CANCEL-LIFECYCLE` are superseded by that note. The rows stay unresolved.
+No M0-AC checkbox is checked.
+
+Proven on this tip, and not re-measured here: both tests ok via
+`session::prove_native`; printed `link_three=1 cancel_lifecycle=1 ac2=0 ac3=0`;
+Silero via static ORT CPU EP (`vad_ort=ok device=cpu`); Whisper VAD bad magic;
+ASR/MT on Metal MTL0; joins under 2s; `otool` system libraries only. Not
+`taco run`. Multi-cycle residency was not measured.
+`origin/cursor/m0-engines-residency-b19b` is absent. No pull request measures
+catalog residency. Detail: [ac2-ac3-open.md](../evidence/m0/ac2-ac3-open.md).
+
+| Gap | Why M0-AC2 and M0-AC3 stay unchecked |
+| --- | --- |
+| (a) CPU VAD provider | Silero ran on the ORT CPU execution provider. M0-AC2 requires observed Metal GPU execution. A CPU-only VAD run does not pass. |
+| (b) Prove path | An ad-hoc signed Mac `taco run` with `TACO_ENGINES_PROVE=1` printed `link_three=1 cancel_lifecycle=1 ac2=0 ac3=0` and exited 0 ([taco-run-prove.md](../evidence/m0/taco-run-prove.md)). `ac2` and `ac3` stayed 0. Signature was ad-hoc, not Apple Development or Developer ID. |
+| (c) Catalog residency | `T-M0-LINK-THREE-MODELS` requires repeated init and teardown with resident native allocations back at the post-first-teardown baseline. Each test called `prove_native` once. That measurement was not taken. |
+
+Consequence: M0 cannot claim M0-AC2 or M0-AC3 until (a), (b), and (c) are closed, or the charter accepts them.
+
 ## M0 VAD execution provider (2026-10-17)
 
 Host: Apple M1 Pro, macOS 27.0.1 (26A434), arm64. Detail is in

@@ -16,7 +16,8 @@ When a model directory is bound and this Mach-O linked the static engines,
 Runtime session when those archives were present at build time. ASR and MT
 use whisper.cpp and llama.cpp on one ggml with Metal shaders embedded.
 `session::prove_native` runs the three-pin load, infer, and cancel in this
-process. A nonzero native status stays `engine_not_linked`. It is not a pass.
+process. `taco run` calls that function only when `TACO_ENGINES_PROVE=1`.
+A nonzero native status stays `engine_not_linked`. It is not a pass.
 
 This is not M0-AC2 and not M0-AC3. Acceptance checkboxes stay open.
 The measured Mach-O is in `taco-engines.md`.
