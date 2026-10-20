@@ -85,6 +85,10 @@ tests failing before the contract types satisfy them. Do not rename the IDs.
 - [ ] **M0-AC4:** The [acceptance plan](acceptance.md) names both corners, OS builds,
   the selected quantization and sampling, corpus and license inventory, the closed
   language table, and reviewed numeric targets. No unresolved mandatory value remains.
+  Status: Partial. The box stays unchecked. Record:
+  [ac4-partial.md](../evidence/m0/ac4-partial.md).
+  Charter accept is blocked: M0-AC4 cannot be checked while SIGNED_INSTALL=None or C2_BLOCKED stands.
+  The launchd user-agent run does not close M0-AC4.
 - [ ] **M0-AC5:** Every M0 item in the [decision register](risks-and-decisions.md) has
   a recorded decision, owner, evidence, and consequence. ADRs are accepted only to the
   extent supported; unresolved feasibility explicitly blocks dependent milestones.
