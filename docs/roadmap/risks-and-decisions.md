@@ -66,6 +66,14 @@ The contract freeze is `828bd48`. Early measurements are in
 [macos-spike-results.md](../evidence/m0/macos-spike-results.md). The Info.plist
 bind follow-up is in [native-impl.md](../evidence/m0/native-impl.md) (`3602000`).
 None of these rows accept M0. Milestone checkboxes stay open. M1 and M5 stay blocked.
+The AC4 Partial freeze is [ac4-partial.md](../evidence/m0/ac4-partial.md).
+M0-AC4 stays unchecked. Partial is not an accept.
+Charter accept is blocked: M0-AC4 cannot be checked while SIGNED_INSTALL=None or C2_BLOCKED stands.
+The launchd user-agent run does not close M0-AC4.
+Cited gaps, not a new signed-install measurement and not a second machine: PR #38 tip `e7433c2`
+(`SIGNED_INSTALL=None`), PR #42 tip `8794303` (None guards), PR #27 tip `ad8d418`
+(`C2_BLOCKED`), PR #43 tip `0c880fb` (adhoc launchd), PR #19 tip `8ebd0fc` (OS floor
+Partial at macOS 27.0.1).
 
 Host: Apple M1 Pro, 32 GiB (34359738368 bytes), macOS 27.0.1 (26A434),
 `aarch64-apple-darwin`, rustc 1.99.0. Not C1 (16 GiB, macOS 14.2). Not a named C2.
