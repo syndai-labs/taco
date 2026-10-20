@@ -512,6 +512,8 @@ fn ac2_ac3_cannot_flip_while_stop_shas_stand() {
     let residency_stands = stop_sha_stands("docs/evidence/m0/engines-residency.md", "a0e1614");
     let metal_device_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "0829a70");
     let coreml_subgraph_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "88eda06");
+    let silero_pin_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "aab661c");
+    let metal_teardown_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "232ea78");
     assert!(
         metal_device_stands,
         "Stop tip 0829a70 must stand in docs/evidence/m0/ac2-ac3-open.md"
@@ -520,7 +522,21 @@ fn ac2_ac3_cannot_flip_while_stop_shas_stand() {
         coreml_subgraph_stands,
         "Stop tip 88eda06 must stand in docs/evidence/m0/ac2-ac3-open.md"
     );
-    if !vad_stands && !residency_stands && !metal_device_stands && !coreml_subgraph_stands {
+    assert!(
+        silero_pin_stands,
+        "Stop tip aab661c must stand in docs/evidence/m0/ac2-ac3-open.md"
+    );
+    assert!(
+        metal_teardown_stands,
+        "Stop tip 232ea78 must stand in docs/evidence/m0/ac2-ac3-open.md"
+    );
+    if !vad_stands
+        && !residency_stands
+        && !metal_device_stands
+        && !coreml_subgraph_stands
+        && !silero_pin_stands
+        && !metal_teardown_stands
+    {
         return;
     }
     let mut checked = Vec::new();
@@ -529,6 +545,14 @@ fn ac2_ac3_cannot_flip_while_stop_shas_stand() {
         checked.is_empty(),
         "M0-AC2 or M0-AC3 checked while Stop tip SHAs stand: {checked:?}"
     );
+    for flag in ["ac2=1", "ac3=1"] {
+        for dir in ["docs", "src"] {
+            assert!(
+                !walk_contains(&root().join(dir), flag),
+                "{flag} claimed under {dir} while Stop tip SHAs stand"
+            );
+        }
+    }
     let block = "Charter accept is blocked: M0-AC2 and M0-AC3 cannot be checked while the CPU VAD Stop at `d194012`";
     let waiver = "A charter waiver records weight Partial on R2, R3, and R5.";
     for path in [
@@ -555,6 +579,16 @@ fn ac2_ac3_cannot_flip_while_stop_shas_stand() {
             ("EnableOnSubgraphs", "CoreML subgraph lever"),
             ("GetOpBuilders", "ORT 1.31 op-builder gap"),
             ("LSTM", "missing LSTM builder"),
+            ("aab661c", "Silero pin Stay Stop"),
+            ("232ea78", "#63 Metal teardown Stop"),
+            (
+                "no published Silero ONNX is CoreML-acceptable under ORT 1.31",
+                "no CoreML-friendly ONNX",
+            ),
+            ("the Silero pin stays", "Silero pin Stay"),
+            ("use-after-free", "unsafe Metal device teardown"),
+            ("c9a6f6f", "#64 ORT upgrade Stop"),
+            ("an ORT upgrade is out of M0", "ORT upgrade stays out of M0"),
         ] {
             assert!(text.contains(sha), "{path} drops {why} `{sha}`");
         }
