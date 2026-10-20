@@ -646,6 +646,76 @@ fn ort_coreml_upgrade_cannot_flip_ac2() {
     }
 }
 
+#[test]
+fn alternate_vad_cannot_flip_ac2() {
+    // Silero is the charter model. #60 and #64 closed the published
+    // graphs and the ORT bump. This lock closes a different VAD file.
+    // It does not copy ac2_ac3_cannot_flip_while_stop_shas_stand.
+    let note = read("docs/evidence/m0/vad-alt-coreml-stop.md");
+    for needle in [
+        "aab661c",
+        "c9a6f6f",
+        "ed9ee10",
+        "04dda65",
+        "4aaa9bf0e8561eed164a1190d210f961593ec9580c69d58ce15ed89d16119b6b",
+        "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3",
+        "Use Silero VAD for speech activity and endpointing.",
+        "Preserve the charter's Silero VAD",
+        "Do not hand-write a VAD model",
+        "different model family",
+        "quieter substitute",
+        "Which Silero runtime",
+        "snakers4/silero-vad",
+        "M0-AC2 stays unchecked",
+        "not an M0 pin",
+    ] {
+        assert!(note.contains(needle), "alternate-VAD Stop drops {needle}");
+    }
+    assert!(!note.contains("- [x]"), "alternate-VAD Stop checks a box");
+    assert!(!note.contains("- [X]"), "alternate-VAD Stop checks a box");
+    assert!(!note.contains("device=metal"));
+    assert!(
+        !note.contains("ac2=1"),
+        "alternate-VAD Stop claims M0-AC2"
+    );
+    assert_eq!(
+        sha256(&root().join("CHARTER.md")),
+        "4aaa9bf0e8561eed164a1190d210f961593ec9580c69d58ce15ed89d16119b6b",
+        "a charter VAD flip does not close M0-AC2"
+    );
+    assert!(read("CHARTER.md").contains("| VAD          | Silero VAD                          |"));
+    assert!(read("docs/adr/0003-segment-contract.md")
+        .contains("Use Silero VAD for speech activity and endpointing."));
+    assert!(read("docs/adr/0004-local-inference.md").contains("Preserve the charter's Silero VAD"));
+    assert!(read("docs/adr/0004-local-inference.md").contains("Do not hand-write a VAD model"));
+    assert!(read("docs/adr/README.md").contains("different model family"));
+    assert!(read("docs/roadmap/m0-feasibility.md").contains("quieter substitute"));
+    assert!(read("docs/roadmap/m0-feasibility.md").contains("vad-alt-coreml-stop.md"));
+    assert!(read("docs/roadmap/m0-feasibility.md").contains("04dda65"));
+    assert!(read("docs/roadmap/risks-and-decisions.md").contains("Which Silero runtime"));
+    assert!(read("docs/roadmap/risks-and-decisions.md").contains("04dda65"));
+    assert!(read("docs/roadmap/acceptance.md").contains("Silero; multilingual Whisper small"));
+    assert!(read("docs/roadmap/charter-coverage.md")
+        .contains("| Silero VAD | M0 runtime/format decision, M2 stateful endpointing |"));
+    assert!(read("scripts/measure-pins.sh").contains("snakers4/silero-vad"));
+    let freeze = read("src/freeze.rs");
+    assert!(freeze.contains("vad-alt-coreml-stop.md"));
+    assert!(freeze.contains("family: \"silero\""));
+    assert!(freeze.contains("silero_vad.onnx"));
+    assert!(freeze.contains("1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3"));
+    for path in [
+        "docs/roadmap/m0-feasibility.md",
+        "docs/roadmap/risks-and-decisions.md",
+        "docs/evidence/m0/vad-alt-coreml-stop.md",
+    ] {
+        let text = read(path);
+        assert!(
+            !text.contains("- [x] **M0-AC2") && !text.contains("- [X] **M0-AC2"),
+            "{path} checks M0-AC2 while Silero stays the VAD family"
+        );
+    }
+}
+
 fn src_text() -> String {
     let mut out = String::new();
     append_rs(&root().join("src"), &mut out);

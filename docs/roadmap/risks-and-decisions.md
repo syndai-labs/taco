@@ -151,6 +151,17 @@ link stays the 1.31.0 archives.
 | --- | --- | --- | --- | --- | --- |
 | R3 | Stop. Upgrading static ORT is out of M0. `coreml::GetOpBuilders()` on `main` is the v1.31.0 blob and still does not register `LSTM` or `If`. | audio owner | Blob `891704e8d9ca33411424c97ec7dc75ab1600540b` (4639 bytes) is `op_builder_factory.cc` on tag `v1.31.0` (`402979ac`) and on `main` `a7a1172c` (2026-10-20, 91 commits ahead). `builders/impl/` has no LSTM, If, or Equal builder. The post-tag CoreML edit `988cc07aed` only raises `GetMaxSupportedOpSet` from 27 to 28 and appends FLOAT6 to the C API enum. v1.31.0 release notes add CoreML device selection (`#31975`), not those builders. The link is static archives (`BUILD_SHARED_LIBS OFF`, `libonnxruntime_providers_coreml.a` when present) inside one Mach-O. ADR 0004 freezes that runtime and rejects an ONNX dylib. | Rebuild `main` into `.cache/m0-onnx` and treat the same registry as a device change, read the QNN LSTM builder or the CPU LSTM checks as CoreML coverage, or vendor a CoreML LSTM builder into this tree. | M0-AC2 stays unchecked. #57 `88eda06`, #60 `aab661c`, and #59 `ed9ee10` stand. A later milestone needs a merged builder for `LSTM` (and `If` if the sample-rate wrapper stays) in a static CoreML build, then a Mac `MLComputePlan` device of `MLGPUComputeDevice` or `MLNeuralEngineComputeDevice` before `device=` may leave `cpu`. |
 
+## M0 alternate VAD is not a pin (stacked on #64 `c9a6f6f`)
+
+Host: Linux cloud agent. No Apple GPU, no CoreML, no `MLComputePlan`. Detail is in
+[vad-alt-coreml-stop.md](../evidence/m0/vad-alt-coreml-stop.md). M0-AC2 stays open.
+This does not replace the R3 rows above. The pin does not change. No alternate
+ONNX was fetched.
+
+| ID | Decision | Owner | Evidence on this host | Rejected alternative | Consequence |
+| --- | --- | --- | --- | --- | --- |
+| R3 | Stop. The VAD family stays Silero. An ONNX that ORT 1.31 CoreML can take is not a pin if it is not Silero. | audio owner | Charter core stack is Silero VAD (`CHARTER.md` sha256 `4aaa9bf0e8561eed164a1190d210f961593ec9580c69d58ce15ed89d16119b6b`). ADR 0003 says use Silero VAD. ADR 0004 says preserve that model and do not hand-write a VAD. ADR README forbids substituting a different model family. M0 non-goals forbid a quieter substitute. R3 asks which Silero runtime. `freeze::PINS` family stays `silero`, file `silero_vad.onnx`, digest `1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3`. No alternate file was hashed. | Pin a non-Silero MIT or Apache ONNX whose ops sit in `GetOpBuilders`, unroll the pinned LSTM into a new ONNX in this tree, load a `.mlmodelc` of another VAD, or edit the charter VAD cell and check M0-AC2. | M0-AC2 stays unchecked. #60 `aab661c`, #64 `c9a6f6f`, #59 `ed9ee10`, and #65 `04dda65` stand. A later milestone needs a publisher Silero ONNX the 1.31 checks accept, or an `LSTM` builder, then a Mac `MLComputePlan` device of `MLGPUComputeDevice` or `MLNeuralEngineComputeDevice` before `device=` may leave `cpu`. A different model family is a charter change plus a new ADR, and still does not check M0-AC2 without that Mac line. |
+
 ## Acceptance criteria
 
 - [ ] Every M0 decision has a concrete resolution before dependent milestone exit.
