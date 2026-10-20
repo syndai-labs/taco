@@ -120,6 +120,16 @@ Host: Apple M1 Pro, macOS 27.0.1 (26A434), arm64. Detail is in
 | --- | --- | --- | --- | --- | --- |
 | R3 | Stop. Silero stays on the CPU execution provider. | audio owner | ONNX Runtime 1.31.0 has no Metal execution provider. A static CoreML build (`onnxruntime_USE_COREML=ON`, no ORT dylib) was linked into one Mach-O with `taco_vad_ort.cpp`. The run requested `CoreML` / `CPUAndGPU` / `MLProgram`. Measured lines: `vad_ort_input_ep` index 0–2 `ep=CPUExecutionProvider hw=cpu`, `vad_ort_plan=missing`, `vad_ort=ok device=cpu`. Frame probabilities matched the earlier CPU run (0.000592 / 0.000528 / 0.000592). `GetHardwareDevices` also listed Apple GPU and NPU; those lines are inventory, not the session assignment. | Print `device=metal` from the request flag, call the hardware inventory the VAD device, or ship an ONNX Runtime dylib. | M0-AC2 stays unchecked. Incremental Silero still runs, on CPU. M2's real VAD does not gain a Metal or CoreML device from this run. |
 
+## M0 VAD CoreML subgraph Stop (stacked on #37 `d194012`)
+
+Host: Linux cloud agent. No Apple GPU, no CoreML, no `MLComputePlan`. Detail is in
+[vad-coreml-subgraph.md](../evidence/m0/vad-coreml-subgraph.md). M0-AC2 stays open.
+This does not replace the 2026-10-17 R3 row above.
+
+| ID | Decision | Owner | Evidence on this host | Rejected alternative | Consequence |
+| --- | --- | --- | --- | --- | --- |
+| R3 | Stop. `EnableOnSubgraphs=1` is now requested on the product session. `device=` stays `cpu` until a Mac `MLComputePlan` says otherwise. ORT 1.31.0 CoreML has no `LSTM` or `If` op builder. | audio owner | Pinned `silero_vad.onnx` (`1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3`) is top-level `If`. Four `LSTM` nodes sit inside nested `If` branches. `CoreMLExecutionProvider::GetCapability` returns no partition for a subgraph unless provider option `EnableOnSubgraphs` is `1` (default `0`; #37 did not set it, so no `compiled_model.mlmodelc`). `coreml::GetOpBuilders()` in ORT 1.31.0 registers neither `LSTM` nor `If`. Linux prints `vad_ort=not_linked device=cpu reason=coreml_ep_not_in_this_binary` and returns 1. | Print `device=metal` because the option was added, treat `GetEpDeviceForInputs` CPU lines as proof the subgraph ran, or swap the pinned file for an if-less ONNX. | M0-AC2 stays unchecked. A Mac `taco run` with `TACO_ENGINES_PROVE=1` must print `MLGPUComputeDevice` or `MLNeuralEngineComputeDevice` from `taco_vad_profile_cache` before `device=` may leave `cpu`. |
+
 ## Acceptance criteria
 
 - [ ] Every M0 decision has a concrete resolution before dependent milestone exit.
