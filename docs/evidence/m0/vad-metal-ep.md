@@ -5,3 +5,5 @@ Cited from `cursor/m0-vad-metal-ep-b19b` tip `d194012` (PR #37). This branch doe
 Stop. ONNX Runtime 1.31.0 has no Metal execution provider. A static CoreML provider was linked and requested with `MLComputeUnits=CPUAndGPU` and `ModelFormat=MLProgram`. The session assigned every input to `CPUExecutionProvider`. `vad_ort_plan=missing` (no `.mlmodelc`). `vad_ort=ok device=cpu`. Frame probabilities match the earlier CPU run (0.000592 then 0.000528). The Mach-O was not `cargo test --features native` and not `taco run`. `otool -L` was system libraries only. A hardware-inventory GPU line is not the VAD assignment.
 
 - [ ] **M0-AC2:** Silero's measured execution provider is still CPU.
+
+PR #57 tip `88eda06` ([vad-coreml-subgraph.md](vad-coreml-subgraph.md)) names why `vad_ort_plan=missing`: `EnableOnSubgraphs` stayed `0`, and ORT 1.31.0 `GetOpBuilders` has no `LSTM` or `If`. `device=` stays `cpu`. This branch does not replay `native/taco_vad_ort.cpp`. No `device=metal`.
