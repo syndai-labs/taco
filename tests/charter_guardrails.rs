@@ -527,6 +527,103 @@ fn package_source_and_milestone_boxes() {
     }
 }
 
+/// Corpora, pin evidence, and the CLI must not look qualified while M0 is open.
+#[test]
+fn pins_are_not_a_verify_pass_and_corpora_stay_unsealed() {
+    assert_eq!(
+        freeze::CORPORA.map(|slot| (slot.name, slot.natural_utterances, slot.sealed)),
+        [
+            ("development", 0, false),
+            ("held-out", 0, false),
+            ("critical", 0, false),
+        ]
+    );
+    assert!(!freeze::corpus_gate_met(taco::limits::limits()));
+    for caller in ["development", "held-out", "T-M7-HELDOUT-ONCE", ""] {
+        assert_eq!(
+            freeze::read_held_out_labels(caller),
+            Err(taco::error::ErrorCode::HeldOutClosed),
+            "{caller}"
+        );
+    }
+
+    let cargo = read("Cargo.toml");
+    assert_eq!(cargo.matches("[[bin]]").count(), 1, "one user-facing binary");
+    assert_eq!(cargo.matches("[lib]\n").count(), 1, "one library");
+    assert_eq!(
+        cargo.matches("name = \"taco\"").count(),
+        3,
+        "package, lib, and bin are all named taco"
+    );
+    assert!(!cargo.contains("taco-spike"));
+
+    let evidence = read("docs/evidence/m0/pin-measurement.md");
+    assert!(evidence.contains("No Metal load was run."));
+    assert!(evidence.contains("This machine is not C1 and it is not a named C2."));
+    for pin in freeze::PINS {
+        let digest = pin.sha256.expect("measured pin");
+        let filename = pin.filename.expect("measured pin");
+        assert_eq!(digest.len(), 64);
+        assert!(evidence.contains(digest), "{digest} missing from pin evidence");
+        assert!(
+            evidence.contains(filename),
+            "{filename} missing from pin evidence"
+        );
+    }
+    let ac_checked = evidence.lines().any(|line| {
+        line.contains("M0-AC") && (line.contains("- [x]") || line.contains("- [X]"))
+    });
+    assert!(
+        !ac_checked,
+        "pin-measurement.md checks an M0 acceptance box"
+    );
+
+    let bin = env!("CARGO_BIN_EXE_taco");
+    let list = Command::new(bin).args(["models", "list"]).output().unwrap();
+    assert!(list.status.success());
+    let listed = String::from_utf8_lossy(&list.stdout);
+    assert!(!listed.contains("TBD"), "{listed}");
+    for pin in freeze::PINS {
+        assert!(
+            listed.contains(pin.sha256.unwrap()),
+            "models list dropped {}",
+            pin.role
+        );
+        assert!(listed.contains(pin.filename.unwrap()));
+    }
+
+    let verify = Command::new(bin).args(["models", "verify"]).output().unwrap();
+    assert_eq!(verify.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&verify.stderr).contains("models_unpinned"));
+    let dir = std::env::temp_dir().join(format!("taco-verify-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+    let verify_dir = Command::new(bin)
+        .args(["models", "verify", "--model-dir"])
+        .arg(&dir)
+        .output()
+        .unwrap();
+    let _ = fs::remove_dir_all(&dir);
+    assert_eq!(verify_dir.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&verify_dir.stderr).contains("models_unpinned"));
+
+    let notices = Command::new(bin).arg("notices").output().unwrap();
+    assert!(notices.status.success());
+    let text = String::from_utf8_lossy(&notices.stdout);
+    assert!(text.contains("does not upload"));
+    assert!(text.contains("does not fetch or load"));
+    assert!(!text.contains("TBD"), "{text}");
+    assert!(!text.to_lowercase().contains("metal"), "{text}");
+
+    let link = read("tests/t_m0_link_three_models.rs");
+    assert!(link.contains("panic!"));
+    assert!(link.contains("not a Metal pass"));
+    assert!(
+        !link.contains("digests are TBD"),
+        "native test still claims the pins are unmeasured"
+    );
+}
+
 #[test]
 fn microphone_spike_hold_follows_open_ok() {
     let src = read("src/session.rs");

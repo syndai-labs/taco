@@ -91,7 +91,7 @@ fn dispatch(cli: Cli) -> Result<(), i32> {
         Commands::Notices => {
             let _ = taco::usage_plist().len();
             println!("taco shows subtitles in this terminal and does not upload them.");
-            println!("Model digests are TBD. Terminal scrollback can keep what is displayed.");
+            println!("Model digests are pinned. This command does not fetch or load them.");
             println!("usage keys linked: {}", taco::usage_keys_present());
             let _ = COMMANDS;
             Ok(())
