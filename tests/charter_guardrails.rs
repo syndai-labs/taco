@@ -902,6 +902,49 @@ fn process_tap_product_path_refuses_linux_success() {
     );
 }
 
+#[test]
+fn external_input_unqualified_refuses_ac1() {
+    const FREEZE: &str = "cd9a4c8";
+    assert_eq!(
+        selector::EXTERNAL_INPUT.display_name,
+        Some("syndai-iphone-02 Microphone")
+    );
+    assert!(
+        !selector::EXTERNAL_INPUT.qualified_in_m0,
+        "EXTERNAL_INPUT stays out of M0"
+    );
+    let note = read("docs/evidence/m0/process-tap-product.md");
+    assert!(
+        note.contains("frozen at tip `cd9a4c8`"),
+        "evidence must cite the display-name freeze {FREEZE}"
+    );
+    assert!(note.contains("`qualified_in_m0` stays false"));
+    assert!(read("docs/roadmap/acceptance.md").contains("`qualified_in_m0` stays false"));
+    for claim in [
+        "external input proven",
+        "external input is proven",
+        "proves external input",
+        "qualified_in_m0` is true",
+        "qualified_in_m0 = true",
+        "qualified_in_m0: true",
+        "iPhone capture qualified",
+    ] {
+        for dir in [root().join("docs"), root().join("src")] {
+            assert!(
+                !walk_contains(&dir, claim),
+                "{claim} under {} while qualified_in_m0 is false",
+                dir.display()
+            );
+        }
+    }
+    let mut checked = Vec::new();
+    checked_m0_ac1(&root().join("docs"), &mut checked);
+    assert!(
+        checked.is_empty(),
+        "M0-AC1 checked while EXTERNAL_INPUT.qualified_in_m0 is false (freeze {FREEZE}): {checked:?}"
+    );
+}
+
 struct SpikeEvidence {
     status: i32,
     text: String,
