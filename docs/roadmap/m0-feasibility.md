@@ -110,3 +110,6 @@ subgraph request is still not a measured GPU device. Record:
 [ac2-ac3-open.md](../evidence/m0/ac2-ac3-open.md),
 [taco-run-prove.md](../evidence/m0/taco-run-prove.md), and
 [vad-coreml-subgraph.md](../evidence/m0/vad-coreml-subgraph.md).
+The Silero pin stays `1a153a22…`; no published ONNX is one ORT 1.31
+CoreML can take
+([vad-silero-pin-stop.md](../evidence/m0/vad-silero-pin-stop.md)).
