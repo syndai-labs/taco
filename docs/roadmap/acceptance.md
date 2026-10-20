@@ -62,7 +62,12 @@ agent, named at PR #19 tip `8ebd0fc` and not exercised on that tip. PR #43 tip
 `0c880fb` ([launchd-host.md](../evidence/m0/launchd-host.md))
 loaded, ran, and removed debug `taco notices`. That run is ad-hoc and not a
 TCC allow or deny. Cursor.app is not an acceptance host.
-M0-AC1 and M0-AC4 stay open. PR #32 tip `0972b2d`
+M0-AC1 and M0-AC4 stay open. PR #54 tip `6a839de`
+([ac4-partial.md](../evidence/m0/ac4-partial.md)) freezes M0-AC4 as Partial.
+Partial is not an accept. `SIGNED_INSTALL` stays `None`. C2 stays open.
+Charter accept is blocked: M0-AC4 cannot be checked while SIGNED_INSTALL=None or C2_BLOCKED stands.
+The launchd user-agent run does not close M0-AC4. This branch does not replay
+that tip's `freeze.rs`. No Metal fake. PR #32 tip `0972b2d`
 ([engines-residency.md](../evidence/m0/engines-residency.md)) is that same M1
 Pro host. `proves_c1` stays false. It is not C2. PR #30 tip `e2ec751`
 ([taco-run-prove.md](../evidence/m0/taco-run-prove.md)) is an ad-hoc signed
