@@ -86,3 +86,11 @@ PR #89 tip `831d455` cites #86 through #88. Those cites do not check a box.
 PR #90 tip `7e8f3c5` does not change the AC2/AC3 Stop-SHA list. It does not close either box above.
 
 PR #91 tip `79cb73d` freezes both boxes as Partial on the measure tip, stacked on #88 tip `2766f79`. #85 tip `576ac63` is not an ancestor of that tip. It cites `ac2_ac3_cannot_flip_while_stop_shas_stand` and does not replace it. Status: Partial. The guard on that tip is `m0_ac2_ac3_partial_refuses_checked_boxes`. ORT CoreML `LSTM` and `If`, and a Metal device process-lifetime release, stay out of M0. This branch does not replay that guard and does not copy that note. Neither box above is a pass.
+
+PR #92 tip `6b165eb` cites #89 through #91. Those cites do not check a box.
+
+PR #93 tip `359375e` does not change the AC2/AC3 Stop-SHA list. It does not close either box above.
+
+PR #94 tip `fe08f47` joins #91 tip `79cb73d` onto #90 tip `7e8f3c5` and carries the #93 destroy-trace on that same tip. Status: Partial. It cites `ac2_ac3_cannot_flip_while_stop_shas_stand` and does not replace it. The guards on that tip include `m0_ac2_ac3_partial_refuses_checked_boxes` and `m0_cleanup_hex_without_destroy_refuses_ac1`. ORT CoreML `LSTM` and `If`, and a Metal device process-lifetime release, stay out of M0. This branch does not replay those guards and does not copy that note. Neither box above is a pass.
+
+PR #95 tip `0ee1065` is a redundant sibling of that cherry-pick. #94 tip `fe08f47` supersedes it. It does not close either box above.
