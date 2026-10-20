@@ -561,6 +561,325 @@ fn ac2_ac3_cannot_flip_while_stop_shas_stand() {
     }
 }
 
+#[test]
+fn ac1_cannot_flip_while_operator_timeout_partial_stands() {
+    let note = read("docs/evidence/m0/mic-operator-timeouts.md");
+    assert!(
+        note.contains("TIMEOUT is not Don't Allow."),
+        "TIMEOUT must not be recorded as Deny"
+    );
+    let partial_stands = note.contains("Status: **Partial**.");
+    let allow = named_tip_sha(&note, "Allow tip SHA:");
+    let deny = named_tip_sha(&note, "Deny tip SHA:");
+    if !partial_stands && allow && deny {
+        return;
+    }
+    assert!(
+        note.contains("7c71d50"),
+        "AC1 Partial must cite PR #51 tip 7c71d50"
+    );
+    let consequence = "Partial — operator Allow/Deny unproven; consequence AC1 open.";
+    for path in [
+        "docs/evidence/m0/mic-operator-timeouts.md",
+        "docs/roadmap/risks-and-decisions.md",
+        "docs/roadmap/m0-feasibility.md",
+    ] {
+        let text = read(path);
+        assert!(text.contains(consequence), "{path} drops the AC1 Partial");
+        assert!(
+            text.contains("TIMEOUT is not Don't Allow."),
+            "{path} treats TIMEOUT as Deny"
+        );
+    }
+    for pid in ["65422", "71152", "76134", "82331", "89220"] {
+        assert!(note.contains(pid), "timeout note drops pid {pid}");
+    }
+    assert!(note.contains("Allow tip SHA: none"));
+    assert!(note.contains("Deny tip SHA: none"));
+    assert!(
+        !allow && !deny,
+        "Allow or Deny tip filled while Partial stands"
+    );
+    let mut checked = Vec::new();
+    checked_ids(&root().join("docs"), &["M0-AC1"], &mut checked);
+    assert!(
+        checked.is_empty(),
+        "M0-AC1 checked while operator Allow/Deny is unproven: {checked:?}"
+    );
+}
+
+#[test]
+fn m0_ac4_cannot_be_checked_while_partial_stands() {
+    let evidence = read("docs/evidence/m0/ac4-partial.md");
+    assert!(
+        evidence.contains("6a839de"),
+        "AC4 Partial must cite PR #54 tip 6a839de"
+    );
+    for sha in ["e7433c2", "8794303", "ad8d418", "0c880fb", "8ebd0fc"] {
+        assert!(evidence.contains(sha), "ac4-partial.md drops tip {sha}");
+    }
+    assert!(evidence.contains("SIGNED_INSTALL=None"));
+    assert!(evidence.contains("C2_BLOCKED"));
+    assert!(evidence.contains("Signature=adhoc"));
+    assert!(
+        freeze::SIGNED_INSTALL.is_none(),
+        "SIGNED_INSTALL flipped while the AC4 Partial stands"
+    );
+    assert!(
+        freeze::C2_BLOCKED,
+        "C2_BLOCKED cleared while the AC4 Partial stands"
+    );
+    assert!(freeze::CORNERS[1].os_build.is_none());
+    assert!(!freeze::CORNERS[1].qualified);
+    let signed = read("docs/evidence/m0/signed-install.md");
+    assert!(signed.contains("e7433c2"));
+    assert!(signed.contains("Developer ID Application: no identity found"));
+    assert!(signed.contains("No Keychain password item found for profile: taco-notary"));
+    let block =
+        "Charter accept is blocked: M0-AC4 cannot be checked while SIGNED_INSTALL=None or C2_BLOCKED stands.";
+    let launchd = "The launchd user-agent run does not close M0-AC4.";
+    for path in [
+        "docs/evidence/m0/ac4-partial.md",
+        "docs/roadmap/risks-and-decisions.md",
+        "docs/roadmap/acceptance.md",
+        "docs/roadmap/m0-feasibility.md",
+    ] {
+        let text = read(path);
+        assert!(text.contains(block), "{path} drops the AC4 charter block");
+        assert!(
+            text.contains(launchd),
+            "{path} treats launchd as closing AC4"
+        );
+    }
+    let mut checked = Vec::new();
+    checked_ids(&root().join("docs"), &["M0-AC4"], &mut checked);
+    assert!(
+        checked.is_empty(),
+        "M0-AC4 checked while SIGNED_INSTALL=None or C2_BLOCKED stands: {checked:?}"
+    );
+}
+
+#[test]
+fn open_ms_and_hold_ms_cannot_regress() {
+    assert_eq!(freeze::CAPTURE_SPIKE_OPEN_MS, 300_000);
+    assert_eq!(freeze::CAPTURE_SPIKE_HOLD_MS, 1_800_000);
+    assert_ne!(freeze::CAPTURE_SPIKE_OPEN_MS, 180_000);
+    let open_note = read("docs/evidence/m0/mic-open-timeout.md");
+    let hold_note = read("docs/evidence/m0/mic-hold.md");
+    let register = read("docs/roadmap/risks-and-decisions.md");
+    for text in [&open_note, &hold_note, &register] {
+        assert!(text.contains("fdc201f"), "missing PR #50 harness tip");
+    }
+    assert!(open_note.contains("81a2a54"));
+    assert!(open_note.contains("300000"));
+    assert!(hold_note.contains("89759b9"));
+    assert!(hold_note.contains("1_800_000"));
+    assert!(open_note.contains("does not replay `src/capture/microphone.rs`"));
+    assert!(hold_note.contains("does not replay `src/capture/microphone.rs`"));
+    for stale in [
+        "defaults to `180000`",
+        "defaults to 180000",
+        "uses `180000`",
+        "uses `180_000`",
+    ] {
+        assert!(
+            !open_note.contains(stale) && !hold_note.contains(stale),
+            "stale OPEN_MS default still claimed: {stale}"
+        );
+    }
+    lock_spike_fn(
+        "fn open_timeout_ms",
+        "TACO_CAPTURE_SPIKE_OPEN_MS",
+        "300_000",
+    );
+    lock_spike_fn(
+        "fn spike_hold_ms",
+        "TACO_CAPTURE_SPIKE_HOLD_MS",
+        "1_800_000",
+    );
+}
+
+#[test]
+fn register_and_harness_stay_open_while_partials_stand() {
+    let sentence =
+        "M0-AC5 and M0-AC6 stay unchecked while the AC1 Partial and the AC4 Partial stand.";
+    for path in [
+        "docs/roadmap/m0-feasibility.md",
+        "docs/roadmap/risks-and-decisions.md",
+    ] {
+        assert!(
+            read(path).contains(sentence),
+            "{path} drops the AC5/AC6 lock"
+        );
+    }
+    let mut checked = Vec::new();
+    checked_ids(
+        &root().join("docs"),
+        &["M0-AC1", "M0-AC4", "M0-AC5", "M0-AC6"],
+        &mut checked,
+    );
+    assert!(
+        checked.is_empty(),
+        "acceptance box checked while AC1 or AC4 Partial stands: {checked:?}"
+    );
+    let prove = read("docs/evidence/m0/ac2-ac3-open.md");
+    assert!(
+        prove.contains("ac2=0 ac3=0"),
+        "prove record dropped ac2=0 ac3=0"
+    );
+    for dir in [root().join("docs"), root().join("src")] {
+        for flag in ["ac2=1", "ac3=1"] {
+            assert!(
+                !walk_contains(&dir, flag),
+                "{flag} appeared under {}",
+                dir.display()
+            );
+        }
+    }
+}
+
+fn named_tip_sha(text: &str, label: &str) -> bool {
+    text.lines().any(|line| {
+        let Some((_, rest)) = line.split_once(label) else {
+            return false;
+        };
+        let token = rest
+            .trim()
+            .trim_matches('`')
+            .split_whitespace()
+            .next()
+            .unwrap_or("");
+        token.len() >= 7 && token.chars().all(|c| c.is_ascii_hexdigit())
+    })
+}
+
+fn checked_ids(dir: &Path, ids: &[&str], out: &mut Vec<String>) {
+    for entry in fs::read_dir(dir).unwrap().flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            checked_ids(&path, ids, out);
+            continue;
+        }
+        if path.extension().and_then(|ext| ext.to_str()) != Some("md") {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        for (number, line) in text.lines().enumerate() {
+            if !(line.contains("- [x]") || line.contains("- [X]")) {
+                continue;
+            }
+            for id in ids {
+                if line.contains(id) {
+                    out.push(format!("{}:{}: {line}", path.display(), number + 1));
+                }
+            }
+        }
+    }
+}
+
+fn lock_spike_fn(fn_name: &str, env: &str, expect: &str) {
+    let src_dir = root().join("src");
+    for entry in fs::read_dir(&src_dir).unwrap().flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            for nested in fs::read_dir(&path).unwrap().flatten() {
+                lock_spike_file(&nested.path(), fn_name, env, expect);
+            }
+        } else {
+            lock_spike_file(&path, fn_name, env, expect);
+        }
+    }
+}
+
+fn lock_spike_file(path: &Path, fn_name: &str, env: &str, expect: &str) {
+    if path.extension().and_then(|ext| ext.to_str()) != Some("rs") {
+        return;
+    }
+    let Ok(text) = fs::read_to_string(path) else {
+        return;
+    };
+    if !text.contains(fn_name) {
+        return;
+    }
+    let body = fn_body(&text, fn_name);
+    assert!(
+        body.contains(env),
+        "{} {fn_name} dropped {env}",
+        path.display()
+    );
+    assert_eq!(
+        unwrap_or_arg(body),
+        expect,
+        "{} {fn_name} unwrap_or drifted",
+        path.display()
+    );
+    for banned in ["180_000", "180000"] {
+        assert!(
+            !code_has_bounded(body, banned),
+            "{} {fn_name} regressed to {banned}",
+            path.display()
+        );
+    }
+}
+
+fn fn_body<'a>(src: &'a str, name: &str) -> &'a str {
+    let start = src.find(name).unwrap_or_else(|| panic!("missing {name}"));
+    let rest = &src[start..];
+    let brace = rest
+        .find('{')
+        .unwrap_or_else(|| panic!("missing body {name}"));
+    let mut depth = 0;
+    for (index, ch) in rest[brace..].char_indices() {
+        match ch {
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return &rest[..brace + index + 1];
+                }
+            }
+            _ => {}
+        }
+    }
+    panic!("unclosed {name}");
+}
+
+fn unwrap_or_arg(body: &str) -> &str {
+    let mut found = None;
+    for line in body.lines() {
+        let code = line.split("//").next().unwrap();
+        let Some(at) = code.find(".unwrap_or(") else {
+            continue;
+        };
+        let rest = &code[at + ".unwrap_or(".len()..];
+        let end = rest.find(')').expect("unclosed unwrap_or");
+        let arg = rest[..end].trim();
+        assert!(found.replace(arg).is_none(), "more than one unwrap_or");
+    }
+    found.expect("missing unwrap_or")
+}
+
+fn code_has_bounded(body: &str, token: &str) -> bool {
+    body.lines().any(|line| {
+        let code = line.split("//").next().unwrap();
+        let mut from = 0;
+        while let Some(index) = code[from..].find(token) {
+            let at = from + index;
+            let prev = code[..at].chars().next_back();
+            let next = code[at + token.len()..].chars().next();
+            let prev_ok = !matches!(prev, Some(ch) if ch.is_ascii_digit() || ch == '_');
+            let next_ok = !matches!(next, Some(ch) if ch.is_ascii_digit() || ch == '_');
+            if prev_ok && next_ok {
+                return true;
+            }
+            from = at + token.len();
+        }
+        false
+    })
+}
+
 fn stop_sha_stands(path: &str, sha: &str) -> bool {
     match fs::read_to_string(root().join(path)) {
         Ok(text) if !text.is_empty() && !text.contains(sha) => false,

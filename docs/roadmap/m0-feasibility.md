@@ -75,6 +75,9 @@ tests failing before the contract types satisfy them. Do not rename the IDs.
   intended CLI artifact, including allow/deny and cleanup. The external input category
   has a named device reserved for M2 qualification. Proposed minimum OS is confirmed
   or revised explicitly before any support promise is accepted.
+  [mic-operator-timeouts.md](../evidence/m0/mic-operator-timeouts.md) is Partial.
+  PR #51 tip `7c71d50`. TIMEOUT is not Don't Allow.
+  Partial — operator Allow/Deny unproven; consequence AC1 open.
 - [ ] **M0-AC2:** The combined native spike performs ASR and translation with the exact
   pinned artifacts, in process, with observed Metal GPU execution. A subprocess CLI
   or a CPU-only `-ngl 0` run does not pass.
@@ -85,12 +88,17 @@ tests failing before the contract types satisfy them. Do not rename the IDs.
 - [ ] **M0-AC4:** The [acceptance plan](acceptance.md) names both corners, OS builds,
   the selected quantization and sampling, corpus and license inventory, the closed
   language table, and reviewed numeric targets. No unresolved mandatory value remains.
+  Status: Partial. Record: [ac4-partial.md](../evidence/m0/ac4-partial.md).
+  Charter accept is blocked: M0-AC4 cannot be checked while SIGNED_INSTALL=None or C2_BLOCKED stands.
+  The launchd user-agent run does not close M0-AC4.
 - [ ] **M0-AC5:** Every M0 item in the [decision register](risks-and-decisions.md) has
   a recorded decision, owner, evidence, and consequence. ADRs are accepted only to the
   extent supported; unresolved feasibility explicitly blocks dependent milestones.
 - [ ] **M0-AC6:** Shared library types, `T-M0-REJECT-INPUTS`, and `T-M0-LIMIT-VECTORS`
   match the ADRs and the acceptance plan. Stage traits can be faked independently.
   The test plan covers every source category, both UIs, and both corners.
+
+M0-AC5 and M0-AC6 stay unchecked while the AC1 Partial and the AC4 Partial stand.
 
 ## Evidence and handoff
 

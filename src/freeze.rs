@@ -107,6 +107,23 @@ pub const CORNERS: [Corner; 2] = [
     },
 ];
 
+/// Notarized install id. `None` while PR #38 tip `e7433c2` stands.
+/// PR #42 tip `8794303` is the None guard. PR #54 tip `6a839de` keeps AC4 Partial.
+/// Ad-hoc `codesign` does not fill this.
+pub const SIGNED_INSTALL: Option<&str> = None;
+
+/// No second acceptance machine was measured. PR #27 tip `ad8d418`.
+/// Stays true until a different Apple Silicon Mac is measured. Does not name one.
+pub const C2_BLOCKED: bool = true;
+
+/// Unset `TACO_CAPTURE_SPIKE_OPEN_MS`. PR #36 tip `81a2a54`. Harness lock is
+/// PR #50 tip `fdc201f`. This crate does not open a microphone.
+pub const CAPTURE_SPIKE_OPEN_MS: u64 = 300_000;
+
+/// Unset `TACO_CAPTURE_SPIKE_HOLD_MS` after open returns `Ok`. PR #24 tip `89759b9`.
+/// Harness lock is PR #50 tip `fdc201f`.
+pub const CAPTURE_SPIKE_HOLD_MS: u64 = 1_800_000;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CorpusSlot {
     pub name: &'static str,
