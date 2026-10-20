@@ -481,6 +481,12 @@ fn package_source_and_milestone_boxes() {
         format!("- [{}] **M0-AC", "X"),
         format!("- [{}] M0-AC", "x"),
         format!("- [{}] M0-AC", "X"),
+        format!("* [{}] **M0-AC", "x"),
+        format!("* [{}] **M0-AC", "X"),
+        format!("* [{}] M0-AC", "x"),
+        format!("* [{}] M0-AC", "X"),
+        format!("- [{}]**M0-AC", "x"),
+        format!("- [{}]**M0-AC", "X"),
     ] {
         assert!(!walk_contains(&root(), &mark), "checked M0-AC box: {mark}");
     }
@@ -1437,8 +1443,9 @@ fn named_tip_sha(text: &str, label: &str) -> bool {
         .any(|token| tip_token_is_sha(token))
 }
 
-/// Commits already on this tip are not operator clicks. TIMEOUT and words fail
-/// the hex check. Uppercase hex does not count.
+/// Commits already on this tip, Stop SHAs, and the hold constant are not
+/// operator clicks. TIMEOUT and words fail the hex check. Uppercase hex does
+/// not count.
 fn tip_token_is_sha(token: &str) -> bool {
     let lower = token.to_ascii_lowercase();
     const NOT_OPERATOR: &[&str] = &[
@@ -1456,6 +1463,52 @@ fn tip_token_is_sha(token: &str) -> bool {
         "fb48acce1b29465077c5ec84c801322592f30048",
         "cd61eaf",
         "cd61eaf2ade626e9acd2a14f3ca9ace4a321f2cb",
+        "1800000",
+        "d194012",
+        "d194012abbbc86dbe4bf8ca83336308be8092d88",
+        "a0e1614",
+        "a0e16148368a80cb1de0fc12c4a438374c6cd109",
+        "0829a70",
+        "88eda06",
+        "aab661c",
+        "232ea78",
+        "2ff5c4f",
+        "e06ea0e",
+        "30fd669",
+        "37ff031",
+        "37ff031d82e87227a870c027c55aaeaaabaa0e6f",
+        "a8e2eca",
+        "a8e2eca555a7464ffa5d0453b504a2458b673501",
+        "c9a6f6f",
+        "ed9ee10",
+        "04dda65",
+        "f16f0bb",
+        "2d9679f",
+        "2d9679f1cf1d1b083536a91c81ff256756e69cd5",
+        "7f98ab1",
+        "7f98ab125f45804a926e928a970e5074bddbe0fe",
+        "e2ec751",
+        "e2ec7518c0fb583d6ddc2dbd54eb892febe33d11",
+        "2766f79",
+        "2766f79021c52051e8661b993c072327e9761cb6",
+        "a40fad1",
+        "a40fad173091a605417766e2a28433548a0481f6",
+        "652614b",
+        "fe08f47",
+        "fe08f47484d903fe33a8fa76635fd5e9e9dc4b8e",
+        "8c24c99",
+        "ca9bc50",
+        "637459f",
+        "7fb5006",
+        "7fb500699777d1cecbe17ec4ac11c054b1942bd6",
+        "fdc201f",
+        "fdc201fa3538b3222db531a8c3df66a830efe668",
+        "ce5690f",
+        "ce5690f66809ac2fe152016f643cb04e1868c399",
+        "2e0b898",
+        "2e0b898df8b6d4774d9eb968b20660f3118bce6f",
+        "7e8f3c5",
+        "7e8f3c56995131289bb84f2c52f6787c2dd161fd",
     ];
     if NOT_OPERATOR.contains(&lower.as_str()) {
         return false;
@@ -1529,26 +1582,15 @@ fn harness_field(text: &str, key: &str) -> Option<String> {
     found
 }
 
+const M0_AC_IDS: [&str; 6] = ["M0-AC1", "M0-AC2", "M0-AC3", "M0-AC4", "M0-AC5", "M0-AC6"];
+
+/// Any `[x]` or `[X]` on a line that names M0-AC1 through M0-AC6.
+fn line_checks_m0_ac(line: &str) -> bool {
+    (line.contains("[x]") || line.contains("[X]")) && M0_AC_IDS.iter().any(|id| line.contains(id))
+}
+
 fn checked_m0_ac1(dir: &Path, out: &mut Vec<String>) {
-    for entry in fs::read_dir(dir).unwrap().flatten() {
-        let path = entry.path();
-        if path.is_dir() {
-            checked_m0_ac1(&path, out);
-            continue;
-        }
-        if path.extension().and_then(|ext| ext.to_str()) != Some("md") {
-            continue;
-        }
-        let Ok(text) = fs::read_to_string(&path) else {
-            continue;
-        };
-        let flipped = text.lines().any(|line| {
-            line.contains("M0-AC1") && (line.contains("- [x]") || line.contains("- [X]"))
-        });
-        if flipped {
-            out.push(path.display().to_string());
-        }
-    }
+    collect_checked_m0_ac(dir, out);
 }
 
 /// Process-tap Allow, Deny, and Cleanup stay `none` until a Mac operator run.
@@ -2093,10 +2135,14 @@ fn stop_sha_stands(path: &str, sha: &str) -> bool {
 }
 
 fn checked_ac_boxes(dir: &Path, out: &mut Vec<String>) {
+    collect_checked_m0_ac(dir, out);
+}
+
+fn collect_checked_m0_ac(dir: &Path, out: &mut Vec<String>) {
     for entry in fs::read_dir(dir).unwrap().flatten() {
         let path = entry.path();
         if path.is_dir() {
-            checked_ac_boxes(&path, out);
+            collect_checked_m0_ac(&path, out);
             continue;
         }
         if path.extension().and_then(|ext| ext.to_str()) != Some("md") {
@@ -2105,15 +2151,89 @@ fn checked_ac_boxes(dir: &Path, out: &mut Vec<String>) {
         let Ok(text) = fs::read_to_string(&path) else {
             continue;
         };
-        for id in ["M0-AC2", "M0-AC3"] {
-            let flipped = text.lines().any(|line| {
-                line.contains(id) && (line.contains("- [x]") || line.contains("- [X]"))
-            });
-            if flipped {
+        for id in M0_AC_IDS {
+            if text.lines().any(|line| line_checks_m0_ac(line) && line.contains(id)) {
                 out.push(format!("{} {id}", path.display()));
             }
         }
     }
+}
+
+/// Star and cramped checked marks on an M0-AC line count. Disk boxes stay open.
+#[test]
+fn m0_checked_box_variants_refuse() {
+    let mic = read("docs/evidence/m0/mic-operator-resume.md");
+    let audio = read("docs/evidence/m0/audiocapture-measure.md");
+    let tap = read("docs/evidence/m0/process-tap-product.md");
+    assert_eq!(one_tip(&tap, "Allow tip SHA:"), "none");
+    assert_eq!(one_tip(&tap, "Deny tip SHA:"), "none");
+    assert_eq!(one_tip(&tap, "Cleanup tip SHA:"), "none");
+    assert!(!ac1_tip_shas_ready(&mic, &audio, &tap));
+    for n in 1..=6 {
+        let id = format!("M0-AC{n}");
+        for line in [
+            format!("* [{}] **{id}:**", "x"),
+            format!("* [{}] **{id}:**", "X"),
+            format!("- [{}]**{id}:**", "x"),
+            format!("- [{}]**{id}:**", "X"),
+        ] {
+            assert!(line_checks_m0_ac(&line), "{line}");
+        }
+        assert!(!line_checks_m0_ac(&format!("- [ ] **{id}:**")));
+        assert!(!line_checks_m0_ac(&format!("* [ ] **{id}:**")));
+    }
+    assert_checked_ac1_fails(&mic, &audio, &tap);
+    let mut checked = Vec::new();
+    checked_m0_ac1(&root().join("docs"), &mut checked);
+    assert!(checked.is_empty(), "M0-AC checked on disk: {checked:?}");
+    checked.clear();
+    checked_ac_boxes(&root().join("docs"), &mut checked);
+    assert!(checked.is_empty(), "M0-AC checked on disk: {checked:?}");
+}
+
+/// Hold constant, Stop SHAs, and stack tips are not operator clicks.
+#[test]
+fn tip_sha_denylist_rejects_non_clicks() {
+    for token in [
+        "1800000",
+        "d194012",
+        "a0e1614",
+        "0829a70",
+        "88eda06",
+        "aab661c",
+        "232ea78",
+        "2ff5c4f",
+        "e06ea0e",
+        "30fd669",
+        "37ff031",
+        "a8e2eca",
+        "c9a6f6f",
+        "ed9ee10",
+        "04dda65",
+        "f16f0bb",
+        "2d9679f",
+        "7f98ab1",
+        "e2ec751",
+        "2766f79",
+        "a40fad1",
+        "652614b",
+        "fe08f47",
+        "8c24c99",
+        "ca9bc50",
+        "637459f",
+        "7fb5006",
+        "fdc201f",
+        "ce5690f",
+        "2e0b898",
+        "7e8f3c5",
+    ] {
+        assert!(!tip_token_is_sha(token), "{token}");
+        let line = format!("Allow tip SHA: {token}");
+        assert!(!named_tip_sha(&line, "Allow tip SHA:"), "{token}");
+    }
+    let stand_in = "abcdef0123456789";
+    assert!(tip_token_is_sha(stand_in));
+    assert!(!walk_contains(&root().join("docs"), stand_in));
 }
 
 struct SpikeEvidence {
