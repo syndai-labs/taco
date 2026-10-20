@@ -1862,6 +1862,8 @@ fn tip_token_is_sha(token: &str) -> bool {
         "35155fca3149380e6817b3a2ea1f5f0742104246",
         "7a5884e",
         "7a5884e05f5c98a61f79918a7fae21bd10aaf577",
+        "3602000",
+        "36020005c98ed5a028f7cbdd77aaa028156d8467",
     ];
     if NOT_OPERATOR.contains(&lower.as_str()) {
         return false;
@@ -2789,6 +2791,8 @@ fn tip_sha_denylist_rejects_non_clicks() {
         "35155fca3149380e6817b3a2ea1f5f0742104246",
         "7a5884e",
         "7a5884e05f5c98a61f79918a7fae21bd10aaf577",
+        "3602000",
+        "36020005c98ed5a028f7cbdd77aaa028156d8467",
     ] {
         assert!(!tip_token_is_sha(token), "{token}");
         let line = format!("Allow tip SHA: {token}");
