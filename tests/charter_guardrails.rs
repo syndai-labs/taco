@@ -516,6 +516,7 @@ fn ac2_ac3_cannot_flip_while_stop_shas_stand() {
     let metal_teardown_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "232ea78");
     let silero_only_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "2ff5c4f");
     let metal_refcount_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "e06ea0e");
+    let metal_subprocess_stands = stop_sha_stands("docs/evidence/m0/ac2-ac3-open.md", "30fd669");
     assert!(
         metal_device_stands,
         "Stop tip 0829a70 must stand in docs/evidence/m0/ac2-ac3-open.md"
@@ -540,6 +541,10 @@ fn ac2_ac3_cannot_flip_while_stop_shas_stand() {
         metal_refcount_stands,
         "Stop tip e06ea0e must stand in docs/evidence/m0/ac2-ac3-open.md"
     );
+    assert!(
+        metal_subprocess_stands,
+        "Stop tip 30fd669 must stand in docs/evidence/m0/ac2-ac3-open.md"
+    );
     if !vad_stands
         && !residency_stands
         && !metal_device_stands
@@ -548,6 +553,7 @@ fn ac2_ac3_cannot_flip_while_stop_shas_stand() {
         && !metal_teardown_stands
         && !silero_only_stands
         && !metal_refcount_stands
+        && !metal_subprocess_stands
     {
         return;
     }
@@ -612,6 +618,15 @@ fn ac2_ac3_cannot_flip_while_stop_shas_stand() {
                 "still a use-after-free on prove cycle 2",
                 "refcount free is still UAF",
             ),
+            ("30fd669", "#74 Metal subprocess Stop"),
+            (
+                "metal_subprocess_stop_cites_55_63_and_70",
+                "#74 owns its guard",
+            ),
+            ("violates single Mach-O", "helper leaves single Mach-O"),
+            ("in-process Metal", "helper leaves in-process Metal"),
+            ("LINK-THREE", "helper leaves LINK-THREE"),
+            ("does not close residency", "helper does not close residency"),
         ] {
             assert!(text.contains(sha), "{path} drops {why} `{sha}`");
         }
