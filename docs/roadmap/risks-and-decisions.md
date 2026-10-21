@@ -760,6 +760,8 @@ PR #556 tip `866c00f` (`866c00f78a321bf68a84795156d85ec52921e797`) is the tips24
 
 PR #558 tip `345199c` (`345199cbe4d3de21bcfaf2e48e802adbff822fae`) is the tips247 cite of #556 tip `866c00f` and #557 tip `3097e6c`, on `cursor/m0-decision-tips247-b19b`, stacked on #556 tip `866c00f`. #557 is not an ancestor of #556. This cite does not copy `tip_sha_denylist_rejects_non_clicks` or `tip_under_test_sha_is_denied_as_operator_click`. Mac prefer tip is #561 `5a29d48`, not #559. This cite does not replace it. Allow, Deny, Cleanup, and After-pair tip SHAs stay `none`. Linux does not claim a Metal run. CI green. PR #431 tip `9756096` is the Linux-safe AC23 harness on `cursor/m0-ac23-linux-safe-harness-b19b` and is not a decision-register cite tip.
 
+PR #560 tip `12c414e` (`12c414e1da34da16ba05f726dc883fa8c58ed209`) is the tips248 cite of #558 tip `345199c` and #559 tip `4f7ce0d`, on `cursor/m0-decision-tips248-b19b`, stacked on #558 tip `345199c`. #559 is not an ancestor of #558. This cite does not copy `tip_sha_denylist_rejects_non_clicks` or `tip_under_test_sha_is_denied_as_operator_click`. Mac prefer tip is #561 `5a29d48`, not #559. This cite does not replace it. Allow, Deny, Cleanup, and After-pair tip SHAs stay `none`. Linux does not claim a Metal run. CI green. PR #431 tip `9756096` is the Linux-safe AC23 harness on `cursor/m0-ac23-linux-safe-harness-b19b` and is not a decision-register cite tip.
+
 ## Acceptance criteria
 
 - [ ] Every M0 decision has a concrete resolution before dependent milestone exit.
