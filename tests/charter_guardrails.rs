@@ -3094,6 +3094,10 @@ fn tip_token_is_sha(token: &str) -> bool {
         "7b4b31414ce3cb9bc4ad26f8deb7e9c6f59b1303",
         "846136e",
         "846136e93181225b91be8c84ce8007462d7bd375",
+        "a890441",
+        "a89044191c0735e9c8fdba8ec04302730b9073fb",
+        "f1dda95",
+        "f1dda95a7c59bc5cc8535ad0f99e6e857ca5902d",
     ];
     if NOT_OPERATOR.contains(&lower.as_str()) {
         return false;
@@ -5253,6 +5257,10 @@ fn tip_sha_denylist_rejects_non_clicks() {
         "7b4b31414ce3cb9bc4ad26f8deb7e9c6f59b1303",
         "846136e",
         "846136e93181225b91be8c84ce8007462d7bd375",
+        "a890441",
+        "a89044191c0735e9c8fdba8ec04302730b9073fb",
+        "f1dda95",
+        "f1dda95a7c59bc5cc8535ad0f99e6e857ca5902d",
     ] {
         assert!(!tip_token_is_sha(token), "{token}");
         let line = format!("Allow tip SHA: {token}");
@@ -5265,11 +5273,11 @@ fn tip_sha_denylist_rejects_non_clicks() {
     // It is not on the denylist and is not read with `git rev-parse HEAD`.
 }
 
-/// Prefer tip `7b4b314` is not an operator click.
+/// Prefer tip `a890441` is not an operator click.
 ///
 /// When the Mac playbook prefer tip advances, the tip that becomes prefer
 /// must deny its own short+full in that same tip (or the next denylist tip
-/// before playbook flip). This tip denies #725 and the #726 head and leaves
+/// before playbook flip). This tip denies #727 and the #728 head and leaves
 /// its own HEAD accepted. It does not deny #431 harness tip 9756096.
 #[test]
 fn tip_under_test_sha_is_denied_as_operator_click() {
@@ -5278,8 +5286,8 @@ fn tip_under_test_sha_is_denied_as_operator_click() {
     let start = body.find("const NOT_OPERATOR").expect("NOT_OPERATOR");
     let list = &body[start..start + body[start..].find("];").expect("NOT_OPERATOR end")];
     for token in [
-        "7b4b314",
-        "7b4b31414ce3cb9bc4ad26f8deb7e9c6f59b1303",
+        "a890441",
+        "a89044191c0735e9c8fdba8ec04302730b9073fb",
     ] {
         assert!(list.contains(&format!("\"{token}\"")), "{token}");
         assert!(!tip_token_is_sha(token), "{token}");
